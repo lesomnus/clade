@@ -1,0 +1,9 @@
+name: ghcr.io/lesomnus/dev-gcc
+
+images:
+  # gcc:11.X~99.X
+  - tags: ["$1.$2", "$1"]
+    from: registry.hub.docker.com/library/gcc:/^(1[1-9]|[2-9][0-9])\.(\d+)$/
+  # only gcc:10
+  - tags: ["10"]
+    from: registry.hub.docker.com/library/gcc:10

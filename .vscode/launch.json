@@ -1,0 +1,40 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "tree",
+			"type": "go",
+			"request": "launch",
+			"mode": "debug",
+			"program": "${workspaceFolder}/cmd/clade",
+			"args": [
+				"tree",
+			],
+			"cwd": "${workspaceFolder}"
+		},
+		{
+			"name": "outdated",
+			"type": "go",
+			"request": "launch",
+			"mode": "debug",
+			"program": "${workspaceFolder}/cmd/clade",
+			"args": [
+				"outdated",
+			],
+			"cwd": "${workspaceFolder}"
+		},
+		{
+			"name": "build",
+			"type": "go",
+			"request": "launch",
+			"mode": "debug",
+			"program": "${workspaceFolder}/cmd/clade",
+			"args": [
+				"build",
+				"--dry-run",
+				"ghcr.io/thordrive/dev-gcc:11"
+			],
+			"cwd": "${workspaceFolder}"
+		}
+	]
+}
