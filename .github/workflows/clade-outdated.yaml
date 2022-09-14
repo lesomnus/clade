@@ -21,6 +21,6 @@ jobs:
             echo build ${reference}
             ${{ env.ACT && 'echo' }} gh workflow run clade-build.yaml \
               --ref "${{ github.ref }}" \
-              --field "reference=${reference}"
+              --field "reference=${reference}" \
               --field "cascade=true"
           done
