@@ -15,7 +15,7 @@ jobs:
           go-version: 1.19
 
       - run: |
-          for reference in $(go run ./cmd/outdated); do
+          for reference in $(go run ./cmd/clade outdated); do
             echo build ${reference}
             ${{ env.ACT && 'echo' }} gh workflow run clade-build.yaml \
               --ref "${{ github.ref }}" \
