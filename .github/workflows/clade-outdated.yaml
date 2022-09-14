@@ -14,7 +14,8 @@ jobs:
         with:
           go-version: 1.19
 
-      - env:
+      - name: Outdated
+        env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           for reference in $(go run ./cmd/clade outdated); do

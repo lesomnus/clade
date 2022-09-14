@@ -30,7 +30,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build
-        run: go run ./cmd/build ${{ env.ACT && '--dry-run' }} ${{ github.event.inputs.reference }}
+        run: go run ./cmd/clade build ${{ env.ACT && '--dry-run' }} ${{ github.event.inputs.reference }}
 
       - name: Push
         run: |
