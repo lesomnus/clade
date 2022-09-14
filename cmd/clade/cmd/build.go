@@ -7,7 +7,6 @@ import (
 	"os/exec"
 
 	"github.com/distribution/distribution/reference"
-	"github.com/lesomnus/clade"
 	"github.com/lesomnus/clade/cmd/clade/cmd/internal"
 	"github.com/spf13/cobra"
 )
@@ -47,17 +46,17 @@ var build_cmd = &cobra.Command{
 			}
 		}
 
-		bt := make(clade.BuildTree)
+		bt := internal.NewBuildTree()
 		if err := internal.LoadBuildTreeFromPorts(cmd.Context(), bt, root_flags.portsPath); err != nil {
-			return fmt.Errorf("failed to load ports at: %w", err)
+			return fmt.Errorf("failed to load ports: %w", err)
 		}
 
-		target_node, ok := bt[target_ref.String()]
+		target_node, ok := bt.Tree[target_ref.String()]
 		if !ok {
 			return errors.New("failed to find image")
 		}
 
-		target_image := target_node.BuildContext.NamedImage
+		target_image := target_node.Value
 		builder := &exec.Cmd{
 			Path:   docker_binary,
 			Dir:    target_image.ContextPath,
@@ -70,7 +69,7 @@ var build_cmd = &cobra.Command{
 			args = append(args, "--file", target_image.Dockerfile)
 
 			for _, tag := range target_image.Tags {
-				args = append(args, "--tag", fmt.Sprintf("%s:%s", target_image.Name, tag))
+				args = append(args, "--tag", fmt.Sprintf("%s:%s", target_image.Name(), tag))
 			}
 
 			build_args := make(map[string]string)

@@ -29,7 +29,7 @@ type Port struct {
 }
 
 type NamedImage struct {
-	Name reference.Named
+	reference.Named
 	Tags []string
 	From reference.NamedTagged
 	Args map[string]string
@@ -39,7 +39,7 @@ type NamedImage struct {
 }
 
 func (i *NamedImage) Tagged() (reference.NamedTagged, error) {
-	if tagged, ok := i.Name.(reference.NamedTagged); ok {
+	if tagged, ok := i.Named.(reference.NamedTagged); ok {
 		return tagged, nil
 	}
 
@@ -47,7 +47,7 @@ func (i *NamedImage) Tagged() (reference.NamedTagged, error) {
 		return nil, errors.New("not tagged")
 	}
 
-	tagged, err := reference.WithTag(i.Name, i.Tags[0])
+	tagged, err := reference.WithTag(i.Named, i.Tags[0])
 	if err != nil {
 		return nil, err
 	}
@@ -83,10 +83,10 @@ func (p *Port) ParseImages() ([]*NamedImage, error) {
 		}
 
 		named_img := &NamedImage{
-			Name: name,
-			Tags: slices.Clone(img.Tags),
-			From: from_tagged,
-			Args: make(map[string]string, len(p.Args)+len(img.Args)),
+			Named: name,
+			Tags:  slices.Clone(img.Tags),
+			From:  from_tagged,
+			Args:  make(map[string]string, len(p.Args)+len(img.Args)),
 
 			Dockerfile:  img.Dockerfile,
 			ContextPath: img.ContextPath,

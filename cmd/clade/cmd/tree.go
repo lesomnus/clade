@@ -7,6 +7,7 @@ import (
 
 	"github.com/lesomnus/clade"
 	"github.com/lesomnus/clade/cmd/clade/cmd/internal"
+	"github.com/lesomnus/clade/tree"
 	"github.com/spf13/cobra"
 )
 
@@ -23,25 +24,24 @@ var tree_cmd = &cobra.Command{
 
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		bt := make(clade.BuildTree)
+		bt := internal.NewBuildTree()
 		if err := internal.LoadBuildTreeFromPorts(cmd.Context(), bt, root_flags.portsPath); err != nil {
-			return fmt.Errorf("failed to load ports at: %w", err)
+			return fmt.Errorf("failed to load ports: %w", err)
 		}
 
-		var root_node *clade.BuildTreeNode
+		var root_node *tree.Node[*clade.NamedImage]
 
 		if len(args) == 0 {
 			root_node = bt.AsNode()
 		} else {
-			for name, node := range bt {
+			for name, node := range bt.Tree {
 				if name != args[0] {
 					continue
 				}
 
-				root_node = &clade.BuildTreeNode{
-					Parent:       nil,
-					Children:     map[string]*clade.BuildTreeNode{name: node},
-					BuildContext: clade.BuildContext{NamedImage: nil},
+				root_node = &tree.Node[*clade.NamedImage]{
+					Parent:   nil,
+					Children: map[string]*tree.Node[*clade.NamedImage]{name: node},
 				}
 				break
 			}
@@ -51,7 +51,8 @@ var tree_cmd = &cobra.Command{
 			}
 		}
 
-		root_node.Walk(func(level int, node *clade.BuildTreeNode) error {
+		visited := make(map[*clade.NamedImage]struct{})
+		root_node.Walk(func(level int, name string, node *tree.Node[*clade.NamedImage]) error {
 			if level < tree_flags.strip {
 				return nil
 			}
@@ -59,12 +60,18 @@ var tree_cmd = &cobra.Command{
 			lv := level - tree_flags.strip
 
 			if tree_flags.depth != 0 && lv >= tree_flags.depth {
-				return clade.WalkContinue
+				return tree.WalkContinue
 			}
 
-			image := node.BuildContext.NamedImage
+			if _, ok := visited[node.Value]; !ok {
+				visited[node.Value] = struct{}{}
+			} else {
+				return nil
+			}
+
+			image := node.Value
 			for _, tag := range image.Tags {
-				fmt.Print(strings.Repeat("\t", lv), image.Name.Name(), ":", tag, "\n")
+				fmt.Print(strings.Repeat("\t", lv), image.Name(), ":", tag, "\n")
 			}
 
 			return nil

@@ -12,12 +12,54 @@ import (
 	"github.com/blang/semver/v4"
 	"github.com/distribution/distribution/reference"
 	"github.com/lesomnus/clade"
-	"golang.org/x/exp/slices"
+	"github.com/lesomnus/clade/tree"
 	"gopkg.in/yaml.v3"
 )
 
+// TODO: move expanders into lesomnus/clade
+
+type BuildTree struct {
+	tree.Tree[*clade.NamedImage]
+}
+
+func NewBuildTree() *BuildTree {
+	return &BuildTree{make(tree.Tree[*clade.NamedImage])}
+}
+
+func (t *BuildTree) Insert(image *clade.NamedImage) error {
+	from := image.From.String()
+	for _, tag := range image.Tags {
+		ref, err := reference.WithTag(image.Named, tag)
+		if err != nil {
+			return err
+		}
+
+		if parent := t.Tree.Insert(from, ref.String(), image).Parent; parent.Value == nil {
+			parent.Value = &clade.NamedImage{
+				Named: image.From,
+				Tags:  []string{image.From.Tag()},
+			}
+		}
+	}
+
+	return nil
+}
+
+func (t *BuildTree) Walk(walker tree.Walker[*clade.NamedImage]) error {
+	visited := make(map[*clade.NamedImage]struct{})
+	return t.AsNode().Walk(func(level int, name string, node *tree.Node[*clade.NamedImage]) error {
+		if _, ok := visited[node.Value]; ok {
+			return nil
+		} else {
+			visited[node.Value] = struct{}{}
+		}
+
+		return walker(level, name, node)
+	})
+}
+
 // TODO: make general plan for expanding
-func ExpandImage(ctx context.Context, image *clade.NamedImage, bt clade.BuildTree) ([]*clade.NamedImage, error) {
+func ExpandImage(ctx context.Context, image *clade.NamedImage, bt *BuildTree) ([]*clade.NamedImage, error) {
 	switch image.From.(type) {
 	case clade.RefNamedPipelineTagged:
 		return ExpandByPipeline(ctx, image, bt)
@@ -53,19 +95,19 @@ func ExpandByRegex(ctx context.Context, image *clade.NamedImage) ([]*clade.Named
 	return images, nil
 }
 
-func ExpandByPipeline(ctx context.Context, image *clade.NamedImage, bt clade.BuildTree) ([]*clade.NamedImage, error) {
+func ExpandByPipeline(ctx context.Context, image *clade.NamedImage, bt *BuildTree) ([]*clade.NamedImage, error) {
 	tagged, ok := image.From.(clade.RefNamedPipelineTagged)
 	if !ok {
 		return nil, errors.New("not a pipeline tagged")
 	}
 
 	tags := make([]string, 0)
-	for _, node := range bt {
-		if node.BuildContext.NamedImage.Name.Name() != tagged.Name() {
+	for _, node := range bt.Tree {
+		if node.Value.Name() != tagged.Name() {
 			continue
 		}
 
-		tags = append(tags, node.BuildContext.NamedImage.Tags...)
+		tags = append(tags, node.Value.Tags...)
 	}
 
 	sb := strings.Builder{}
@@ -203,42 +245,44 @@ func lowestExpandPriorityOf(images []*clade.NamedImage) int {
 	return rst
 }
 
-func LoadBuildTreeFromPorts(ctx context.Context, bt clade.BuildTree, path string) error {
+func LoadBuildTreeFromPorts(ctx context.Context, bt *BuildTree, path string) error {
 	ports, err := ReadPorts(path)
 	if err != nil {
 		return fmt.Errorf("failed to read ports: %w", err)
 	}
 
-	entries := make([][]*clade.NamedImage, len(ports))
+	et := NewExpandTree()
 	for _, port := range ports {
 		images, err := port.ParseImages()
 		if err != nil {
 			return fmt.Errorf("failed to parse image from port %s: %w", port.Name, err)
 		}
 
-		entries = append(entries, images)
-	}
-
-	// TODO: I think priority approach is fragile.
-	// A better solution I think is a pseudo-dependency graph consisting of unexpanded nodes.
-	slices.SortFunc(entries, func(lhs []*clade.NamedImage, rhs []*clade.NamedImage) bool {
-		return lowestExpandPriorityOf(lhs) < lowestExpandPriorityOf(rhs)
-	})
-
-	for _, images := range entries {
 		for _, image := range images {
-			expanded_images, err := ExpandImage(ctx, image, bt)
-			if err != nil {
-				return fmt.Errorf("failed to expand image: %w", err)
-			}
-
-			for _, expanded_image := range expanded_images {
-				if err := bt.Insert(expanded_image); err != nil {
-					return fmt.Errorf("failed to insert image into build tree: %w", err)
-				}
+			if err := et.Insert(image); err != nil {
+				return fmt.Errorf("failed to insert image %s into expand tree: %w", image.String(), err)
 			}
 		}
 	}
+
+	et.AsNode().Walk(func(level int, name string, node *tree.Node[*clade.NamedImage]) error {
+		if level == 0 {
+			return nil
+		}
+
+		images, err := ExpandImage(ctx, node.Value, bt)
+		if err != nil {
+			return fmt.Errorf("failed to expand image %s: %w", node.Value.String(), err)
+		}
+
+		for _, image := range images {
+			if err := bt.Insert(image); err != nil {
+				return fmt.Errorf("failed to insert image %s into build tree: %w", image.String(), err)
+			}
+		}
+
+		return nil
+	})
 
 	return nil
 }

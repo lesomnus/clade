@@ -8,6 +8,7 @@ import (
 	"github.com/docker/distribution/manifest/schema2"
 	"github.com/lesomnus/clade"
 	"github.com/lesomnus/clade/cmd/clade/cmd/internal"
+	"github.com/lesomnus/clade/tree"
 	"github.com/spf13/cobra"
 )
 
@@ -16,17 +17,17 @@ var outdated_cmd = &cobra.Command{
 	Short: "List outdated images",
 
 	RunE: func(cmd *cobra.Command, args []string) error {
-		bt := make(clade.BuildTree)
+		bt := internal.NewBuildTree()
 		if err := internal.LoadBuildTreeFromPorts(cmd.Context(), bt, root_flags.portsPath); err != nil {
-			return fmt.Errorf("failed to load ports at: %w", err)
+			return fmt.Errorf("failed to load ports: %w", err)
 		}
 
-		return bt.Walk(func(level int, node *clade.BuildTreeNode) error {
+		return bt.Walk(func(level int, name string, node *tree.Node[*clade.NamedImage]) error {
 			if level == 0 {
 				return nil
 			}
 
-			child_name, err := node.BuildContext.NamedImage.Tagged()
+			child_name, err := node.Value.Tagged()
 			if err != nil {
 				return err
 			}
@@ -35,13 +36,13 @@ var outdated_cmd = &cobra.Command{
 			if err != nil {
 				if errors.Is(err, internal.ErrManifestUnknown) {
 					fmt.Println(child_name.String())
-					return clade.WalkContinue
+					return tree.WalkContinue
 				} else {
 					return fmt.Errorf("failed to get manifest for child image: %w", err)
 				}
 			}
 
-			parent_manifest, err := internal.GetManifest(cmd.Context(), node.BuildContext.NamedImage.From)
+			parent_manifest, err := internal.GetManifest(cmd.Context(), node.Value.From)
 			if err != nil {
 				return fmt.Errorf("failed to get manifest for parent image: %w", err)
 			}
@@ -71,7 +72,7 @@ var outdated_cmd = &cobra.Command{
 
 			if !is_contains {
 				fmt.Println(child_name.String())
-				return clade.WalkContinue
+				return tree.WalkContinue
 			}
 
 			return nil
