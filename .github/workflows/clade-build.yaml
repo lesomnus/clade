@@ -43,7 +43,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          for reference in $(go run ./cmd/tree --strip 1 --depth 1 ${{ github.event.inputs.reference }}); do
+          for reference in $(go run ./cmd/clade tree --strip 1 --depth 1 ${{ github.event.inputs.reference }}); do
             echo build ${reference}
             ${{ env.ACT && 'echo' }} gh workflow run clade-build.yaml \
               --ref "${{ github.ref }}" \
