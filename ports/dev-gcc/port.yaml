@@ -1,4 +1,6 @@
 name: ghcr.io/lesomnus/dev-gcc
+args:
+  CMAKE_VERSION: "3.24.2"
 
 images:
   # gcc:12.X~99.X
