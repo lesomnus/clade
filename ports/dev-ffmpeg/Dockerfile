@@ -1,6 +1,6 @@
 ARG TAG
-ARG FROM
-FROM ${FROM}:${TAG}
+ARG BASE
+FROM ${BASE}:${TAG}
 
 RUN apt-get update \
 	&& apt-get install --yes --no-install-recommends \

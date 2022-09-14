@@ -62,12 +62,11 @@ var tree_cmd = &cobra.Command{
 				return clade.WalkContinue
 			}
 
-			fmt.Print(
-				strings.Repeat("\t", lv),
-				node.BuildContext.NamedImage.Name.Name(),
-				":",
-				strings.Join(node.BuildContext.NamedImage.Tags, ", "),
-				"\n")
+			image := node.BuildContext.NamedImage
+			for _, tag := range image.Tags {
+				fmt.Print(strings.Repeat("\t", lv), image.Name.Name(), ":", tag, "\n")
+			}
+
 			return nil
 		})
 

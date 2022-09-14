@@ -78,7 +78,8 @@ var build_cmd = &cobra.Command{
 				build_args[k] = v
 			}
 
-			build_args["FROM"] = target_image.From.String()
+			build_args["BASE"] = target_image.From.Name()
+			build_args["TAG"] = target_image.From.Tag()
 
 			for k, v := range build_args {
 				args = append(args, "--build-arg", fmt.Sprintf("%s=%s", k, v))
