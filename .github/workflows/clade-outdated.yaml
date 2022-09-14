@@ -6,7 +6,7 @@ on:
     - cron: "0 0 * * *"
 
 jobs:
-  init:
+  outdated:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
@@ -14,11 +14,14 @@ jobs:
         with:
           go-version: 1.19
 
-      - run: |
-          for reference in $(go run ./cmd/outdated); do
+      - name: Outdated
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for reference in $(go run ./cmd/clade outdated); do
             echo build ${reference}
             ${{ env.ACT && 'echo' }} gh workflow run clade-build.yaml \
               --ref "${{ github.ref }}" \
-              --field "reference=${reference}"
+              --field "reference=${reference}" \
               --field "cascade=true"
           done

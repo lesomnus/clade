@@ -30,7 +30,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build
-        run: go run ./cmd/build ${{ env.ACT && '--dry-run' }} ${{ github.event.inputs.reference }}
+        run: go run ./cmd/clade build ${{ env.ACT && '--dry-run' }} ${{ github.event.inputs.reference }}
 
       - name: Push
         run: |
@@ -40,11 +40,13 @@ jobs:
 
       - name: Cascade
         if: ${{ github.event.inputs.cascade }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          for reference in $(go run ./cmd/tree --strip 1 --depth 1 ${{ github.event.inputs.reference }}); do
+          for reference in $(go run ./cmd/clade tree --strip 1 --depth 1 ${{ github.event.inputs.reference }}); do
             echo build ${reference}
             ${{ env.ACT && 'echo' }} gh workflow run clade-build.yaml \
               --ref "${{ github.ref }}" \
-              --field "reference=${reference}"
+              --field "reference=${reference}" \
               --field "cascade=true"
           done

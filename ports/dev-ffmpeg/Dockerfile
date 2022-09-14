@@ -14,11 +14,11 @@ RUN apt-get update \
 ARG USERNAME=hypnos
 ARG VCPKG_REF
 RUN cd "${VCPKG_ROOT}" \
-	; if [ -n "$VCPKG_REF" ]; then \
+	; if [ -n "${VCPKG_REF}" ]; then \
 		git fetch --depth=1 origin "${VCPKG_REF}" \
 		&& git checkout FETCH_HEAD \
 	; fi \
-	; sudo -u thor vcpkg install "ffmpeg[ \
+	; sudo -u ${USERNAME} vcpkg install "ffmpeg[ \
 		aom, \
 		ilbc, \
 		openh264, \

@@ -1,0 +1,10 @@
+{
+	"name": "clade",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+	"extensions": [
+		"golang.go",
+		"streetsidesoftware.code-spell-checker"
+	]
+}
