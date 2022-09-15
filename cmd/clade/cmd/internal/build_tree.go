@@ -222,29 +222,6 @@ func ReadPorts(path string) ([]*clade.Port, error) {
 	return ports, nil
 }
 
-func expandPriorityOf(image *clade.NamedImage) int {
-	switch image.From.(type) {
-	case clade.RefNamedPipelineTagged:
-		return 2
-	case clade.RefNamedRegexTagged:
-		return 1
-	default:
-		return 0
-	}
-}
-
-func lowestExpandPriorityOf(images []*clade.NamedImage) int {
-	rst := 0
-	for _, image := range images {
-		p := expandPriorityOf(image)
-		if rst < p {
-			rst = p
-		}
-	}
-
-	return rst
-}
-
 func LoadBuildTreeFromPorts(ctx context.Context, bt *BuildTree, path string) error {
 	ports, err := ReadPorts(path)
 	if err != nil {
