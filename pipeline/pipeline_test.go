@@ -16,6 +16,15 @@ func TestExecute(t *testing.T) {
 			"mul": func(lhs int, rhs int) int {
 				return lhs * rhs
 			},
+			"max": func(v int, vs ...int) int {
+				for _, c := range vs {
+					if v < c {
+						v = c
+					}
+				}
+
+				return v
+			},
 		},
 	}
 
@@ -41,6 +50,14 @@ func TestExecute(t *testing.T) {
 			expected: 6,
 		},
 		{
+			desc: "variadic",
+			pl: pipeline.Pipeline{
+				{Name: "max", Args: []any{4, 2, 5, 8, 6}},
+				{Name: "add", Args: []any{3}},
+			},
+			expected: 11,
+		},
+		{
 			desc: "nested",
 			pl: pipeline.Pipeline{
 				{Name: "mul", Args: []any{1, pipeline.Pipeline{
@@ -49,6 +66,17 @@ func TestExecute(t *testing.T) {
 				{Name: "add", Args: []any{4}},
 			},
 			expected: 9,
+		},
+		{
+			desc: "nested with variadic",
+			pl: pipeline.Pipeline{
+				{Name: "mul", Args: []any{1, pipeline.Pipeline{
+					{Name: "max", Args: []any{6, 4, 5}},
+					{Name: "add", Args: []any{2}},
+				}}},
+				{Name: "add", Args: []any{4}},
+			},
+			expected: 12,
 		},
 	}
 	for _, tc := range tcs {

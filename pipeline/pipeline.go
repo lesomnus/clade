@@ -44,31 +44,38 @@ func (e *Executor) invoke(fn any, args []any) (any, error) {
 	ft := fv.Type()
 
 	// Check if number of argument is fit.
-	fixed_args := args
+	num_fixed_args := ft.NumIn()
 	if ft.IsVariadic() {
-		// TODO:
-		panic("not supported")
-
-		num_fixed_args := ft.NumIn() - 1
+		num_fixed_args--
 		if len(args) < num_fixed_args {
 			return nil, fmt.Errorf("expected at least %d args but %d args are given", ft.NumIn()-1, len(args))
 		}
-
-		fixed_args = args[:num_fixed_args]
-	} else if len(args) != ft.NumIn() {
+	} else if len(args) != num_fixed_args {
 		return nil, fmt.Errorf("expected %d args but %d args are given", ft.NumIn(), len(args))
 	}
 
-	input_args := make([]reflect.Value, len(fixed_args))
-	for i, arg := range fixed_args {
-		if _, ok := arg.(Pipeline); ok {
-			// Execute nested pipeline later since it is expensive.
-			continue
+	input_args := make([]reflect.Value, len(args))
+	for i, arg := range args {
+		if pl, ok := arg.(Pipeline); ok {
+			rst, err := e.Execute(pl)
+			if err != nil {
+				return nil, err
+			}
+
+			arg = rst
+		}
+
+		j := i
+		if i >= num_fixed_args {
+			j = num_fixed_args
 		}
 
 		t_arg := reflect.TypeOf(arg)
-		t_in := ft.In(i)
-		if t_arg.Kind() == t_in.Kind() {
+		t_in := ft.In(j)
+		if i >= num_fixed_args {
+			t_in = t_in.Elem()
+		}
+		if t_arg.AssignableTo(t_in) {
 			input_args[i] = reflect.ValueOf(arg)
 			continue
 		}
@@ -79,23 +86,6 @@ func (e *Executor) invoke(fn any, args []any) (any, error) {
 		}
 
 		input_args[i] = reflect.ValueOf(v)
-	}
-
-	// TODO: implement variadic
-
-	// Execute nested pipeline.
-	for i, arg := range fixed_args {
-		pl, ok := arg.(Pipeline)
-		if !ok {
-			continue
-		}
-
-		rst, err := e.Execute(pl)
-		if err != nil {
-			return nil, err
-		}
-
-		input_args[i] = reflect.ValueOf(rst)
 	}
 
 	rst := fv.Call(input_args)
