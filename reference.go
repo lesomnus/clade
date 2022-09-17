@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/distribution/distribution/reference"
+	"github.com/lesomnus/clade/pipeline"
 )
 
 type refNamedTagged struct {
@@ -46,15 +47,16 @@ func (r *refNamedRegexTagged) Pattern() *regexp.Regexp {
 
 type RefNamedPipelineTagged interface {
 	reference.NamedTagged
-	PipelineExpr() string
+	Pipeline() pipeline.Pipeline
 }
 
 type refNamedPipelineTagged struct {
 	refNamedTagged
+	pipeline pipeline.Pipeline
 }
 
-func (r *refNamedPipelineTagged) PipelineExpr() string {
-	return fmt.Sprintf("{%s}", r.tag)
+func (r *refNamedPipelineTagged) Pipeline() pipeline.Pipeline {
+	return r.pipeline
 }
 
 func ParseReference(s string) (reference.Named, error) {
@@ -90,11 +92,17 @@ func ParseReference(s string) (reference.Named, error) {
 				pattern: pattern,
 			}
 		} else if strings.HasPrefix(tag, "{") && strings.HasSuffix(tag, "}") {
+			pl, err := pipeline.Parse(tag[1 : len(tag)-1])
+			if err != nil {
+				return nil, fmt.Errorf("%w: %s", reference.ErrDigestInvalidFormat, err.Error())
+			}
+
 			ref = &refNamedPipelineTagged{
 				refNamedTagged: refNamedTagged{
 					Named: named,
 					tag:   tag,
 				},
+				pipeline: pl,
 			}
 		} else {
 			return nil, reference.ErrTagInvalidFormat

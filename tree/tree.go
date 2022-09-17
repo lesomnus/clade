@@ -36,14 +36,21 @@ func (t Tree[V]) Insert(pname string, name string, value V) *Node[V] {
 		t[pname] = parent
 	}
 
-	node := &Node[V]{
-		Parent:   parent,
-		Children: make(map[string]*Node[V]),
-		Value:    value,
+	node, ok := t[name]
+	if !ok {
+		node = &Node[V]{
+			Parent:   parent,
+			Children: make(map[string]*Node[V]),
+			Value:    value,
+		}
+
+		t[name] = node
+	} else {
+		node.Parent = parent
+		node.Value = value
 	}
 
 	parent.Children[name] = node
-	t[name] = node
 
 	return node
 }

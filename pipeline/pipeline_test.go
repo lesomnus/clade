@@ -25,6 +25,14 @@ func TestExecute(t *testing.T) {
 
 				return v
 			},
+			"gen": func(end int) []int {
+				rst := make([]int, end)
+				for i := range rst {
+					rst[i] = i
+				}
+
+				return rst
+			},
 		},
 	}
 
@@ -40,6 +48,14 @@ func TestExecute(t *testing.T) {
 				{Name: "add", Args: []any{3}},
 			},
 			expected: 6,
+		},
+		{
+			desc: "pipe multiple values",
+			pl: pipeline.Pipeline{
+				{Name: "gen", Args: []any{5}},
+				{Name: "max", Args: []any{2}},
+			},
+			expected: 4,
 		},
 		{
 			desc: "implicit conversion",

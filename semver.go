@@ -1,29 +1,30 @@
 package clade
 
 import (
-	"errors"
-
 	"github.com/blang/semver/v4"
 )
 
-func SemverStringLatest(vs []string) (string, error) {
-	rst := semver.Version{}
-	ok := false
-	for _, v := range vs {
-		sv, err := semver.ParseTolerant(v)
+func ToSemver(v string, vs ...string) []semver.Version {
+	rst := make([]semver.Version, 0, len(vs)+1)
+
+	for _, c := range append([]string{v}, vs...) {
+		sv, err := semver.ParseTolerant(c)
 		if err != nil {
 			continue
 		}
 
-		if rst.LT(sv) {
-			rst = sv
-			ok = true
+		rst = append(rst, sv)
+	}
+
+	return rst
+}
+
+func SemverLatest(v semver.Version, vs ...semver.Version) semver.Version {
+	for _, c := range vs {
+		if v.LT(c) {
+			v = c
 		}
 	}
 
-	if ok {
-		return rst.String(), nil
-	} else {
-		return "", errors.New("valid semver is not found")
-	}
+	return v
 }

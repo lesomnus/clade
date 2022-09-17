@@ -103,25 +103,38 @@ func (e *Executor) invoke(fn any, args []any) (any, error) {
 }
 
 func (e *Executor) Execute(pl Pipeline) (any, error) {
-	var next any = nil
+	prev := []any{}
+	singular := true
 	for _, cmd := range pl {
 		fn, ok := e.Funcs[cmd.Name]
 		if !ok {
 			return nil, fmt.Errorf("unknown command %s", cmd.Name)
 		}
 
-		args := slices.Clone(cmd.Args)
-		if next != nil {
-			args = append(args, next)
-		}
+		args := make([]any, len(cmd.Args)+len(prev))
+		copy(args, cmd.Args)
+		copy(args[len(cmd.Args):], prev)
 
-		rst, err := e.invoke(fn, args)
+		rst, err := e.invoke(fn, append(slices.Clone(cmd.Args), prev...))
 		if err != nil {
 			return nil, fmt.Errorf("failed invoke command %s: %w", cmd.Name, err)
 		}
 
-		next = rst
+		singular = reflect.TypeOf(rst).Kind() != reflect.Slice
+		if singular {
+			prev = []any{rst}
+		} else {
+			v := reflect.ValueOf(rst)
+			prev = make([]any, v.Len())
+			for i := 0; i < v.Len(); i++ {
+				prev[i] = v.Index(i).Interface()
+			}
+		}
 	}
 
-	return next, nil
+	if singular {
+		return prev[0], nil
+	} else {
+		return prev, nil
+	}
 }

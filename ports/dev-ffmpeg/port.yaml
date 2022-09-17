@@ -2,6 +2,6 @@ name: ghcr.io/lesomnus/dev-ffmpeg
 
 images:
   - tags: ["4.4.1", "4.4", "4"]
-    from: "ghcr.io/lesomnus/dev-gcc:{ localTags | semverLatest }"
+    from: "ghcr.io/lesomnus/dev-gcc:{ localTags | toSemver | semverLatest }"
     args:
       VCPKG_REF: "2022.08.15"

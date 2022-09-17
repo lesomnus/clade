@@ -6,12 +6,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
-	"text/template"
 
 	"github.com/blang/semver/v4"
 	"github.com/distribution/distribution/reference"
 	"github.com/lesomnus/clade"
+	"github.com/lesomnus/clade/pipeline"
 	"github.com/lesomnus/clade/tree"
 	"gopkg.in/yaml.v3"
 )
@@ -110,36 +109,36 @@ func ExpandByPipeline(ctx context.Context, image *clade.NamedImage, bt *BuildTre
 		tags = append(tags, node.Value.Tags...)
 	}
 
-	sb := strings.Builder{}
-	if tmpl, err := template.New("").
-		Funcs(template.FuncMap{
+	exe := pipeline.Executor{
+		Funcs: pipeline.FuncMap{
 			"localTags":    func() []string { return tags },
-			"semverLatest": clade.SemverStringLatest,
-		}).
-		Parse(tagged.PipelineExpr()); err != nil {
-		return nil, fmt.Errorf("failed to parse pipeline: %w", err)
-	} else if err := tmpl.Execute(&sb, nil); err != nil {
-		return nil, fmt.Errorf("failed to execute pipeline: %w", err)
+			"toSemver":     clade.ToSemver,
+			"semverLatest": clade.SemverLatest,
+		},
 	}
 
-	tag := sb.String()
+	rst, err := exe.Execute(tagged.Pipeline())
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute pipeline")
+	}
 
-	// TODO: tag may not be a semver string in the future.
+	ver, ok := rst.(semver.Version)
+	if !ok {
+		panic("currently only server.Version is supported")
+	}
 
 	// Find existing tag.
 	// Tag is resolved to full valid semver notation e.g. 1.0.0,
 	// but there may be not exists but 1.0 or 1.
-	if v, err := semver.ParseTolerant(tag); err != nil {
-		return nil, fmt.Errorf("invalid semver %s: %w", tag, err)
-	} else {
-		for _, t := range tags {
-			if sv, err := semver.ParseTolerant(t); err != nil {
-				continue
-			} else if v.EQ(sv) {
-				tag = t
-				break
-			}
+	tag := ver.String()
+	for _, t := range tags {
+		if v, err := semver.ParseTolerant(t); err != nil {
+			continue
+		} else if ver.EQ(v) {
+			tag = t
+			break
 		}
+
 	}
 
 	from, err := reference.WithTag(image.From, tag)
@@ -147,12 +146,12 @@ func ExpandByPipeline(ctx context.Context, image *clade.NamedImage, bt *BuildTre
 		return nil, fmt.Errorf("invalid tag %s: %w", tag, err)
 	}
 
-	rst := &clade.NamedImage{}
-	*rst = *image
-	rst.Tags = []string{tag}
-	rst.From = from
+	img := &clade.NamedImage{}
+	*img = *image
+	img.Tags = []string{tag}
+	img.From = from
 
-	return []*clade.NamedImage{rst}, nil
+	return []*clade.NamedImage{img}, nil
 }
 
 // TODO: move to lesomnus/clade?
