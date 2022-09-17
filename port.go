@@ -55,15 +55,6 @@ func (i *NamedImage) Tagged() (reference.NamedTagged, error) {
 	return tagged, nil
 }
 
-func (i *NamedImage) IsRoot() bool {
-	return i.From == nil
-}
-
-func (i *NamedImage) IsExpandable() bool {
-	_, ok := i.From.(RefNamedRegexTagged)
-	return ok
-}
-
 func (p *Port) ParseImages() ([]*NamedImage, error) {
 	name, err := reference.ParseNamed(p.Name)
 	if err != nil {

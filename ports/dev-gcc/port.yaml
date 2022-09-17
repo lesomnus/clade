@@ -3,6 +3,5 @@ args:
   CMAKE_VERSION: "3.24.2"
 
 images:
-  # gcc:12.X~99.X
-  - tags: ["$1.$2", "$1"]
-    from: registry.hub.docker.com/library/gcc:/^(1[2-9]|[2-9][0-9])\.(\d+)$/
+  - tags: ["{{ .Major }}.{{ .Minor }}", "{{ .Major }}"]
+    from: registry.hub.docker.com/library/gcc:{ remoteTags | toSemver | semverMajorN 2 | semverMinorN 2 }

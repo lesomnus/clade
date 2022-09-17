@@ -6,12 +6,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strconv"
+	"strings"
 
 	"github.com/blang/semver/v4"
 	"github.com/distribution/distribution/reference"
 	"github.com/lesomnus/clade"
 	"github.com/lesomnus/clade/pipeline"
 	"github.com/lesomnus/clade/tree"
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 )
 
@@ -100,20 +104,41 @@ func ExpandByPipeline(ctx context.Context, image *clade.NamedImage, bt *BuildTre
 		return nil, errors.New("not a pipeline tagged")
 	}
 
-	tags := make([]string, 0)
+	local_tags := make([]string, 0)
 	for _, node := range bt.Tree {
 		if node.Value.Name() != tagged.Name() {
 			continue
 		}
 
-		tags = append(tags, node.Value.Tags...)
+		local_tags = append(local_tags, node.Value.Tags...)
+	}
+
+	// TODO: test if command "remoteTags" exists.
+	// If it does not exists, do not fetch.
+	remote_tags := make([]string, 0)
+	{
+		repo, err := NewRepository(image.From)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create client: %w", err)
+		}
+
+		tags, err := repo.Tags(ctx).All(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get tags: %w", err)
+		}
+
+		remote_tags = tags
 	}
 
 	exe := pipeline.Executor{
 		Funcs: pipeline.FuncMap{
-			"localTags":    func() []string { return tags },
+			// TODO: implements regex
+			"localTags":    func() []string { return local_tags },
+			"remoteTags":   func() []string { return remote_tags },
 			"toSemver":     clade.ToSemver,
 			"semverLatest": clade.SemverLatest,
+			"semverMajorN": clade.SemverMajorN,
+			"semverMinorN": clade.SemverMinorN,
 		},
 	}
 
@@ -122,36 +147,71 @@ func ExpandByPipeline(ctx context.Context, image *clade.NamedImage, bt *BuildTre
 		return nil, fmt.Errorf("failed to execute pipeline")
 	}
 
-	ver, ok := rst.(semver.Version)
-	if !ok {
+	var versions []semver.Version
+	if v, ok := rst.(semver.Version); ok {
+		versions = []semver.Version{v}
+	} else if rst_t := reflect.TypeOf(rst); rst_t.Kind() == reflect.Slice {
+		vs := reflect.ValueOf(rst)
+		versions = make([]semver.Version, vs.Len())
+		for i := range versions {
+			v, ok := vs.Index(i).Interface().(semver.Version)
+			if !ok {
+				panic("currently only server.Version is supported")
+			}
+
+			versions[i] = v
+		}
+	} else {
 		panic("currently only server.Version is supported")
 	}
 
-	// Find existing tag.
-	// Tag is resolved to full valid semver notation e.g. 1.0.0,
-	// but there may be not exists but 1.0 or 1.
-	tag := ver.String()
-	for _, t := range tags {
-		if v, err := semver.ParseTolerant(t); err != nil {
-			continue
-		} else if ver.EQ(v) {
-			tag = t
-			break
+	images := make([]*clade.NamedImage, 0, len(versions))
+	for _, version := range versions {
+		// Substitute the tags.
+		// TODO: Implement using text/template.
+		tags := slices.Clone(image.Tags)
+		for i, tag := range tags {
+			tag = strings.ReplaceAll(tag, "{{ .Major }}", strconv.FormatUint(version.Major, 10))
+			tag = strings.ReplaceAll(tag, "{{ .Minor }}", strconv.FormatUint(version.Minor, 10))
+			tag = strings.ReplaceAll(tag, "{{ .Patch }}", strconv.FormatUint(version.Patch, 10))
+
+			tags[i] = tag
 		}
 
+		// Find existing tag.
+		// Tag is resolved to full valid semver notation e.g. 1.0.0,
+		// but there may be not exists but 1.0 or 1.
+		tag := version.FinalizeVersion()
+		for _, t := range append(local_tags, remote_tags...) {
+			if v, err := semver.ParseTolerant(t); err != nil {
+				continue
+			} else if version.EQ(v) {
+				tag = t
+				break
+			}
+		}
+
+		from, err := reference.WithTag(image.From, tag)
+		if err != nil {
+			return nil, fmt.Errorf("invalid tag %s: %w", tag, err)
+		}
+
+		img := &clade.NamedImage{}
+		*img = *image
+		img.Tags = tags
+		img.From = from
+
+		images = append(images, img)
 	}
 
-	from, err := reference.WithTag(image.From, tag)
-	if err != nil {
-		return nil, fmt.Errorf("invalid tag %s: %w", tag, err)
+	// TODO: make it as functions.
+	for i := 0; i < len(images); i++ {
+		for j := i + 1; j < len(images); j++ {
+			clade.DeduplicateBySemver(&images[i].Tags, &images[j].Tags)
+		}
 	}
 
-	img := &clade.NamedImage{}
-	*img = *image
-	img.Tags = []string{tag}
-	img.From = from
-
-	return []*clade.NamedImage{img}, nil
+	return images, nil
 }
 
 // TODO: move to lesomnus/clade?
