@@ -71,7 +71,7 @@ func ReadToken(expr string) (int, string, error) {
 	}
 }
 
-func Parse(expr string) ([]*Cmd, error) {
+func Parse(expr string) ([]*Fn, error) {
 	scopes := []Pipeline{{nil}}
 
 	pos := 0
@@ -115,7 +115,7 @@ func Parse(expr string) ([]*Cmd, error) {
 				}
 			} else if cmd == nil {
 				// command name.
-				cmd = &Cmd{Name: token, Args: make([]any, 0)}
+				cmd = &Fn{Name: token, Args: make([]any, 0)}
 				scope[len(scope)-1] = cmd
 			} else {
 				// command args.

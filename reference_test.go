@@ -7,6 +7,7 @@ import (
 	"github.com/distribution/distribution/reference"
 	"github.com/lesomnus/clade"
 	"github.com/lesomnus/clade/pipeline"
+	"github.com/lesomnus/clade/plf"
 	"github.com/stretchr/testify/require"
 )
 
@@ -55,8 +56,8 @@ func TestRefNamedPipelineTagged(t *testing.T) {
 	exe := pipeline.Executor{
 		Funcs: pipeline.FuncMap{
 			"localTags":    func() []string { return []string{"1.0", "1.1", "2.0"} },
-			"toSemver":     clade.ToSemver,
-			"semverLatest": clade.SemverLatest,
+			"toSemver":     plf.ToSemver,
+			"semverLatest": plf.SemverLatest,
 		},
 	}
 

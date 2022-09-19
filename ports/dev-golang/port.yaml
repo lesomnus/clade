@@ -1,6 +1,5 @@
 name: ghcr.io/lesomnus/dev-golang
   
 images:
-  # golang:1.19~1.99 
-  - tags: ["1.${1}.${2}", "1.${1}"]
-    from: registry.hub.docker.com/library/golang:/^1\.(19|[2-9][0-9])\.(\d+)$/
+  - tags: ["{{ .Major }}.{{ .Minor }}", "{{ .Major }}"]
+    from: registry.hub.docker.com/library/golang:{ remoteTags | toSemver | semverMajorN 1 | semverMinorN 2 }

@@ -7,19 +7,21 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"strings"
+	"text/template"
 
 	"github.com/blang/semver/v4"
 	"github.com/distribution/distribution/reference"
 	"github.com/lesomnus/clade"
 	"github.com/lesomnus/clade/pipeline"
+	"github.com/lesomnus/clade/plf"
 	"github.com/lesomnus/clade/tree"
+	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 )
 
-// TODO: move expanders into lesomnus/clade
+// TODO: move expanders into lesomnus/clade?
 
 type BuildTree struct {
 	tree.Tree[*clade.NamedImage]
@@ -61,7 +63,6 @@ func (t *BuildTree) Walk(walker tree.Walker[*clade.NamedImage]) error {
 	})
 }
 
-// TODO: make general plan for expanding
 func ExpandImage(ctx context.Context, image *clade.NamedImage, bt *BuildTree) ([]*clade.NamedImage, error) {
 	switch image.From.(type) {
 	case clade.RefNamedPipelineTagged:
@@ -113,10 +114,8 @@ func ExpandByPipeline(ctx context.Context, image *clade.NamedImage, bt *BuildTre
 		local_tags = append(local_tags, node.Value.Tags...)
 	}
 
-	// TODO: test if command "remoteTags" exists.
-	// If it does not exists, do not fetch.
 	remote_tags := make([]string, 0)
-	{
+	if tagged.Pipeline().HasFunction("remoteTags") {
 		repo, err := NewRepository(image.From)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create client: %w", err)
@@ -131,16 +130,13 @@ func ExpandByPipeline(ctx context.Context, image *clade.NamedImage, bt *BuildTre
 	}
 
 	exe := pipeline.Executor{
-		Funcs: pipeline.FuncMap{
-			// TODO: implements regex
-			"localTags":    func() []string { return local_tags },
-			"remoteTags":   func() []string { return remote_tags },
-			"toSemver":     clade.ToSemver,
-			"semverLatest": clade.SemverLatest,
-			"semverMajorN": clade.SemverMajorN,
-			"semverMinorN": clade.SemverMinorN,
-		},
+		Funcs: plf.FuncMap(),
 	}
+
+	maps.Copy(exe.Funcs, pipeline.FuncMap{
+		"localTags":  func() []string { return local_tags },
+		"remoteTags": func() []string { return remote_tags },
+	})
 
 	rst, err := exe.Execute(tagged.Pipeline())
 	if err != nil {
@@ -167,15 +163,16 @@ func ExpandByPipeline(ctx context.Context, image *clade.NamedImage, bt *BuildTre
 
 	images := make([]*clade.NamedImage, 0, len(versions))
 	for _, version := range versions {
-		// Substitute the tags.
-		// TODO: Implement using text/template.
 		tags := slices.Clone(image.Tags)
 		for i, tag := range tags {
-			tag = strings.ReplaceAll(tag, "{{ .Major }}", strconv.FormatUint(version.Major, 10))
-			tag = strings.ReplaceAll(tag, "{{ .Minor }}", strconv.FormatUint(version.Minor, 10))
-			tag = strings.ReplaceAll(tag, "{{ .Patch }}", strconv.FormatUint(version.Patch, 10))
+			tmpl, err := template.New("").Parse(tag)
+			if err != nil {
+				continue
+			}
 
-			tags[i] = tag
+			var sb strings.Builder
+			tmpl.Execute(&sb, version)
+			tags[i] = sb.String()
 		}
 
 		// Find existing tag.

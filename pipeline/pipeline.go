@@ -8,12 +8,38 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-type Cmd struct {
+type Fn struct {
 	Name string
 	Args []any
 }
 
-type Pipeline []*Cmd
+type Pipeline []*Fn
+
+func (p Pipeline) hasFunction(fn *Fn, name string) bool {
+	if fn.Name == name {
+		return true
+	}
+
+	for _, arg := range fn.Args {
+		if fn, ok := arg.(*Fn); !ok {
+			continue
+		} else if p.hasFunction(fn, name) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (p Pipeline) HasFunction(name string) bool {
+	for _, fn := range p {
+		if p.hasFunction(fn, name) {
+			return true
+		}
+	}
+
+	return false
+}
 
 type FuncMap map[string]any
 
@@ -105,19 +131,19 @@ func (e *Executor) invoke(fn any, args []any) (any, error) {
 func (e *Executor) Execute(pl Pipeline) (any, error) {
 	prev := []any{}
 	singular := true
-	for _, cmd := range pl {
-		fn, ok := e.Funcs[cmd.Name]
+	for _, fn := range pl {
+		f, ok := e.Funcs[fn.Name]
 		if !ok {
-			return nil, fmt.Errorf("unknown command %s", cmd.Name)
+			return nil, fmt.Errorf("unknown command %s", fn.Name)
 		}
 
-		args := make([]any, len(cmd.Args)+len(prev))
-		copy(args, cmd.Args)
-		copy(args[len(cmd.Args):], prev)
+		args := make([]any, len(fn.Args)+len(prev))
+		copy(args, fn.Args)
+		copy(args[len(fn.Args):], prev)
 
-		rst, err := e.invoke(fn, append(slices.Clone(cmd.Args), prev...))
+		rst, err := e.invoke(f, append(slices.Clone(fn.Args), prev...))
 		if err != nil {
-			return nil, fmt.Errorf("failed invoke command %s: %w", cmd.Name, err)
+			return nil, fmt.Errorf("failed invoke command %s: %w", fn.Name, err)
 		}
 
 		singular = reflect.TypeOf(rst).Kind() != reflect.Slice

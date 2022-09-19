@@ -1,10 +1,10 @@
-package clade_test
+package plf_test
 
 import (
 	"testing"
 
 	"github.com/blang/semver/v4"
-	"github.com/lesomnus/clade"
+	"github.com/lesomnus/clade/plf"
 	"github.com/stretchr/testify/require"
 )
 
@@ -58,7 +58,7 @@ func TestSemverMajorN(t *testing.T) {
 		},
 	}
 	for _, tc := range tcs {
-		actual := clade.SemverMajorN(tc.input.n, tc.input.vs...)
+		actual := plf.SemverMajorN(tc.input.n, tc.input.vs...)
 		require.ElementsMatch(tc.expected, actual)
 	}
 }
@@ -102,7 +102,7 @@ func TestSemverMinorN(t *testing.T) {
 		},
 	}
 	for _, tc := range tcs {
-		actual := clade.SemverMinorN(tc.input.n, tc.input.vs...)
+		actual := plf.SemverMinorN(tc.input.n, tc.input.vs...)
 		require.ElementsMatch(tc.expected, actual)
 	}
 }
