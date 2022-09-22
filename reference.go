@@ -3,7 +3,6 @@ package clade
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/distribution/distribution/reference"
@@ -29,20 +28,6 @@ func (r *refNamedTagged) Tag() string {
 
 func (r *refNamedTagged) String() string {
 	return fmt.Sprintf("%s:%s", r.Name(), r.tag)
-}
-
-type RefNamedRegexTagged interface {
-	reference.NamedTagged
-	Pattern() *regexp.Regexp
-}
-
-type refNamedRegexTagged struct {
-	refNamedTagged
-	pattern *regexp.Regexp
-}
-
-func (r *refNamedRegexTagged) Pattern() *regexp.Regexp {
-	return r.pattern
 }
 
 type RefNamedPipelineTagged interface {
@@ -78,20 +63,7 @@ func ParseReference(s string) (reference.Named, error) {
 		}
 
 		tag := s[pos+1:]
-		if strings.HasPrefix(tag, "/") && strings.HasSuffix(tag, "/") {
-			pattern, err := regexp.Compile(tag)
-			if err != nil {
-				return nil, reference.ErrTagInvalidFormat
-			}
-
-			ref = &refNamedRegexTagged{
-				refNamedTagged: refNamedTagged{
-					Named: named,
-					tag:   tag,
-				},
-				pattern: pattern,
-			}
-		} else if strings.HasPrefix(tag, "{") && strings.HasSuffix(tag, "}") {
+		if strings.HasPrefix(tag, "{") && strings.HasSuffix(tag, "}") {
 			pl, err := pipeline.Parse(tag[1 : len(tag)-1])
 			if err != nil {
 				return nil, fmt.Errorf("%w: %s", reference.ErrDigestInvalidFormat, err.Error())

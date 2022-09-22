@@ -10,5 +10,3 @@ images:
     tags:
       - '{{ printf "%d.%d-%s" .Major .Minor (index .Pre 0) }}'
       - '{{ printf "%d-%s"    .Major        (index .Pre 0) }}'
-    
-    

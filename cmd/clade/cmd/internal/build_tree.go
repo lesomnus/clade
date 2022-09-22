@@ -68,36 +68,9 @@ func ExpandImage(ctx context.Context, image *clade.NamedImage, bt *BuildTree) ([
 	switch image.From.(type) {
 	case clade.RefNamedPipelineTagged:
 		return ExpandByPipeline(ctx, image, bt)
-	case clade.RefNamedRegexTagged:
-		return ExpandByRegex(ctx, image)
 	default:
 		return []*clade.NamedImage{image}, nil
 	}
-}
-
-func ExpandByRegex(ctx context.Context, image *clade.NamedImage) ([]*clade.NamedImage, error) {
-	repo, err := NewRepository(image.From)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create client: %w", err)
-	}
-
-	tags, err := repo.Tags(ctx).All(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get tags: %w", err)
-	}
-
-	images, err := clade.NewRegexExpander(tags)(ctx, image)
-	if err != nil {
-		return nil, fmt.Errorf("failed to expand image with regex: %w", err)
-	}
-
-	for i := 0; i < len(images); i++ {
-		for j := i + 1; j < len(images); j++ {
-			clade.DeduplicateBySemver(&images[i].Tags, &images[j].Tags)
-		}
-	}
-
-	return images, nil
 }
 
 func ExpandByPipeline(ctx context.Context, image *clade.NamedImage, bt *BuildTree) ([]*clade.NamedImage, error) {
