@@ -5,6 +5,7 @@ import (
 
 	"github.com/blang/semver/v4"
 	"github.com/lesomnus/clade/plf"
+	"github.com/lesomnus/clade/sv"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,49 +18,49 @@ func TestAsdf(t *testing.T) {
 func TestSemverMajorN(t *testing.T) {
 	type Input struct {
 		n  int
-		vs []semver.Version
+		vs []sv.Version
 	}
 
 	require := require.New(t)
 
 	tcs := []struct {
 		input    Input
-		expected []semver.Version
+		expected []sv.Version
 	}{
 		{
 			input: Input{
 				n: 1,
-				vs: []semver.Version{
-					{Major: 0, Minor: 1, Patch: 0},
-					{Major: 2, Minor: 3, Patch: 4},
-					{Major: 2, Minor: 3, Patch: 3},
-					{Major: 1, Minor: 0, Patch: 1},
-					{Major: 0, Minor: 2, Patch: 1},
-					{Major: 1, Minor: 1, Patch: 1},
+				vs: []sv.Version{
+					{Version: semver.Version{Major: 0, Minor: 1, Patch: 0}, Source: ""},
+					{Version: semver.Version{Major: 2, Minor: 3, Patch: 4}, Source: ""},
+					{Version: semver.Version{Major: 2, Minor: 3, Patch: 3}, Source: ""},
+					{Version: semver.Version{Major: 1, Minor: 0, Patch: 1}, Source: ""},
+					{Version: semver.Version{Major: 0, Minor: 2, Patch: 1}, Source: ""},
+					{Version: semver.Version{Major: 1, Minor: 1, Patch: 1}, Source: ""},
 				},
 			},
-			expected: []semver.Version{
-				{Major: 2, Minor: 3, Patch: 3},
-				{Major: 2, Minor: 3, Patch: 4},
+			expected: []sv.Version{
+				{Version: semver.Version{Major: 2, Minor: 3, Patch: 3}, Source: ""},
+				{Version: semver.Version{Major: 2, Minor: 3, Patch: 4}, Source: ""},
 			},
 		},
 		{
 			input: Input{
 				n: 2,
-				vs: []semver.Version{
-					{Major: 0, Minor: 1, Patch: 0},
-					{Major: 2, Minor: 3, Patch: 4},
-					{Major: 2, Minor: 3, Patch: 3},
-					{Major: 1, Minor: 0, Patch: 1},
-					{Major: 0, Minor: 2, Patch: 1},
-					{Major: 1, Minor: 1, Patch: 1},
+				vs: []sv.Version{
+					{Version: semver.Version{Major: 0, Minor: 1, Patch: 0}, Source: ""},
+					{Version: semver.Version{Major: 2, Minor: 3, Patch: 4}, Source: ""},
+					{Version: semver.Version{Major: 2, Minor: 3, Patch: 3}, Source: ""},
+					{Version: semver.Version{Major: 1, Minor: 0, Patch: 1}, Source: ""},
+					{Version: semver.Version{Major: 0, Minor: 2, Patch: 1}, Source: ""},
+					{Version: semver.Version{Major: 1, Minor: 1, Patch: 1}, Source: ""},
 				},
 			},
-			expected: []semver.Version{
-				{Major: 1, Minor: 0, Patch: 1},
-				{Major: 1, Minor: 1, Patch: 1},
-				{Major: 2, Minor: 3, Patch: 3},
-				{Major: 2, Minor: 3, Patch: 4},
+			expected: []sv.Version{
+				{Version: semver.Version{Major: 1, Minor: 0, Patch: 1}, Source: ""},
+				{Version: semver.Version{Major: 1, Minor: 1, Patch: 1}, Source: ""},
+				{Version: semver.Version{Major: 2, Minor: 3, Patch: 3}, Source: ""},
+				{Version: semver.Version{Major: 2, Minor: 3, Patch: 4}, Source: ""},
 			},
 		},
 	}
@@ -72,38 +73,38 @@ func TestSemverMajorN(t *testing.T) {
 func TestSemverMinorN(t *testing.T) {
 	type Input struct {
 		n  int
-		vs []semver.Version
+		vs []sv.Version
 	}
 
 	require := require.New(t)
 
 	tcs := []struct {
 		input    Input
-		expected []semver.Version
+		expected []sv.Version
 	}{
 		{
 			input: Input{
 				n: 2,
-				vs: []semver.Version{
-					{Major: 0, Minor: 1, Patch: 0},
-					{Major: 2, Minor: 3, Patch: 4},
-					{Major: 2, Minor: 3, Patch: 3},
-					{Major: 1, Minor: 0, Patch: 1},
-					{Major: 1, Minor: 0, Patch: 5},
-					{Major: 1, Minor: 2, Patch: 5},
-					{Major: 0, Minor: 1, Patch: 1},
-					{Major: 1, Minor: 1, Patch: 1},
-					{Major: 1, Minor: 1, Patch: 0},
+				vs: []sv.Version{
+					{Version: semver.Version{Major: 0, Minor: 1, Patch: 0}, Source: ""},
+					{Version: semver.Version{Major: 2, Minor: 3, Patch: 4}, Source: ""},
+					{Version: semver.Version{Major: 2, Minor: 3, Patch: 3}, Source: ""},
+					{Version: semver.Version{Major: 1, Minor: 0, Patch: 1}, Source: ""},
+					{Version: semver.Version{Major: 1, Minor: 0, Patch: 5}, Source: ""},
+					{Version: semver.Version{Major: 1, Minor: 2, Patch: 5}, Source: ""},
+					{Version: semver.Version{Major: 0, Minor: 1, Patch: 1}, Source: ""},
+					{Version: semver.Version{Major: 1, Minor: 1, Patch: 1}, Source: ""},
+					{Version: semver.Version{Major: 1, Minor: 1, Patch: 0}, Source: ""},
 				},
 			},
-			expected: []semver.Version{
-				{Major: 0, Minor: 1, Patch: 0},
-				{Major: 0, Minor: 1, Patch: 1},
-				{Major: 1, Minor: 1, Patch: 0},
-				{Major: 1, Minor: 1, Patch: 1},
-				{Major: 1, Minor: 2, Patch: 5},
-				{Major: 2, Minor: 3, Patch: 3},
-				{Major: 2, Minor: 3, Patch: 4},
+			expected: []sv.Version{
+				{Version: semver.Version{Major: 0, Minor: 1, Patch: 0}, Source: ""},
+				{Version: semver.Version{Major: 0, Minor: 1, Patch: 1}, Source: ""},
+				{Version: semver.Version{Major: 1, Minor: 1, Patch: 0}, Source: ""},
+				{Version: semver.Version{Major: 1, Minor: 1, Patch: 1}, Source: ""},
+				{Version: semver.Version{Major: 1, Minor: 2, Patch: 5}, Source: ""},
+				{Version: semver.Version{Major: 2, Minor: 3, Patch: 3}, Source: ""},
+				{Version: semver.Version{Major: 2, Minor: 3, Patch: 4}, Source: ""},
 			},
 		},
 	}

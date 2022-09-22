@@ -3,10 +3,10 @@ package clade
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/blang/semver/v4"
 	"github.com/distribution/distribution/reference"
+	"github.com/lesomnus/clade/sv"
 	"golang.org/x/exp/slices"
 )
 
@@ -97,31 +97,17 @@ func (p *Port) ParseImages() ([]*NamedImage, error) {
 	return imgs, nil
 }
 
-func ParseSemver(s string) (semver.Version, error) {
-	ss := strings.SplitN(s, "-", 2)
-	v, err := semver.ParseTolerant(ss[0])
-	if err != nil {
-		return semver.Version{}, err
-	}
-
-	if len(ss) > 1 {
-		v.Pre = append(v.Pre, semver.PRVersion{VersionStr: ss[1]})
-	}
-
-	return v, nil
-}
-
 func DeduplicateBySemver(lhs *[]string, rhs *[]string) error {
 	highest := func(vs []string) (semver.Version, error) {
 		rst := semver.Version{}
 		for _, v := range vs {
-			sv, err := ParseSemver(v)
+			v, err := sv.Parse(v)
 			if err != nil {
 				return rst, fmt.Errorf("failed to parse semver: %w", err)
 			}
 
-			if rst.LT(sv) {
-				rst = sv
+			if rst.LT(v.Version) {
+				rst = v.Version
 			}
 		}
 

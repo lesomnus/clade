@@ -10,11 +10,11 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/blang/semver/v4"
 	"github.com/distribution/distribution/reference"
 	"github.com/lesomnus/clade"
 	"github.com/lesomnus/clade/pipeline"
 	"github.com/lesomnus/clade/plf"
+	"github.com/lesomnus/clade/sv"
 	"github.com/lesomnus/clade/tree"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
@@ -117,14 +117,14 @@ func ExpandByPipeline(ctx context.Context, image *clade.NamedImage, bt *BuildTre
 		return nil, fmt.Errorf("failed to execute pipeline: %w", err)
 	}
 
-	var versions []semver.Version
-	if v, ok := rst.(semver.Version); ok {
-		versions = []semver.Version{v}
+	var versions []sv.Version
+	if v, ok := rst.(sv.Version); ok {
+		versions = []sv.Version{v}
 	} else if rst_t := reflect.TypeOf(rst); rst_t.Kind() == reflect.Slice {
 		vs := reflect.ValueOf(rst)
-		versions = make([]semver.Version, vs.Len())
+		versions = make([]sv.Version, vs.Len())
 		for i := range versions {
-			v, ok := vs.Index(i).Interface().(semver.Version)
+			v, ok := vs.Index(i).Interface().(sv.Version)
 			if !ok {
 				panic("currently only semver.Version is supported")
 			}
@@ -149,19 +149,7 @@ func ExpandByPipeline(ctx context.Context, image *clade.NamedImage, bt *BuildTre
 			tags[i] = sb.String()
 		}
 
-		// Find existing tag.
-		// Tag is resolved to full valid semver notation e.g. 1.0.0,
-		// but there may be not exists but 1.0 or 1.
-		// TODO: store original tag string in the custom semver struct.
-		tag := version.FinalizeVersion()
-		for _, t := range append(local_tags, remote_tags...) {
-			if v, err := semver.ParseTolerant(t); err != nil {
-				continue
-			} else if version.EQ(v) {
-				tag = t
-				break
-			}
-		}
+		tag := version.String()
 
 		from, err := reference.WithTag(image.From, tag)
 		if err != nil {
