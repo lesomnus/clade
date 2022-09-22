@@ -18,3 +18,12 @@ func TestRegex(t *testing.T) {
 	require.Equal("b", rst[0]["foo"])
 	require.Equal("d", rst[0]["bar"])
 }
+
+func TestRegexString(t *testing.T) {
+	require := require.New(t)
+
+	rst, err := plf.Regex(`fo`, "foo")
+	require.NoError(err)
+	require.Len(rst, 1)
+	require.Equal("foo", rst[0].String())
+}

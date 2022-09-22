@@ -57,12 +57,19 @@ func implicitConvert(out reflect.Type, in reflect.Type, v reflect.Value) (any, e
 		switch out.Kind() {
 		case reflect.Int:
 			return strconv.Atoi(v.String())
-		default:
-			return nil, make_err()
 		}
 	default:
-		return nil, make_err()
+		switch out.Kind() {
+		case reflect.String:
+			if m, ok := in.MethodByName("String"); !ok {
+
+			} else if t := m.Func.Type(); t.NumIn() == 1 && t.NumOut() == 1 && t.Out(0).Kind() == reflect.String {
+				return m.Func.Call([]reflect.Value{v})[0].String(), nil
+			}
+		}
 	}
+
+	return nil, make_err()
 }
 
 func (e *Executor) invoke(fn any, args []any) (any, error) {
@@ -118,6 +125,10 @@ func (e *Executor) invoke(fn any, args []any) (any, error) {
 	if len(rst) > 2 {
 		return nil, fmt.Errorf("command have to return one or two values but %d values are returned", len(rst))
 	} else if len(rst) == 2 {
+		if rst[1].IsNil() {
+			return rst[0].Interface(), nil
+		}
+
 		err, ok := rst[1].Interface().(error)
 		if !ok {
 			return nil, fmt.Errorf("type of second return value of command must be an error but it was %s", rst[1].Type().Name())
@@ -143,7 +154,7 @@ func (e *Executor) Execute(pl Pipeline) (any, error) {
 
 		rst, err := e.invoke(f, append(slices.Clone(fn.Args), prev...))
 		if err != nil {
-			return nil, fmt.Errorf("failed invoke command %s: %w", fn.Name, err)
+			return nil, fmt.Errorf("%s: %w", fn.Name, err)
 		}
 
 		singular = reflect.TypeOf(rst).Kind() != reflect.Slice

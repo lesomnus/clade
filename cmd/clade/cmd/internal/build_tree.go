@@ -33,6 +33,7 @@ func NewBuildTree() *BuildTree {
 
 func (t *BuildTree) Insert(image *clade.NamedImage) error {
 	from := image.From.String()
+
 	for _, tag := range image.Tags {
 		ref, err := reference.WithTag(image.Named, tag)
 		if err != nil {
@@ -140,7 +141,7 @@ func ExpandByPipeline(ctx context.Context, image *clade.NamedImage, bt *BuildTre
 
 	rst, err := exe.Execute(tagged.Pipeline())
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute pipeline")
+		return nil, fmt.Errorf("failed to execute pipeline: %w", err)
 	}
 
 	var versions []semver.Version
@@ -152,7 +153,7 @@ func ExpandByPipeline(ctx context.Context, image *clade.NamedImage, bt *BuildTre
 		for i := range versions {
 			v, ok := vs.Index(i).Interface().(semver.Version)
 			if !ok {
-				panic("currently only server.Version is supported")
+				panic("currently only semver.Version is supported")
 			}
 
 			versions[i] = v
@@ -178,6 +179,7 @@ func ExpandByPipeline(ctx context.Context, image *clade.NamedImage, bt *BuildTre
 		// Find existing tag.
 		// Tag is resolved to full valid semver notation e.g. 1.0.0,
 		// but there may be not exists but 1.0 or 1.
+		// TODO: store original tag string in the custom semver struct.
 		tag := version.FinalizeVersion()
 		for _, t := range append(local_tags, remote_tags...) {
 			if v, err := semver.ParseTolerant(t); err != nil {
@@ -298,24 +300,28 @@ func LoadBuildTreeFromPorts(ctx context.Context, bt *BuildTree, path string) err
 		}
 	}
 
-	et.AsNode().Walk(func(level int, name string, node *tree.Node[*clade.NamedImage]) error {
+	return et.AsNode().Walk(func(level int, name string, node *tree.Node[[]*clade.NamedImage]) error {
 		if level == 0 {
 			return nil
 		}
 
-		images, err := ExpandImage(ctx, node.Value, bt)
-		if err != nil {
-			return fmt.Errorf("failed to expand image %s: %w", node.Value.String(), err)
-		}
+		for _, image := range node.Value {
+			images, err := ExpandImage(ctx, image, bt)
+			if err != nil {
+				return fmt.Errorf("failed to expand image %s: %w", image.String(), err)
+			}
 
-		for _, image := range images {
-			if err := bt.Insert(image); err != nil {
-				return fmt.Errorf("failed to insert image %s into build tree: %w", image.String(), err)
+			for _, image := range images {
+				if len(image.Tags) == 0 {
+					continue
+				}
+
+				if err := bt.Insert(image); err != nil {
+					return fmt.Errorf("failed to insert image %s into build tree: %w", image.String(), err)
+				}
 			}
 		}
 
 		return nil
 	})
-
-	return nil
 }

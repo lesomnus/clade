@@ -8,6 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestAsdf(t *testing.T) {
+	v, err := semver.ParseTolerant("1.18.1-alpine3.14")
+	require.NoError(t, err)
+	require.Equal(t, v, 'a')
+}
+
 func TestSemverMajorN(t *testing.T) {
 	type Input struct {
 		n  int

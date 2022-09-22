@@ -5,11 +5,11 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func ToSemver(v string, vs ...string) []semver.Version {
+func ToSemver(vs ...string) []semver.Version {
 	rst := make([]semver.Version, 0, len(vs))
 
-	for _, c := range append([]string{v}, vs...) {
-		sv, err := semver.ParseTolerant(c)
+	for _, v := range vs {
+		sv, err := semver.ParseTolerant(v)
 		if err != nil {
 			continue
 		}
@@ -31,6 +31,10 @@ func SemverLatest(v semver.Version, vs ...semver.Version) semver.Version {
 }
 
 func SemverMajorN(n int, vs ...semver.Version) []semver.Version {
+	if n == 0 {
+		return vs
+	}
+
 	majors := make([]uint64, len(vs))
 	for _, c := range vs {
 		majors = append(majors, c.Major)
@@ -54,19 +58,23 @@ func SemverMajorN(n int, vs ...semver.Version) []semver.Version {
 }
 
 func SemverMinorN(n int, vs ...semver.Version) []semver.Version {
-	majors := make(map[uint64][]uint64)
+	if n == 0 {
+		return vs
+	}
+
+	group := make(map[uint64][]uint64)
 	for _, c := range vs {
-		minors, ok := majors[c.Major]
+		minors, ok := group[c.Major]
 		if !ok {
 			minors = make([]uint64, 0)
 		}
 
-		majors[c.Major] = append(minors, c.Minor)
+		group[c.Major] = append(minors, c.Minor)
 	}
 
 	rst := make([]semver.Version, 0, len(vs))
-	for major, minors := range majors {
-		minors := slices.Compact(minors)
+	for major, minors := range group {
+		minors = slices.Compact(minors)
 		slices.Sort(minors)
 
 		if len(minors) > n {
@@ -85,4 +93,61 @@ func SemverMinorN(n int, vs ...semver.Version) []semver.Version {
 	}
 
 	return rst
+}
+
+func SemverPatchN(n int, vs ...semver.Version) []semver.Version {
+	if n == 0 {
+		return vs
+	}
+
+	group := make(map[uint64]map[uint64][]uint64)
+	for _, c := range vs {
+		minors, ok := group[c.Major]
+		if !ok {
+			minors = make(map[uint64][]uint64)
+			group[c.Major] = minors
+		}
+
+		patches, ok := minors[c.Minor]
+		if !ok {
+			patches = make([]uint64, 0)
+		}
+
+		minors[c.Minor] = append(patches, c.Patch)
+	}
+
+	rst := make([]semver.Version, 0, len(vs))
+	for major, minors := range group {
+		for minor, patches := range minors {
+			patches = slices.Compact(patches)
+			slices.Sort(patches)
+
+			if len(patches) > n {
+				patches = patches[len(patches)-n:]
+			}
+
+			for _, v := range vs {
+				if v.Major != major {
+					continue
+				}
+				if v.Minor != minor {
+					continue
+				}
+
+				if slices.Contains(patches, v.Patch) {
+					rst = append(rst, v)
+				}
+			}
+		}
+	}
+
+	return rst
+}
+
+func SemverN(major int, minor int, patch int, vs ...semver.Version) []semver.Version {
+	vs = SemverMajorN(major, vs...)
+	vs = SemverMinorN(minor, vs...)
+	vs = SemverPatchN(patch, vs...)
+
+	return vs
 }

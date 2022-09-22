@@ -1,5 +1,14 @@
 name: ghcr.io/lesomnus/dev-golang
   
 images:
-  - tags: ["{{ .Major }}.{{ .Minor }}", "{{ .Major }}"]
-    from: registry.hub.docker.com/library/golang:{ remoteTags | toSemver | semverMajorN 1 | semverMinorN 2 }
+  - from: registry.hub.docker.com/library/golang:{ remoteTags | toSemver | semverN 1 2 1 }
+    tags:
+      - '{{ printf "%d.%d" .Major .Minor }}'
+      - '{{ printf "%d"    .Major        }}'
+
+  - from: registry.hub.docker.com/library/golang:{ remoteTags | regex .+alpine$ | toSemver | semverN 1 2 1 }
+    tags:
+      - '{{ printf "%d.%d-%s" .Major .Minor (index .Pre 0) }}'
+      - '{{ printf "%d-%s"    .Major        (index .Pre 0) }}'
+    
+    

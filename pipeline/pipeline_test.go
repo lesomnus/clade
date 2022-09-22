@@ -1,11 +1,18 @@
 package pipeline_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/lesomnus/clade/pipeline"
 	"github.com/stretchr/testify/require"
 )
+
+type StringSet map[string]struct{}
+
+func (sl StringSet) String() string {
+	return fmt.Sprint(map[string]struct{}(sl))
+}
 
 func TestExecute(t *testing.T) {
 	exe := pipeline.Executor{
@@ -29,6 +36,22 @@ func TestExecute(t *testing.T) {
 				rst := make([]int, end)
 				for i := range rst {
 					rst[i] = i
+				}
+
+				return rst
+			},
+			"strings": func(ss ...string) StringSet {
+				rst := make(StringSet)
+				for _, s := range ss {
+					rst[s] = struct{}{}
+				}
+
+				return rst
+			},
+			"concat": func(ss ...string) string {
+				rst := ""
+				for _, s := range ss {
+					rst += s
 				}
 
 				return rst
@@ -93,6 +116,14 @@ func TestExecute(t *testing.T) {
 				{Name: "add", Args: []any{4}},
 			},
 			expected: 12,
+		},
+		{
+			desc: "convert to string with String()",
+			pl: pipeline.Pipeline{
+				{Name: "strings", Args: []any{"foo", "bar"}},
+				{Name: "concat", Args: []any{"hello ", "world"}},
+			},
+			expected: "hello world" + fmt.Sprint(StringSet{"foo": struct{}{}, "bar": struct{}{}}),
 		},
 	}
 	for _, tc := range tcs {

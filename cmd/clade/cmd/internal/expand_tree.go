@@ -6,14 +6,23 @@ import (
 )
 
 type ExpandTree struct {
-	tree.Tree[*clade.NamedImage]
+	tree.Tree[[]*clade.NamedImage]
 }
 
 func NewExpandTree() *ExpandTree {
-	return &ExpandTree{make(tree.Tree[*clade.NamedImage])}
+	return &ExpandTree{make(tree.Tree[[]*clade.NamedImage])}
 }
 
 func (t *ExpandTree) Insert(image *clade.NamedImage) error {
-	t.Tree.Insert(image.From.Name(), image.Name(), image)
+	var images []*clade.NamedImage
+
+	node, ok := t.Tree[image.Name()]
+	if ok {
+		images = append(node.Value, image)
+	} else {
+		images = []*clade.NamedImage{image}
+	}
+
+	t.Tree.Insert(image.From.Name(), image.Name(), images)
 	return nil
 }
