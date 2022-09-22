@@ -20,6 +20,14 @@ func TestExecute(t *testing.T) {
 			"add": func(lhs int, rhs int) int {
 				return lhs + rhs
 			},
+			"sum": func(is ...int) int {
+				sum := 0
+				for _, i := range is {
+					sum += i
+				}
+
+				return sum
+			},
 			"mul": func(lhs int, rhs int) int {
 				return lhs * rhs
 			},
@@ -64,6 +72,14 @@ func TestExecute(t *testing.T) {
 		pl       pipeline.Pipeline
 		expected any
 	}{
+		{
+			desc: "built in: pass",
+			pl: pipeline.Pipeline{
+				{Name: ">", Args: []any{1, 2}},
+				{Name: "sum", Args: []any{3}},
+			},
+			expected: 6,
+		},
 		{
 			desc: "pipe",
 			pl: pipeline.Pipeline{

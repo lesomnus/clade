@@ -71,7 +71,9 @@ func ReadToken(expr string) (int, string, error) {
 	}
 }
 
-func Parse(expr string) ([]*Fn, error) {
+// TODO: unquote string literal
+// TODO: implement Lexer
+func Parse(expr string) (Pipeline, error) {
 	scopes := []Pipeline{{nil}}
 
 	pos := 0

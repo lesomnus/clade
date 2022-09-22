@@ -139,7 +139,13 @@ func (e *Executor) invoke(fn any, args []any) (any, error) {
 	}
 }
 
+func pass(args ...any) []any {
+	return args
+}
+
 func (e *Executor) Execute(pl Pipeline) (any, error) {
+	e.Funcs[">"] = pass
+
 	prev := []any{}
 	singular := true
 	for _, fn := range pl {
