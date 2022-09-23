@@ -1,7 +1,6 @@
 package clade
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/blang/semver/v4"
@@ -9,15 +8,6 @@ import (
 	"github.com/lesomnus/clade/sv"
 	"golang.org/x/exp/slices"
 )
-
-type Image struct {
-	Tags []string
-	From string
-	Args map[string]string
-
-	Dockerfile  string
-	ContextPath string
-}
 
 type Port struct {
 	Name string
@@ -29,33 +19,6 @@ type Port struct {
 	Images []Image
 }
 
-type NamedImage struct {
-	reference.Named
-	Tags []string
-	From reference.NamedTagged
-	Args map[string]string
-
-	Dockerfile  string
-	ContextPath string
-}
-
-func (i *NamedImage) Tagged() (reference.NamedTagged, error) {
-	if tagged, ok := i.Named.(reference.NamedTagged); ok {
-		return tagged, nil
-	}
-
-	if len(i.Tags) == 0 {
-		return nil, errors.New("not tagged")
-	}
-
-	tagged, err := reference.WithTag(i.Named, i.Tags[0])
-	if err != nil {
-		return nil, err
-	}
-
-	return tagged, nil
-}
-
 func (p *Port) ParseImages() ([]*NamedImage, error) {
 	name, err := reference.ParseNamed(p.Name)
 	if err != nil {
@@ -64,20 +27,10 @@ func (p *Port) ParseImages() ([]*NamedImage, error) {
 
 	imgs := make([]*NamedImage, len(p.Images))
 	for i, img := range p.Images {
-		from, err := ParseReference(img.From)
-		if err != nil {
-			return nil, err
-		}
-
-		from_tagged, ok := from.(reference.NamedTagged)
-		if !ok {
-			return nil, errors.New("reference for \"from\" field must be tagged")
-		}
-
 		named_img := &NamedImage{
 			Named: name,
 			Tags:  slices.Clone(img.Tags),
-			From:  from_tagged,
+			From:  img.From,
 			Args:  make(map[string]string, len(p.Args)+len(img.Args)),
 
 			Dockerfile:  img.Dockerfile,

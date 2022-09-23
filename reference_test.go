@@ -8,6 +8,7 @@ import (
 	"github.com/lesomnus/clade"
 	"github.com/lesomnus/clade/pipeline"
 	"github.com/lesomnus/clade/plf"
+	"github.com/lesomnus/clade/sv"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,10 +20,6 @@ func TestParseReference(t *testing.T) {
 		{
 			ref:      "cr.io/repo/clade:tag",
 			expected: "tag",
-		},
-		{
-			ref:      "cr.io/repo/clade:/tag/",
-			expected: "/tag/",
 		},
 		{
 			ref:      "cr.io/repo/clade:{tag}",
@@ -63,5 +60,5 @@ func TestRefNamedPipelineTagged(t *testing.T) {
 
 	v, err := exe.Execute(tagged.Pipeline())
 	require.NoError(err)
-	require.Equal(semver.Version{Major: 2, Minor: 0, Patch: 0}, v)
+	require.Equal(sv.Version{Version: semver.Version{Major: 2}, Source: "2.0"}, v)
 }

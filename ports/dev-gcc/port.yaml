@@ -4,4 +4,6 @@ args:
 
 images:
   - tags: ["{{ .Major }}.{{ .Minor }}", "{{ .Major }}"]
-    from: registry.hub.docker.com/library/gcc:{ remoteTags | toSemver | semverMajorN 2 | semverMinorN 2 }
+    from:
+      name: registry.hub.docker.com/library/gcc
+      tag: '{ remoteTags | toSemver | semverMajorN 2 | semverMinorN 2 }'
