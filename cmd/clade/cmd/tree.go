@@ -24,7 +24,7 @@ var tree_cmd = &cobra.Command{
 
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		bt := internal.NewBuildTree()
+		bt := clade.NewBuildTree()
 		if err := internal.LoadBuildTreeFromPorts(cmd.Context(), bt, root_flags.portsPath); err != nil {
 			return fmt.Errorf("failed to load ports: %w", err)
 		}

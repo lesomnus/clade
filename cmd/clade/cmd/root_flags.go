@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/lesomnus/clade/cmd/clade/cmd/internal"
+	"github.com/lesomnus/clade"
 )
 
 type rootFlags struct {
@@ -15,7 +15,7 @@ type rootFlags struct {
 var root_flags rootFlags
 
 func (f *rootFlags) Evaluate() error {
-	if p, err := internal.ResolvePath("", f.portsPath, "ports"); err != nil {
+	if p, err := clade.ResolvePath("", f.portsPath, "ports"); err != nil {
 		return fmt.Errorf("failed to resolve path to ports: %w", err)
 	} else {
 		f.portsPath = p

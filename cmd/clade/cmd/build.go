@@ -7,6 +7,7 @@ import (
 	"os/exec"
 
 	"github.com/distribution/distribution/reference"
+	"github.com/lesomnus/clade"
 	"github.com/lesomnus/clade/cmd/clade/cmd/internal"
 	"github.com/spf13/cobra"
 )
@@ -46,7 +47,7 @@ var build_cmd = &cobra.Command{
 			}
 		}
 
-		bt := internal.NewBuildTree()
+		bt := clade.NewBuildTree()
 		if err := internal.LoadBuildTreeFromPorts(cmd.Context(), bt, root_flags.portsPath); err != nil {
 			return fmt.Errorf("failed to load ports: %w", err)
 		}

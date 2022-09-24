@@ -17,7 +17,7 @@ var outdated_cmd = &cobra.Command{
 	Short: "List outdated images",
 
 	RunE: func(cmd *cobra.Command, args []string) error {
-		bt := internal.NewBuildTree()
+		bt := clade.NewBuildTree()
 		if err := internal.LoadBuildTreeFromPorts(cmd.Context(), bt, root_flags.portsPath); err != nil {
 			return fmt.Errorf("failed to load ports: %w", err)
 		}
