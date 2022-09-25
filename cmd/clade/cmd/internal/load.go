@@ -17,22 +17,19 @@ import (
 )
 
 func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) ([]*clade.Image, error) {
-	tagged, ok := image.From.(clade.RefNamedPipelineTagged)
-	if !ok {
-		return []*clade.Image{image}, nil
-	}
-
 	local_tags := make([]string, 0)
-	for _, node := range bt.Tree {
-		if node.Value.Name() != tagged.Name() {
-			continue
-		}
+	if image.From.Pipeline().HasFunction("localTags") {
+		for _, node := range bt.Tree {
+			if node.Value.Name() != image.From.Name() {
+				continue
+			}
 
-		local_tags = append(local_tags, node.Value.Tags...)
+			local_tags = append(local_tags, node.Value.Tags...)
+		}
 	}
 
 	remote_tags := make([]string, 0)
-	if tagged.Pipeline().HasFunction("remoteTags") {
+	if image.From.Pipeline().HasFunction("remoteTags") {
 		repo, err := NewRepository(image.From)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create client: %w", err)
@@ -55,27 +52,19 @@ func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) (
 		"remoteTags": func() []string { return remote_tags },
 	})
 
-	rst, err := exe.Execute(tagged.Pipeline())
+	rst, err := exe.Execute(image.From.Pipeline())
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute pipeline: %w", err)
 	}
 
-	var versions []sv.Version
-	if v, ok := rst.(sv.Version); ok {
-		versions = []sv.Version{v}
-	} else if rst_t := reflect.TypeOf(rst); rst_t.Kind() == reflect.Slice {
-		vs := reflect.ValueOf(rst)
-		versions = make([]sv.Version, vs.Len())
-		for i := range versions {
-			v, ok := vs.Index(i).Interface().(sv.Version)
-			if !ok {
-				panic("currently only semver.Version is supported")
-			}
-
-			versions[i] = v
+	versions := make([]sv.Version, len(rst))
+	for i := range versions {
+		v, ok := reflect.ValueOf(rst[i]).Interface().(sv.Version)
+		if !ok {
+			panic("currently only semver.Version is supported")
 		}
-	} else {
-		panic("currently only server.Version is supported")
+
+		versions[i] = v
 	}
 
 	images := make([]*clade.Image, 0, len(versions))

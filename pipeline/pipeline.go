@@ -81,23 +81,26 @@ func (e *Executor) invoke(fn any, args []any) (any, error) {
 	if ft.IsVariadic() {
 		num_fixed_args--
 		if len(args) < num_fixed_args {
-			return nil, fmt.Errorf("expected at least %d args but %d args are given", ft.NumIn()-1, len(args))
+			return nil, fmt.Errorf("expected at least %d args but %d args are given", num_fixed_args, len(args))
 		}
-	} else if len(args) != num_fixed_args {
-		return nil, fmt.Errorf("expected %d args but %d args are given", ft.NumIn(), len(args))
 	}
 
-	input_args := make([]reflect.Value, len(args))
-	for i, arg := range args {
+	args_expanded := make([]any, 0, len(args))
+	for _, arg := range args {
 		if pl, ok := arg.(Pipeline); ok {
 			rst, err := e.Execute(pl)
 			if err != nil {
 				return nil, err
 			}
 
-			arg = rst
+			args_expanded = append(args_expanded, rst...)
+		} else {
+			args_expanded = append(args_expanded, arg)
 		}
+	}
 
+	input_args := make([]reflect.Value, len(args_expanded))
+	for i, arg := range args_expanded {
 		j := i
 		if i >= num_fixed_args {
 			j = num_fixed_args
@@ -123,7 +126,7 @@ func (e *Executor) invoke(fn any, args []any) (any, error) {
 
 	rst := fv.Call(input_args)
 	if len(rst) > 2 {
-		return nil, fmt.Errorf("command have to return one or two values but %d values are returned", len(rst))
+		return nil, fmt.Errorf("function have to return one or two values but %d values are returned", len(rst))
 	} else if len(rst) == 2 {
 		if rst[1].IsNil() {
 			return rst[0].Interface(), nil
@@ -131,7 +134,7 @@ func (e *Executor) invoke(fn any, args []any) (any, error) {
 
 		err, ok := rst[1].Interface().(error)
 		if !ok {
-			return nil, fmt.Errorf("type of second return value of command must be an error but it was %s", rst[1].Type().Name())
+			return nil, fmt.Errorf("type of second return value of function must be an error but it was %s", rst[1].Type().Name())
 		}
 		return rst[0].Interface(), err
 	} else {
@@ -147,11 +150,10 @@ func Return(v any) Pipeline {
 	return Pipeline{&Fn{Name: ">", Args: []any{v}}}
 }
 
-func (e *Executor) Execute(pl Pipeline) (any, error) {
+func (e *Executor) Execute(pl Pipeline) ([]any, error) {
 	e.Funcs[">"] = pass
 
 	prev := []any{}
-	singular := true
 	for _, fn := range pl {
 		f, ok := e.Funcs[fn.Name]
 		if !ok {
@@ -167,8 +169,7 @@ func (e *Executor) Execute(pl Pipeline) (any, error) {
 			return nil, fmt.Errorf("%s: %w", fn.Name, err)
 		}
 
-		singular = reflect.TypeOf(rst).Kind() != reflect.Slice
-		if singular {
+		if reflect.TypeOf(rst).Kind() != reflect.Slice {
 			prev = []any{rst}
 		} else {
 			v := reflect.ValueOf(rst)
@@ -179,9 +180,5 @@ func (e *Executor) Execute(pl Pipeline) (any, error) {
 		}
 	}
 
-	if singular {
-		return prev[0], nil
-	} else {
-		return prev, nil
-	}
+	return prev, nil
 }

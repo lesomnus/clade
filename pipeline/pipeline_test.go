@@ -70,7 +70,7 @@ func TestExecute(t *testing.T) {
 	tcs := []struct {
 		desc     string
 		pl       pipeline.Pipeline
-		expected any
+		expected []any
 	}{
 		{
 			desc: "built in: pass",
@@ -78,7 +78,7 @@ func TestExecute(t *testing.T) {
 				{Name: ">", Args: []any{1, 2}},
 				{Name: "sum", Args: []any{3}},
 			},
-			expected: 6,
+			expected: []any{6},
 		},
 		{
 			desc: "pipe",
@@ -86,7 +86,7 @@ func TestExecute(t *testing.T) {
 				{Name: "add", Args: []any{1, 2}},
 				{Name: "add", Args: []any{3}},
 			},
-			expected: 6,
+			expected: []any{6},
 		},
 		{
 			desc: "pipe multiple values",
@@ -94,7 +94,7 @@ func TestExecute(t *testing.T) {
 				{Name: "gen", Args: []any{5}},
 				{Name: "max", Args: []any{2}},
 			},
-			expected: 4,
+			expected: []any{4},
 		},
 		{
 			desc: "implicit conversion",
@@ -102,7 +102,7 @@ func TestExecute(t *testing.T) {
 				{Name: "add", Args: []any{"1", "2"}},
 				{Name: "add", Args: []any{"3"}},
 			},
-			expected: 6,
+			expected: []any{6},
 		},
 		{
 			desc: "variadic",
@@ -110,7 +110,7 @@ func TestExecute(t *testing.T) {
 				{Name: "max", Args: []any{4, 2, 5, 8, 6}},
 				{Name: "add", Args: []any{3}},
 			},
-			expected: 11,
+			expected: []any{11},
 		},
 		{
 			desc: "nested",
@@ -120,7 +120,7 @@ func TestExecute(t *testing.T) {
 				}}},
 				{Name: "add", Args: []any{4}},
 			},
-			expected: 9,
+			expected: []any{9},
 		},
 		{
 			desc: "nested with variadic",
@@ -131,7 +131,7 @@ func TestExecute(t *testing.T) {
 				}}},
 				{Name: "add", Args: []any{4}},
 			},
-			expected: 12,
+			expected: []any{12},
 		},
 		{
 			desc: "convert to string with String()",
@@ -139,7 +139,7 @@ func TestExecute(t *testing.T) {
 				{Name: "strings", Args: []any{"foo", "bar"}},
 				{Name: "concat", Args: []any{"hello ", "world"}},
 			},
-			expected: "hello world" + fmt.Sprint(StringSet{"foo": struct{}{}, "bar": struct{}{}}),
+			expected: []any{"hello world" + fmt.Sprint(StringSet{"foo": struct{}{}, "bar": struct{}{}})},
 		},
 	}
 	for _, tc := range tcs {
@@ -148,7 +148,7 @@ func TestExecute(t *testing.T) {
 
 			actual, err := exe.Execute(tc.pl)
 			require.NoError(err)
-			require.Equal(tc.expected, actual)
+			require.ElementsMatch(tc.expected, actual)
 		})
 	}
 }
