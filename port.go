@@ -141,31 +141,33 @@ func ReadPort(path string) (*Port, error) {
 		return nil, err
 	}
 
+	dirname := filepath.Dir(path)
+
 	port := &Port{}
 	if err := yaml.Unmarshal(data, &port); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal: %w", err)
 	}
 
-	if p, err := ResolvePath(path, port.Dockerfile, "Dockerfile"); err != nil {
+	if p, err := ResolvePath(dirname, port.Dockerfile, "Dockerfile"); err != nil {
 		return nil, fmt.Errorf("failed to resolve path to Dockerfile: %w", err)
 	} else {
 		port.Dockerfile = p
 	}
 
-	if p, err := ResolvePath(path, port.ContextPath, "."); err != nil {
+	if p, err := ResolvePath(dirname, port.ContextPath, "."); err != nil {
 		return nil, fmt.Errorf("failed to resolve path to context: %w", err)
 	} else {
 		port.ContextPath = p
 	}
 
 	for i, image := range port.Images {
-		if p, err := ResolvePath(path, image.Dockerfile, port.Dockerfile); err != nil {
+		if p, err := ResolvePath(dirname, image.Dockerfile, port.Dockerfile); err != nil {
 			return nil, fmt.Errorf("failed to resolve path to Dockerfile: %w", err)
 		} else {
 			port.Images[i].Dockerfile = p
 		}
 
-		if p, err := ResolvePath(path, image.ContextPath, port.ContextPath); err != nil {
+		if p, err := ResolvePath(dirname, image.ContextPath, port.ContextPath); err != nil {
 			return nil, fmt.Errorf("failed to resolve path to context: %w", err)
 		} else {
 			port.Images[i].ContextPath = p
