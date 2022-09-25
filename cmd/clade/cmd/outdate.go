@@ -22,7 +22,7 @@ var outdated_cmd = &cobra.Command{
 			return fmt.Errorf("failed to load ports: %w", err)
 		}
 
-		return bt.Walk(func(level int, name string, node *tree.Node[*clade.NamedImage]) error {
+		return bt.Walk(func(level int, name string, node *tree.Node[*clade.Image]) error {
 			if level == 0 {
 				return nil
 			}

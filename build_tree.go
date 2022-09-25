@@ -6,14 +6,14 @@ import (
 )
 
 type BuildTree struct {
-	tree.Tree[*NamedImage]
+	tree.Tree[*Image]
 }
 
 func NewBuildTree() *BuildTree {
-	return &BuildTree{make(tree.Tree[*NamedImage])}
+	return &BuildTree{make(tree.Tree[*Image])}
 }
 
-func (t *BuildTree) Insert(image *NamedImage) error {
+func (t *BuildTree) Insert(image *Image) error {
 	from := image.From.String()
 
 	for _, tag := range image.Tags {
@@ -23,7 +23,7 @@ func (t *BuildTree) Insert(image *NamedImage) error {
 		}
 
 		if parent := t.Tree.Insert(from, ref.String(), image).Parent; parent.Value == nil {
-			parent.Value = &NamedImage{
+			parent.Value = &Image{
 				Named: image.From,
 				Tags:  []string{image.From.Tag()},
 			}
@@ -33,9 +33,9 @@ func (t *BuildTree) Insert(image *NamedImage) error {
 	return nil
 }
 
-func (t *BuildTree) Walk(walker tree.Walker[*NamedImage]) error {
-	visited := make(map[*NamedImage]struct{})
-	return t.AsNode().Walk(func(level int, name string, node *tree.Node[*NamedImage]) error {
+func (t *BuildTree) Walk(walker tree.Walker[*Image]) error {
+	visited := make(map[*Image]struct{})
+	return t.AsNode().Walk(func(level int, name string, node *tree.Node[*Image]) error {
 		if _, ok := visited[node.Value]; ok {
 			return nil
 		} else {

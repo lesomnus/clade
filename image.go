@@ -8,6 +8,8 @@ import (
 )
 
 type Image struct {
+	reference.Named `yaml:"-"`
+
 	Tags []string
 	From RefNamedPipelineTagged `yaml:"-"`
 	Args map[string]string
@@ -33,17 +35,7 @@ func (i *Image) UnmarshalYAML(n *yaml.Node) error {
 	return nil
 }
 
-type NamedImage struct {
-	reference.Named
-	Tags []string
-	From reference.NamedTagged
-	Args map[string]string
-
-	Dockerfile  string
-	ContextPath string
-}
-
-func (i *NamedImage) Tagged() (reference.NamedTagged, error) {
+func (i *Image) Tagged() (reference.NamedTagged, error) {
 	if tagged, ok := i.Named.(reference.NamedTagged); ok {
 		return tagged, nil
 	}

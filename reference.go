@@ -127,6 +127,19 @@ func (r *tagExpr) UnmarshalYAML(n *yaml.Node) error {
 	return nil
 }
 
+func RefWithTag(named reference.Named, tag string) (RefNamedPipelineTagged, error) {
+	// Test if valid tag.
+	if _, err := reference.WithTag(named, tag); err != nil {
+		return nil, err
+	}
+
+	return &refNamedPipelineTagged{
+		Named:    named,
+		tag:      tag,
+		pipeline: pipeline.Return(tag),
+	}, nil
+}
+
 func ParseReference(s string) (reference.Named, error) {
 	ref, err := reference.ParseNamed(s)
 	if err != nil {

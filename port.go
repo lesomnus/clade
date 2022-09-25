@@ -13,44 +13,38 @@ import (
 )
 
 type Port struct {
-	Name string
+	Name reference.Named `yaml:"-"`
 	Args map[string]string
 
 	Dockerfile  string
 	ContextPath string
 
-	Images []Image
+	Images []*Image
 }
 
-func (p *Port) ParseImages() ([]*NamedImage, error) {
-	name, err := reference.ParseNamed(p.Name)
+func (p *Port) UnmarshalYAML(n *yaml.Node) error {
+	type Port_ Port
+	if err := n.Decode((*Port_)(p)); err != nil {
+		return err
+	}
+
+	type P struct{ Name string }
+	var tmp P
+	if err := n.Decode(&tmp); err != nil {
+		return err
+	}
+
+	named, err := reference.ParseNamed(tmp.Name)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("name: %w", err)
 	}
 
-	imgs := make([]*NamedImage, len(p.Images))
-	for i, img := range p.Images {
-		named_img := &NamedImage{
-			Named: name,
-			Tags:  slices.Clone(img.Tags),
-			From:  img.From,
-			Args:  make(map[string]string, len(p.Args)+len(img.Args)),
-
-			Dockerfile:  img.Dockerfile,
-			ContextPath: img.ContextPath,
-		}
-
-		for k, v := range p.Args {
-			named_img.Args[k] = v
-		}
-		for k, v := range img.Args {
-			named_img.Args[k] = v
-		}
-
-		imgs[i] = named_img
+	for i := range p.Images {
+		p.Images[i].Named = named
 	}
 
-	return imgs, nil
+	p.Name = named
+	return nil
 }
 
 func DeduplicateBySemver(lhs *[]string, rhs *[]string) error {
@@ -175,6 +169,17 @@ func ReadPort(path string) (*Port, error) {
 			return nil, fmt.Errorf("failed to resolve path to context: %w", err)
 		} else {
 			port.Images[i].ContextPath = p
+		}
+
+		if image.Args == nil {
+			image.Args = make(map[string]string)
+		}
+		for k, v := range port.Args {
+			if _, ok := image.Args[k]; ok {
+				continue
+			}
+
+			image.Args[k] = v
 		}
 	}
 

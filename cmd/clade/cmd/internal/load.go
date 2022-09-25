@@ -7,7 +7,6 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/distribution/distribution/reference"
 	"github.com/lesomnus/clade"
 	"github.com/lesomnus/clade/pipeline"
 	"github.com/lesomnus/clade/plf"
@@ -17,10 +16,10 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func ExpandImage(ctx context.Context, image *clade.NamedImage, bt *clade.BuildTree) ([]*clade.NamedImage, error) {
+func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) ([]*clade.Image, error) {
 	tagged, ok := image.From.(clade.RefNamedPipelineTagged)
 	if !ok {
-		return []*clade.NamedImage{image}, nil
+		return []*clade.Image{image}, nil
 	}
 
 	local_tags := make([]string, 0)
@@ -79,7 +78,7 @@ func ExpandImage(ctx context.Context, image *clade.NamedImage, bt *clade.BuildTr
 		panic("currently only server.Version is supported")
 	}
 
-	images := make([]*clade.NamedImage, 0, len(versions))
+	images := make([]*clade.Image, 0, len(versions))
 	for _, version := range versions {
 		tags := slices.Clone(image.Tags)
 		for i, tag := range tags {
@@ -95,12 +94,12 @@ func ExpandImage(ctx context.Context, image *clade.NamedImage, bt *clade.BuildTr
 
 		tag := version.String()
 
-		from, err := reference.WithTag(image.From, tag)
+		from, err := clade.RefWithTag(image.From, tag)
 		if err != nil {
 			return nil, fmt.Errorf("invalid tag %s: %w", tag, err)
 		}
 
-		img := &clade.NamedImage{}
+		img := &clade.Image{}
 		*img = *image
 		img.Tags = tags
 		img.From = from
@@ -126,17 +125,12 @@ func LoadBuildTreeFromPorts(ctx context.Context, bt *clade.BuildTree, path strin
 
 	dt := clade.NewDependencyTree()
 	for _, port := range ports {
-		images, err := port.ParseImages()
-		if err != nil {
-			return fmt.Errorf("failed to parse image from port %s: %w", port.Name, err)
-		}
-
-		for _, image := range images {
+		for _, image := range port.Images {
 			dt.Insert(image)
 		}
 	}
 
-	return dt.AsNode().Walk(func(level int, name string, node *tree.Node[[]*clade.NamedImage]) error {
+	return dt.AsNode().Walk(func(level int, name string, node *tree.Node[[]*clade.Image]) error {
 		if level == 0 {
 			return nil
 		}

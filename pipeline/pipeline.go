@@ -143,6 +143,10 @@ func pass(args ...any) []any {
 	return args
 }
 
+func Return(v any) Pipeline {
+	return Pipeline{&Fn{Name: ">", Args: []any{v}}}
+}
+
 func (e *Executor) Execute(pl Pipeline) (any, error) {
 	e.Funcs[">"] = pass
 
