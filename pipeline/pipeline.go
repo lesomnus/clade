@@ -58,13 +58,18 @@ func implicitConvert(out reflect.Type, in reflect.Type, v reflect.Value) (any, e
 		case reflect.Int:
 			return strconv.Atoi(v.String())
 		}
+
+	case reflect.Int:
+		switch out.Kind() {
+		case reflect.String:
+			return strconv.Itoa(int(v.Int())), nil
+		}
+
 	default:
 		switch out.Kind() {
 		case reflect.String:
-			if m, ok := in.MethodByName("String"); !ok {
-
-			} else if t := m.Func.Type(); t.NumIn() == 1 && t.NumOut() == 1 && t.Out(0).Kind() == reflect.String {
-				return m.Func.Call([]reflect.Value{v})[0].String(), nil
+			if s, ok := v.Interface().(interface{ String() string }); ok {
+				return s.String(), nil
 			}
 		}
 	}

@@ -10,7 +10,6 @@ import (
 	"github.com/lesomnus/clade"
 	"github.com/lesomnus/clade/pipeline"
 	"github.com/lesomnus/clade/plf"
-	"github.com/lesomnus/clade/sv"
 	"github.com/lesomnus/clade/tree"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
@@ -52,23 +51,29 @@ func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) (
 		"remoteTags": func() []string { return remote_tags },
 	})
 
-	rst, err := exe.Execute(image.From.Pipeline())
+	results, err := exe.Execute(image.From.Pipeline())
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute pipeline: %w", err)
 	}
 
-	versions := make([]sv.Version, len(rst))
-	for i := range versions {
-		v, ok := reflect.ValueOf(rst[i]).Interface().(sv.Version)
-		if !ok {
-			panic("currently only semver.Version is supported")
+	base_tags := make([]string, len(results))
+	for i, result := range results {
+		if s, ok := result.(interface{ String() string }); ok {
+			base_tags[i] = s.String()
+			continue
 		}
 
-		versions[i] = v
+		v := reflect.ValueOf(result)
+		if v.Kind() == reflect.String {
+			base_tags[i] = v.String()
+			continue
+		}
+
+		return nil, fmt.Errorf("failed to resolve string from pipeline result: %v", result)
 	}
 
-	images := make([]*clade.Image, 0, len(versions))
-	for _, version := range versions {
+	images := make([]*clade.Image, 0, len(results))
+	for i, result := range results {
 		tags := slices.Clone(image.Tags)
 		for i, tag := range tags {
 			tmpl, err := template.New("").Parse(tag)
@@ -77,11 +82,11 @@ func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) (
 			}
 
 			var sb strings.Builder
-			tmpl.Execute(&sb, version)
+			tmpl.Execute(&sb, result)
 			tags[i] = sb.String()
 		}
 
-		tag := version.String()
+		tag := base_tags[i]
 
 		from, err := clade.RefWithTag(image.From, tag)
 		if err != nil {
@@ -100,6 +105,19 @@ func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) (
 	for i := 0; i < len(images); i++ {
 		for j := i + 1; j < len(images); j++ {
 			clade.DeduplicateBySemver(&images[i].Tags, &images[j].Tags)
+		}
+	}
+
+	// Test if duplicated tags are exist.
+	for i := 0; i < len(images); i++ {
+		for j := i + 1; j < len(images); j++ {
+			for _, lhs := range images[i].Tags {
+				for _, rhs := range images[j].Tags {
+					if lhs == rhs {
+						return nil, fmt.Errorf("%s: tag is duplicated: %s", image.From.String(), lhs)
+					}
+				}
+			}
 		}
 	}
 

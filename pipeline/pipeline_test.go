@@ -134,12 +134,19 @@ func TestExecute(t *testing.T) {
 			expected: []any{12},
 		},
 		{
-			desc: "convert to string with String()",
+			desc: "convert to string with String() of map",
 			pl: pipeline.Pipeline{
 				{Name: "strings", Args: []any{"foo", "bar"}},
 				{Name: "concat", Args: []any{"hello ", "world"}},
 			},
 			expected: []any{"hello world" + fmt.Sprint(StringSet{"foo": struct{}{}, "bar": struct{}{}})},
+		},
+		{
+			desc: "convert to string from int",
+			pl: pipeline.Pipeline{
+				{Name: "concat", Args: []any{4, 2}},
+			},
+			expected: []any{"42"},
 		},
 	}
 	for _, tc := range tcs {

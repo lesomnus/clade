@@ -12,19 +12,19 @@ import (
 func TestSemverMajorN(t *testing.T) {
 	type Input struct {
 		n  int
-		vs []sv.Version
+		vs []*sv.Version
 	}
 
 	require := require.New(t)
 
 	tcs := []struct {
 		input    Input
-		expected []sv.Version
+		expected []*sv.Version
 	}{
 		{
 			input: Input{
 				n: 1,
-				vs: []sv.Version{
+				vs: []*sv.Version{
 					{Version: semver.Version{Major: 0, Minor: 1, Patch: 0}, Source: ""},
 					{Version: semver.Version{Major: 2, Minor: 3, Patch: 4}, Source: ""},
 					{Version: semver.Version{Major: 2, Minor: 3, Patch: 3}, Source: ""},
@@ -33,7 +33,7 @@ func TestSemverMajorN(t *testing.T) {
 					{Version: semver.Version{Major: 1, Minor: 1, Patch: 1}, Source: ""},
 				},
 			},
-			expected: []sv.Version{
+			expected: []*sv.Version{
 				{Version: semver.Version{Major: 2, Minor: 3, Patch: 3}, Source: ""},
 				{Version: semver.Version{Major: 2, Minor: 3, Patch: 4}, Source: ""},
 			},
@@ -41,7 +41,7 @@ func TestSemverMajorN(t *testing.T) {
 		{
 			input: Input{
 				n: 2,
-				vs: []sv.Version{
+				vs: []*sv.Version{
 					{Version: semver.Version{Major: 0, Minor: 1, Patch: 0}, Source: ""},
 					{Version: semver.Version{Major: 2, Minor: 3, Patch: 4}, Source: ""},
 					{Version: semver.Version{Major: 2, Minor: 3, Patch: 3}, Source: ""},
@@ -50,7 +50,7 @@ func TestSemverMajorN(t *testing.T) {
 					{Version: semver.Version{Major: 1, Minor: 1, Patch: 1}, Source: ""},
 				},
 			},
-			expected: []sv.Version{
+			expected: []*sv.Version{
 				{Version: semver.Version{Major: 1, Minor: 0, Patch: 1}, Source: ""},
 				{Version: semver.Version{Major: 1, Minor: 1, Patch: 1}, Source: ""},
 				{Version: semver.Version{Major: 2, Minor: 3, Patch: 3}, Source: ""},
@@ -67,19 +67,19 @@ func TestSemverMajorN(t *testing.T) {
 func TestSemverMinorN(t *testing.T) {
 	type Input struct {
 		n  int
-		vs []sv.Version
+		vs []*sv.Version
 	}
 
 	require := require.New(t)
 
 	tcs := []struct {
 		input    Input
-		expected []sv.Version
+		expected []*sv.Version
 	}{
 		{
 			input: Input{
 				n: 2,
-				vs: []sv.Version{
+				vs: []*sv.Version{
 					{Version: semver.Version{Major: 0, Minor: 1, Patch: 0}, Source: ""},
 					{Version: semver.Version{Major: 2, Minor: 3, Patch: 4}, Source: ""},
 					{Version: semver.Version{Major: 2, Minor: 3, Patch: 3}, Source: ""},
@@ -91,7 +91,7 @@ func TestSemverMinorN(t *testing.T) {
 					{Version: semver.Version{Major: 1, Minor: 1, Patch: 0}, Source: ""},
 				},
 			},
-			expected: []sv.Version{
+			expected: []*sv.Version{
 				{Version: semver.Version{Major: 0, Minor: 1, Patch: 0}, Source: ""},
 				{Version: semver.Version{Major: 0, Minor: 1, Patch: 1}, Source: ""},
 				{Version: semver.Version{Major: 1, Minor: 1, Patch: 0}, Source: ""},
