@@ -17,7 +17,7 @@ type Port struct {
 	Args map[string]string
 
 	Dockerfile  string
-	ContextPath string
+	ContextPath string `yaml:"context"`
 
 	Images []*Image
 }

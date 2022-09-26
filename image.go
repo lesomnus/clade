@@ -15,7 +15,7 @@ type Image struct {
 	Args map[string]string
 
 	Dockerfile  string
-	ContextPath string
+	ContextPath string `yaml:"context"`
 }
 
 func (i *Image) UnmarshalYAML(n *yaml.Node) error {
