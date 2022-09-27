@@ -14,3 +14,4 @@ images:
     from:
       name: registry.hub.docker.com/library/golang
       tag: '{ remoteTags | regex .+alpine$ | toSemver | semverN 1 2 1 }'
+    dockerfile: alpine.Dockerfile
