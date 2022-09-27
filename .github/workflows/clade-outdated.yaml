@@ -20,7 +20,7 @@ jobs:
         run: |
           for reference in $(go run ./cmd/clade outdated); do
             echo build ${reference}
-            ${{ env.ACT && 'echo' }} gh workflow run "clade-build" \
+            ${{ env.ACT && 'echo' }} gh workflow run "clade build" \
               --ref "${{ github.ref }}" \
               --field "reference=${reference}" \
               --field "cascade=true"
