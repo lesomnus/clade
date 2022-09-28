@@ -1,5 +1,5 @@
 name: clade build
-run-name: clade build ${{ inputs.reference }}
+run-name: clade build - ${{ inputs.reference }}
 
 on:
   workflow_dispatch:

@@ -61,5 +61,5 @@ func TestRefNamedPipelineTagged(t *testing.T) {
 	v, err := exe.Execute(tagged.Pipeline())
 	require.NoError(err)
 	require.Len(v, 1)
-	require.Equal(sv.Version{Version: semver.Version{Major: 2}, Source: "2.0"}, v[0])
+	require.Equal(&sv.Version{Version: semver.Version{Major: 2}, Source: "2.0"}, v[0])
 }
