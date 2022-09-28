@@ -10,7 +10,7 @@ CLade allows you to manage multiple Dockerfiles as a dependency tree and list im
 $ go install github.com/lesomnus/clade/cmd/clade@latest
 ```
 
-## Tutorial
+## Usage
 
 Command `clade` reads *Port* files named `port.yaml` in the directories of `ports` directory to construct a dependency tree. *Port* file describes what an image's tag is and which image that tag depends on.
 ```sh
@@ -55,7 +55,7 @@ $ clade tree
 registry.hub.docker.com/library/gcc:12.2
         ghcr.io/my_name/my-gcc:12.2
 ```
-What happened? Where did *12.2* come from? Let's find out one by one. First, what `{ remoteTags | toSemver | semverLatest }` is? This is a pipeline expression. The result of the previous function becomes the argument of the next function. So it means, fetch the remote tag from `registry.hub.docker.com`, then convert the fetched strings into *Semver*, and take the latest version. That would be *12.2* at this point. What is `'{{ .Major }}.{{ .Minor }}'`? This is a golang template expression. The result of the pipeline is *Semver* type and it is passed to template.
+What happened? Where did *12.2* come from? Let's find out one by one. First, what `{ remoteTags | toSemver | semverLatest }` is? This is [pipeline expression](pipeline). The result of the previous function becomes the argument of the next function. So it means, fetch the remote tag from `registry.hub.docker.com`, then convert the fetched strings into *Semver*, and take the latest version. That would be *12.2* at this point. What is `'{{ .Major }}.{{ .Minor }}'`? This is [golang templates](https://pkg.go.dev/text/template). The result of the pipeline is *Semver* type and it is passed to template.
 
 If pipeline results more than one tag, CLade will generate more images from the same template. Let's create `my-gcc:12.X` for all gcc 12 versions using `semverMajorN` which filters last N major versions. Also if there are more than one tag template is provided, multiple tags will be created from the same image.
 
@@ -117,4 +117,8 @@ $ clade build --dry-run ghcr.io/my_name/my-gcc:12
 run: [/usr/bin/docker build --file /path/to/ports/my-gcc/port.yaml/Dockerfile --tag ghcr.io/my_name/my-gcc:12.2 --tag ghcr.io/my_name/my-gcc:12 --build-arg BASE=registry.hub.docker.com/library/gcc --build-arg TAG=12.2 /path/to/ports/my-gcc]
 ```
 
-You can see more examples at [ports](ports) directory in this repo.
+## Materials
+
+- More examples of *Port* file → [ports](ports)
+- Full *Port* file reference → [docs/port.md](docs/port.md)
+- Available pipeline functions → [docs/pipeline-functions.md](docs/pipeline-functions.md)
