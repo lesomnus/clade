@@ -34,7 +34,7 @@ First index of `_` holds original string; `{{ index ._ 0 }}` for `fooaaabar` wou
 
 Implementation can be found on [/plf/regex.go](/plf/semver.go).
 
-## toSemver
+### toSemver
 
 Returns *Semantic Versioning*-like strings.
 
@@ -47,7 +47,7 @@ Each part of the version can be accessed by its name.
 For example, `{{ printf "%d.%d.%d" .Major .Minor .Patch }}` for `12.1-alpine3.6` would be `12.1.0`.
 Access to *pre-release* or *build metadata* is not defined (unstable).
 
-## semverLatest
+### semverLatest
 
 Returns a latest version.
 
@@ -57,7 +57,7 @@ toSemver 1.0 1.0.2 2.0 1.3.1 | semverLatest
 The above returns `2.0`.
 Only the `sv.Version` type returned by a function such as `toSemver` is accepted as an argument.
 
-## semverMajorN
+### semverMajorN
 
 Returns last *N* major versions.
 
@@ -66,7 +66,7 @@ toSemver 1 2 3 2.0 | semverMajorN 2
 ```
 The above returns `2`, `3`, and `2.0`.
 
-## semverMinorN
+### semverMinorN
 
 Returns last *N* minor versions.
 
@@ -75,7 +75,7 @@ toSemver 1.0 1.5 1.2 3.2 2.6 2.9 2.13 | semverMinorN 2
 ```
 The above returns `1.5`, `1.2`, `3.2`, `2.9`, and `2.13`.
 
-## semverPathN
+### semverPathN
 
 Returns last *N* patch versions.
 ```
@@ -83,7 +83,7 @@ toSemver 1.0 1.0.4 1.0.5 2.1.5 2.2.6 3.1.6 3.1.4 3.1.42 | semverPatchN 2
 ```
 The above returns `1.0.4`, `1.0.5`, `2.1.5`, `2.2.6`, `3.1.6` and `3.1.42`.
 
-## semverN
+### semverN
 
 Takes 3 numbers such that *X*, *Y*, *Z*, and returns last *X* major versions, *Y* minor versions, *Z* patch versions.
 
