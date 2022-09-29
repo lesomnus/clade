@@ -159,7 +159,7 @@ func ParseReference(s string) (reference.Named, error) {
 		}
 
 		tag := s[pos+1:]
-		if strings.HasPrefix(tag, "{") && strings.HasSuffix(tag, "}") {
+		if strings.HasPrefix(tag, "(") && strings.HasSuffix(tag, ")") {
 			pl, err := pipeline.Parse(tag[1 : len(tag)-1])
 			if err != nil {
 				return nil, fmt.Errorf("%w: %s", reference.ErrDigestInvalidFormat, err.Error())

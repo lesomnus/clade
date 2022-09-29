@@ -3,7 +3,9 @@ args:
   CMAKE_VERSION: "3.24.2"
 
 images:
-  - tags: ["{{ .Major }}.{{ .Minor }}", "{{ .Major }}"]
+  - tags:
+      - '{{ printf "%d.%d" .Major .Minor }}'
+      - '{{ printf "%d"    .Major        }}'
     from:
       name: registry.hub.docker.com/library/gcc
-      tag: '{ remoteTags | toSemver | semverMajorN 2 | semverMinorN 2 }'
+      tag: ( remoteTags | toSemver | semverMajorN 2 | semverMinorN 2 )

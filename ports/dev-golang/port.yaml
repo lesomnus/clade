@@ -1,17 +1,17 @@
 name: ghcr.io/lesomnus/dev-golang
-  
+
 images:
   - tags:
       - '{{ printf "%d.%d" .Major .Minor }}'
       - '{{ printf "%d"    .Major        }}'
     from:
       name: registry.hub.docker.com/library/golang
-      tag: '{ remoteTags | toSemver | semverN 1 2 1 }'
+      tag: ( remoteTags | toSemver | semverN 1 2 1 )
 
   - tags:
       - '{{ printf "%d.%d-%s" .Major .Minor (index .Pre 0) }}'
       - '{{ printf "%d-%s"    .Major        (index .Pre 0) }}'
     from:
       name: registry.hub.docker.com/library/golang
-      tag: '{ remoteTags | regex .+alpine$ | toSemver | semverN 1 2 1 }'
+      tag: ( remoteTags | regex .+alpine$ | toSemver | semverN 1 2 1 )
     dockerfile: alpine.Dockerfile
