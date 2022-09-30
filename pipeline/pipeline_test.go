@@ -159,3 +159,15 @@ func TestExecute(t *testing.T) {
 		})
 	}
 }
+
+func TestReturn(t *testing.T) {
+	require := require.New(t)
+
+	expected := "bender"
+	exe := pipeline.Executor{Funcs: make(pipeline.FuncMap)}
+
+	actual, err := exe.Execute(pipeline.Return(expected))
+	require.NoError(err)
+	require.Len(actual, 1)
+	require.Equal(expected, actual[0])
+}
