@@ -32,10 +32,10 @@ func TestImageUnmarshalFromField(t *testing.T) {
 		},
 		{
 			desc:  "tagged with string pipeline expression",
-			input: `from: "cr.io/repo/name:{ foo bar | baz }"`,
+			input: `from: "cr.io/repo/name:( foo bar | baz )"`,
 			expected: TagExpr{
 				name: "cr.io/repo/name",
-				tag:  "{ foo bar | baz }",
+				tag:  "( foo bar | baz )",
 				pl: pipeline.Pipeline{
 					&pipeline.Fn{Name: "foo", Args: []any{"bar"}},
 					&pipeline.Fn{Name: "baz", Args: []any{}},
@@ -58,10 +58,10 @@ func TestImageUnmarshalFromField(t *testing.T) {
 			desc: "map and tag with string pipeline expression",
 			input: `from:
   name: cr.io/repo/name
-  tag: "{ foo bar | baz }"`,
+  tag: "( foo bar | baz )"`,
 			expected: TagExpr{
 				name: "cr.io/repo/name",
-				tag:  "{ foo bar | baz }",
+				tag:  "( foo bar | baz )",
 				pl: pipeline.Pipeline{
 					&pipeline.Fn{Name: "foo", Args: []any{"bar"}},
 					&pipeline.Fn{Name: "baz", Args: []any{}},

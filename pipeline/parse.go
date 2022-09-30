@@ -3,133 +3,70 @@ package pipeline
 import (
 	"errors"
 	"fmt"
-	"strings"
+	"io"
 )
 
-const symbols = "()|"
-
-func readUntil(str string, r rune) (string, bool) {
-	for i, c := range str {
-		if c == r {
-			return str[:i+1], true
-		}
-	}
-
-	return "", false
-}
-
-func ReadToken(expr string) (int, string, error) {
-	begin := -1
-	for i, c := range expr {
-		if c == ' ' {
-			if begin < 0 {
-				continue
-			} else {
-				return begin, expr[begin:i], nil
-			}
-		}
-		if begin < 0 {
-			begin = i
-
-			if c == '"' {
-				// Read quoted string.
-				pos := 1 // Start after ".
-				next := expr[begin+pos:]
-				for {
-					v, ok := readUntil(next, '"')
-					if !ok {
-						return -1, "", errors.New("unexpected end of expression: expected \"")
-					}
-
-					pos = pos + len(v)
-					if len(v) > 1 && v[len(v)-2] == '\\' {
-						// escaped double quotes.
-						next = next[len(v):]
-						continue
-					}
-
-					return begin, expr[begin : begin+pos], nil
-				}
-			}
-		}
-
-		if !strings.ContainsRune(symbols, c) {
-			continue
-		}
-
-		if begin == i {
-			return begin, expr[begin : begin+1], nil
-		} else {
-			return begin, expr[begin:i], nil
-		}
-	}
-
-	if begin < 0 {
-		return begin, "", nil
-	} else {
-		return begin, expr[begin:], nil
-	}
-}
-
-// TODO: unquote string literal
-// TODO: implement Lexer
-func Parse(expr string) (Pipeline, error) {
+func Parse(expr io.Reader) (Pipeline, error) {
 	scopes := []Pipeline{{nil}}
 
-	pos := 0
-	for {
-		p, token, err := ReadToken(expr[pos:])
-		if err != nil {
-			return nil, fmt.Errorf("failed to read token at pos %d: %w", pos, err)
-		}
-		if p < 0 {
-			break
-		}
-
-		pos += p
-
-		scope := scopes[len(scopes)-1]
-		cmd := scope[len(scope)-1]
-		if err := func() error {
-			if len(token) == 1 && strings.ContainsRune(symbols, rune(token[0])) {
-				// symbols.
-				if cmd == nil {
-					return fmt.Errorf("expected a command name but it was symbol %c at pos %d", token[0], pos)
-				}
-
-				switch token[0] {
-				case '(':
-					scopes = append(scopes, Pipeline{nil})
-
-				case ')':
-					if len(scopes) < 2 {
-						return fmt.Errorf("unexpected end of scope at pos %d", pos)
-					}
-
-					parent_scope := scopes[len(scopes)-2]
-					parent_cmd := parent_scope[len(parent_scope)-1]
-					parent_cmd.Args = append(parent_cmd.Args, scope)
-					scopes = scopes[:len(scopes)-1]
-
-				case '|':
-					scope = append(scope, nil)
-					scopes[len(scopes)-1] = scope
-				}
-			} else if cmd == nil {
-				// command name.
-				cmd = &Fn{Name: token, Args: make([]any, 0)}
-				scope[len(scope)-1] = cmd
-			} else {
-				// command args.
-				cmd.Args = append(cmd.Args, token)
+	l := NewLexer(expr)
+	if err := func() error {
+		for {
+			t, err := l.Lex()
+			if err != nil {
+				return err
+			}
+			if t.Token == TokenEOF {
+				break
 			}
 
-			return nil
-		}(); err != nil {
-			return nil, err
+			scope := scopes[len(scopes)-1]
+			cmd := scope[len(scope)-1]
+
+			if cmd == nil {
+				if t.Token != TokenText {
+					return errors.New("expected a function name")
+				}
+
+				cmd = &Fn{Name: t.Value, Args: []any{}}
+				scope[len(scope)-1] = cmd
+				continue
+			}
+
+			switch t.Token {
+
+			// Beginning of scope.
+			case TokenLeftParen:
+				scopes = append(scopes, Pipeline{nil})
+
+			// End of scope.
+			case TokenRightParen:
+				if len(scopes) < 2 {
+					return errors.New("unexpected end of scope")
+				}
+
+				parent_scope := scopes[len(scopes)-2]
+				parent_cmd := parent_scope[len(parent_scope)-1]
+				parent_cmd.Args = append(parent_cmd.Args, scope)
+				scopes = scopes[:len(scopes)-1]
+
+			case TokenPipe:
+				scopes[len(scopes)-1] = append(scope, nil)
+
+			case TokenText:
+				cmd.Args = append(cmd.Args, t.Value)
+
+			case TokenString:
+				cmd.Args = append(cmd.Args, t.Value[1:len(t.Value)-2])
+
+			default:
+				return fmt.Errorf("unknown token: %v", t)
+			}
 		}
 
-		pos += len(token)
+		return nil
+	}(); err != nil {
+		return nil, fmt.Errorf("%d:%d: %w", l.pos.Line, l.pos.Column, err)
 	}
 
 	if len(scopes) != 1 {

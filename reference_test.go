@@ -22,8 +22,8 @@ func TestParseReference(t *testing.T) {
 			expected: "tag",
 		},
 		{
-			ref:      "cr.io/repo/clade:{tag}",
-			expected: "{tag}",
+			ref:      "cr.io/repo/clade:(tag)",
+			expected: "(tag)",
 		},
 	}
 	for _, tc := range tcs {
@@ -44,7 +44,7 @@ func TestParseReference(t *testing.T) {
 func TestRefNamedPipelineTagged(t *testing.T) {
 	require := require.New(t)
 
-	named, err := clade.ParseReference("cr.io/repo/clade:{ localTags | toSemver | semverLatest }")
+	named, err := clade.ParseReference("cr.io/repo/clade:( localTags | toSemver | semverLatest )")
 	require.NoError(err)
 
 	tagged, ok := named.(clade.RefNamedPipelineTagged)

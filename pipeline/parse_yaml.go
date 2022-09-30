@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"bytes"
 	"errors"
 
 	"gopkg.in/yaml.v3"
@@ -14,7 +15,7 @@ func (f *Fn) UnmarshalYAML(n *yaml.Node) error {
 			return err
 		}
 
-		pl, err := Parse(expr)
+		pl, err := Parse(bytes.NewReader([]byte(expr)))
 		if err != nil {
 			return err
 		}

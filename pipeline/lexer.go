@@ -52,10 +52,10 @@ func (l *Lexer) readRune() (rune, TokenItem, error) {
 	r, _, err := l.r.ReadRune()
 	if err != nil {
 		if errors.Is(err, io.EOF) {
-			return 'x', TokenItem{Pos: l.pos, Token: TokenEOF, Value: ""}, nil
+			return 0, TokenItem{Pos: l.pos, Token: TokenEOF, Value: ""}, nil
 		}
 
-		return 'x', TokenItem{Pos: l.pos}, err
+		return 0, TokenItem{Pos: l.pos}, err
 	}
 
 	return r, TokenItem{}, nil
@@ -70,9 +70,9 @@ func (l *Lexer) unreadRune() {
 }
 
 func (l *Lexer) Lex() (TokenItem, error) {
-	pos := l.pos
-
 	for {
+		pos := l.pos
+
 		r, t, err := l.readRune()
 		if err != nil {
 			return t, err
@@ -92,7 +92,7 @@ func (l *Lexer) Lex() (TokenItem, error) {
 		case '|':
 			return TokenItem{pos, TokenPipe, "|"}, nil
 
-		case '"':
+		case '`':
 			l.unreadRune()
 			return l.lexString()
 
@@ -119,7 +119,7 @@ func (l *Lexer) lexText() (TokenItem, error) {
 			return t, err
 		}
 
-		if unicode.IsSpace(r) || strings.ContainsRune("()|\"\n", r) {
+		if unicode.IsSpace(r) || strings.ContainsRune("()|`\n", r) {
 			l.unreadRune()
 			return TokenItem{pos, TokenText, v}, nil
 		}
@@ -136,12 +136,12 @@ func (l *Lexer) lexText() (TokenItem, error) {
 func (l *Lexer) lexString() (TokenItem, error) {
 	pos := l.pos
 
-	var v string = "\""
+	var v string = "`"
 
 	if r, t, err := l.readRune(); err != nil {
 		return t, err
-	} else if r != '"' {
-		panic(fmt.Sprintf("string: expected \" but was %c", r))
+	} else if r != '`' {
+		panic(fmt.Sprintf("string: expected ` but was %c", r))
 	}
 
 	for {
@@ -154,22 +154,10 @@ func (l *Lexer) lexString() (TokenItem, error) {
 			return TokenItem{l.pos, TokenEOF, ""}, errors.New("unexpected EOF")
 		}
 
-		// Escaped character.
-		if v[len(v)-1] == '\\' {
-			v += string(r)
-			continue
-		}
-
-		// Escape next.
-		if r == '\\' {
-			v += string(r)
-			continue
-		}
-
 		// End of string.
-		if r == '"' {
+		if r == '`' {
 			v += string(r)
-			return TokenItem{pos, TokenText, v}, nil
+			return TokenItem{pos, TokenString, v}, nil
 		}
 
 		if r == '\n' {
