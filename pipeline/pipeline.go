@@ -81,7 +81,14 @@ func (e *Executor) invoke(fn any, args []any) (any, error) {
 	fv := reflect.ValueOf(fn)
 	ft := fv.Type()
 
-	// Check if number of argument is fit.
+	// Check if the number of returned values is valid.
+	if n := ft.NumOut(); n > 2 || n == 0 {
+		return nil, fmt.Errorf("function have to return one or two values but %d values are returned", n)
+	} else if n == 2 && !ft.Out(1).Implements(reflect.TypeOf((*error)(nil)).Elem()) {
+		return nil, fmt.Errorf("type of second return value of function must be an error but it was %s", ft.Out(1).Name())
+	}
+
+	// Check if the number of argument is fit.
 	num_fixed_args := ft.NumIn()
 	if ft.IsVariadic() {
 		num_fixed_args--
@@ -130,16 +137,15 @@ func (e *Executor) invoke(fn any, args []any) (any, error) {
 	}
 
 	rst := fv.Call(input_args)
-	if len(rst) > 2 || len(rst) == 0 {
-		return nil, fmt.Errorf("function have to return one or two values but %d values are returned", len(rst))
-	} else if len(rst) == 2 {
+	if len(rst) == 1 || (len(rst) == 2 && rst[1].IsNil()) {
+		return rst[0].Interface(), nil
+	} else {
 		err, ok := rst[1].Interface().(error)
 		if !ok {
-			return nil, fmt.Errorf("type of second return value of function must be an error but it was %s", rst[1].Type().Name())
+			panic("type of second return value must be error")
 		}
+
 		return rst[0].Interface(), err
-	} else {
-		return rst[0].Interface(), nil
 	}
 }
 
