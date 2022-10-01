@@ -1,5 +1,8 @@
 # CLade
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/lesomnus/clade)](https://goreportcard.com/report/github.com/lesomnus/clade)
+[![test](https://github.com/lesomnus/clade/actions/workflows/test.yaml/badge.svg)](https://github.com/lesomnus/clade/actions/workflows/test.yaml)
+
 Keep your container images up to date.
 
 CLade allows you to manage multiple Dockerfiles as a dependency tree and list images older than the upstream image.
