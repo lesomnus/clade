@@ -19,7 +19,7 @@ images:
       - '{{ printf "%d"    .Major        }}'
     from:
       name: registry.hub.docker.com/library/golang
-      tag: '{ remoteTags | toSemver | semverN 1 2 1 }'
+      tag: ( remoteTags | toSemver | semverN 1 2 1 )
 
     # args:
 
@@ -31,7 +31,7 @@ images:
       - '{{ printf "%d-%s"    .Major        (index .Pre 0) }}'
     from:
       name: registry.hub.docker.com/library/golang
-      tag: '{ remoteTags | regex .+alpine$ | toSemver | semverN 1 2 1 }'
+      tag: ( remoteTags | regex .+alpine$ | toSemver | semverN 1 2 1 )
 
     args:
       USERNAME: somnus
@@ -57,7 +57,7 @@ images:
       - '{{ printf "%d"    .Major        }}'
     from:
       name: registry.hub.docker.com/library/golang
-      tag: '{ remoteTags | toSemver | semverN 1 2 1 }'
+      tag: ( remoteTags | toSemver | semverN 1 2 1 )
 
     args:
       USERNAME: hypnos
@@ -71,7 +71,7 @@ images:
       - '{{ printf "%d-%s"    .Major        (index .Pre 0) }}'
     from:
       name: registry.hub.docker.com/library/golang
-      tag: '{ remoteTags | regex .+alpine$ | toSemver | semverN 1 2 1 }'
+      tag: ( remoteTags | regex .+alpine$ | toSemver | semverN 1 2 1 )
 
     args:
       USERNAME: somnus

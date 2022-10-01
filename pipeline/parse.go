@@ -57,10 +57,10 @@ func Parse(expr io.Reader) (Pipeline, error) {
 				cmd.Args = append(cmd.Args, t.Value)
 
 			case TokenString:
-				cmd.Args = append(cmd.Args, t.Value[1:len(t.Value)-2])
+				cmd.Args = append(cmd.Args, t.Value[1:len(t.Value)-1])
 
 			default:
-				return fmt.Errorf("unknown token: %v", t)
+				panic(fmt.Errorf("unknown token: %v", t))
 			}
 		}
 
@@ -75,7 +75,7 @@ func Parse(expr io.Reader) (Pipeline, error) {
 
 	rst := scopes[0]
 	if rst[len(rst)-1] == nil {
-		return nil, errors.New("expected a command name")
+		return nil, errors.New("expected a function name")
 	}
 
 	return rst, nil

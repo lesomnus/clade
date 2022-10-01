@@ -47,7 +47,7 @@ images:
   - tags: ['{{ .Major }}.{{ .Minor }}']
     from:
       name: registry.hub.docker.com/library/gcc
-      tag: '{ remoteTags | toSemver | semverLatest }'
+      tag: ( remoteTags | toSemver | semverLatest )
 ```
 
 ```sh
@@ -68,7 +68,7 @@ images:
   - tags: ['{{ .Major }}.{{ .Minor }}', '{{ .Major }}']
     from:
       name: registry.hub.docker.com/library/gcc
-      tag: '{ remoteTags | toSemver | semverMajorN 1 }'
+      tag: ( remoteTags | toSemver | semverMajorN 1 )
 ```
 
 ```sh

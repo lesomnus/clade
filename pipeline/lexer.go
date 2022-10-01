@@ -28,6 +28,13 @@ type Pos struct {
 	Column uint
 }
 
+func (p Pos) prev() Pos {
+	return Pos{
+		Line:   p.Line,
+		Column: p.Column - 1,
+	}
+}
+
 type TokenItem struct {
 	Pos   Pos
 	Token Token
@@ -94,7 +101,12 @@ func (l *Lexer) Lex() (TokenItem, error) {
 
 		case '`':
 			l.unreadRune()
-			return l.lexString()
+			t, err := l.lexString()
+			if err != nil {
+				err = fmt.Errorf("string: %w", err)
+			}
+
+			return t, err
 
 		default:
 			if unicode.IsSpace(r) {
@@ -103,7 +115,12 @@ func (l *Lexer) Lex() (TokenItem, error) {
 
 			if unicode.IsLetter(r) || unicode.IsDigit(r) || strings.ContainsRune("-+", r) {
 				l.unreadRune()
-				return l.lexText()
+				t, err := l.lexText()
+				if err != nil {
+					err = fmt.Errorf("text: %w", err)
+				}
+
+				return t, err
 			}
 		}
 	}
@@ -141,7 +158,7 @@ func (l *Lexer) lexString() (TokenItem, error) {
 	if r, t, err := l.readRune(); err != nil {
 		return t, err
 	} else if r != '`' {
-		panic(fmt.Sprintf("string: expected ` but was %c", r))
+		panic(fmt.Sprintf("expected ` but was %c", r))
 	}
 
 	for {
@@ -151,7 +168,7 @@ func (l *Lexer) lexString() (TokenItem, error) {
 		}
 
 		if t.Token == TokenEOF {
-			return TokenItem{l.pos, TokenEOF, ""}, errors.New("unexpected EOF")
+			return TokenItem{l.pos.prev(), TokenEOF, ""}, errors.New("unexpected EOF")
 		}
 
 		// End of string.
@@ -161,7 +178,7 @@ func (l *Lexer) lexString() (TokenItem, error) {
 		}
 
 		if r == '\n' {
-			return TokenItem{l.pos, TokenErr, string(r)}, errors.New("unexpected newline character")
+			return TokenItem{l.pos.prev(), TokenErr, string(r)}, errors.New("unexpected newline character")
 		}
 
 		v += string(r)

@@ -21,9 +21,9 @@ func (p Pipeline) hasFunction(fn *Fn, name string) bool {
 	}
 
 	for _, arg := range fn.Args {
-		if fn, ok := arg.(*Fn); !ok {
+		if pl, ok := arg.(Pipeline); !ok {
 			continue
-		} else if p.hasFunction(fn, name) {
+		} else if pl.HasFunction(name) {
 			return true
 		}
 	}
@@ -130,13 +130,9 @@ func (e *Executor) invoke(fn any, args []any) (any, error) {
 	}
 
 	rst := fv.Call(input_args)
-	if len(rst) > 2 {
+	if len(rst) > 2 || len(rst) == 0 {
 		return nil, fmt.Errorf("function have to return one or two values but %d values are returned", len(rst))
 	} else if len(rst) == 2 {
-		if rst[1].IsNil() {
-			return rst[0].Interface(), nil
-		}
-
 		err, ok := rst[1].Interface().(error)
 		if !ok {
 			return nil, fmt.Errorf("type of second return value of function must be an error but it was %s", rst[1].Type().Name())
@@ -162,7 +158,7 @@ func (e *Executor) Execute(pl Pipeline) ([]any, error) {
 	for _, fn := range pl {
 		f, ok := e.Funcs[fn.Name]
 		if !ok {
-			return nil, fmt.Errorf("unknown command %s", fn.Name)
+			return nil, fmt.Errorf("unknown function %s", fn.Name)
 		}
 
 		args := make([]any, len(fn.Args)+len(prev))

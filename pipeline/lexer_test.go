@@ -9,90 +9,126 @@ import (
 )
 
 func TestLex(t *testing.T) {
-	tcs := []struct {
-		input    string
-		expected []pipeline.TokenItem
-	}{
-		{
-			input: "()|",
-			expected: []pipeline.TokenItem{
-				{pipeline.Pos{1, 0}, pipeline.TokenLeftParen, "("},
-				{pipeline.Pos{1, 1}, pipeline.TokenRightParen, ")"},
-				{pipeline.Pos{1, 2}, pipeline.TokenPipe, "|"},
+	{
+		tcs := []struct {
+			input    string
+			expected []pipeline.TokenItem
+		}{
+			{
+				input: "()|",
+				expected: []pipeline.TokenItem{
+					{pipeline.Pos{1, 0}, pipeline.TokenLeftParen, "("},
+					{pipeline.Pos{1, 1}, pipeline.TokenRightParen, ")"},
+					{pipeline.Pos{1, 2}, pipeline.TokenPipe, "|"},
+				},
 			},
-		},
-		{
-			input: "3.14",
-			expected: []pipeline.TokenItem{
-				{pipeline.Pos{1, 0}, pipeline.TokenText, "3.14"},
+			{
+				input: "3.14",
+				expected: []pipeline.TokenItem{
+					{pipeline.Pos{1, 0}, pipeline.TokenText, "3.14"},
+				},
 			},
-		},
-		{
-			input: "+3.14",
-			expected: []pipeline.TokenItem{
-				{pipeline.Pos{1, 0}, pipeline.TokenText, "+3.14"},
+			{
+				input: "+3.14",
+				expected: []pipeline.TokenItem{
+					{pipeline.Pos{1, 0}, pipeline.TokenText, "+3.14"},
+				},
 			},
-		},
-		{
-			input: "-3.14",
-			expected: []pipeline.TokenItem{
-				{pipeline.Pos{1, 0}, pipeline.TokenText, "-3.14"},
+			{
+				input: "-3.14",
+				expected: []pipeline.TokenItem{
+					{pipeline.Pos{1, 0}, pipeline.TokenText, "-3.14"},
+				},
 			},
-		},
-		{
-			input: "`()|`",
-			expected: []pipeline.TokenItem{
-				{pipeline.Pos{1, 0}, pipeline.TokenString, "`()|`"},
+			{
+				input: "`()|`",
+				expected: []pipeline.TokenItem{
+					{pipeline.Pos{1, 0}, pipeline.TokenString, "`()|`"},
+				},
 			},
-		},
-		{
-			input: "()|foo `bar` ",
-			expected: []pipeline.TokenItem{
-				{pipeline.Pos{1, 0}, pipeline.TokenLeftParen, "("},
-				{pipeline.Pos{1, 1}, pipeline.TokenRightParen, ")"},
-				{pipeline.Pos{1, 2}, pipeline.TokenPipe, "|"},
-				{pipeline.Pos{1, 3}, pipeline.TokenText, "foo"},
-				{pipeline.Pos{1, 7}, pipeline.TokenString, "`bar`"},
+			{
+				input: "()|foo `bar` ",
+				expected: []pipeline.TokenItem{
+					{pipeline.Pos{1, 0}, pipeline.TokenLeftParen, "("},
+					{pipeline.Pos{1, 1}, pipeline.TokenRightParen, ")"},
+					{pipeline.Pos{1, 2}, pipeline.TokenPipe, "|"},
+					{pipeline.Pos{1, 3}, pipeline.TokenText, "foo"},
+					{pipeline.Pos{1, 7}, pipeline.TokenString, "`bar`"},
+				},
 			},
-		},
-		{
-			input: "(foo|`bar`)",
-			expected: []pipeline.TokenItem{
-				{pipeline.Pos{1, 0}, pipeline.TokenLeftParen, "("},
-				{pipeline.Pos{1, 1}, pipeline.TokenText, "foo"},
-				{pipeline.Pos{1, 4}, pipeline.TokenPipe, "|"},
-				{pipeline.Pos{1, 5}, pipeline.TokenString, "`bar`"},
-				{pipeline.Pos{1, 10}, pipeline.TokenRightParen, ")"},
+			{
+				input: "(foo|`bar`)",
+				expected: []pipeline.TokenItem{
+					{pipeline.Pos{1, 0}, pipeline.TokenLeftParen, "("},
+					{pipeline.Pos{1, 1}, pipeline.TokenText, "foo"},
+					{pipeline.Pos{1, 4}, pipeline.TokenPipe, "|"},
+					{pipeline.Pos{1, 5}, pipeline.TokenString, "`bar`"},
+					{pipeline.Pos{1, 10}, pipeline.TokenRightParen, ")"},
+				},
 			},
-		},
-		{
-			input: "(`a`) b|cd `e` |",
-			expected: []pipeline.TokenItem{
-				{pipeline.Pos{1, 0}, pipeline.TokenLeftParen, "("},
-				{pipeline.Pos{1, 1}, pipeline.TokenString, "`a`"},
-				{pipeline.Pos{1, 4}, pipeline.TokenRightParen, ")"},
-				{pipeline.Pos{1, 6}, pipeline.TokenText, "b"},
-				{pipeline.Pos{1, 7}, pipeline.TokenPipe, "|"},
-				{pipeline.Pos{1, 8}, pipeline.TokenText, "cd"},
-				{pipeline.Pos{1, 11}, pipeline.TokenString, "`e`"},
-				{pipeline.Pos{1, 15}, pipeline.TokenPipe, "|"},
+			{
+				input: "(`a`) b|cd `e` |",
+				expected: []pipeline.TokenItem{
+					{pipeline.Pos{1, 0}, pipeline.TokenLeftParen, "("},
+					{pipeline.Pos{1, 1}, pipeline.TokenString, "`a`"},
+					{pipeline.Pos{1, 4}, pipeline.TokenRightParen, ")"},
+					{pipeline.Pos{1, 6}, pipeline.TokenText, "b"},
+					{pipeline.Pos{1, 7}, pipeline.TokenPipe, "|"},
+					{pipeline.Pos{1, 8}, pipeline.TokenText, "cd"},
+					{pipeline.Pos{1, 11}, pipeline.TokenString, "`e`"},
+					{pipeline.Pos{1, 15}, pipeline.TokenPipe, "|"},
+				},
 			},
-		},
-	}
-	for _, tc := range tcs {
-		t.Run(tc.input, func(t *testing.T) {
-			require := require.New(t)
+		}
+		for _, tc := range tcs {
+			t.Run(tc.input, func(t *testing.T) {
+				require := require.New(t)
 
-			l := pipeline.NewLexer(bytes.NewReader([]byte(tc.input)))
-			for _, expected := range tc.expected {
-				actual, err := l.Lex()
+				l := pipeline.NewLexer(bytes.NewReader([]byte(tc.input)))
+				for _, expected := range tc.expected {
+					actual, err := l.Lex()
+					require.NoError(err)
+					require.Equal(expected, actual)
+				}
+
+				eof, err := l.Lex()
 				require.NoError(err)
-				require.Equal(expected, actual)
-			}
+				require.Equal(pipeline.TokenEOF, eof.Token)
+			})
+		}
+	}
 
-			eof, err := l.Lex()
-			require.NoError(err)
-			require.Equal(pipeline.TokenEOF, eof.Token)
-		})
+	{
+		tcs := []struct {
+			desc  string
+			input string
+			msgs  []string
+			pos   pipeline.Pos
+		}{
+			{
+				desc:  "string: unexpected EOF",
+				input: "`foo",
+				msgs:  []string{"string", "EOF"},
+				pos:   pipeline.Pos{1, 4},
+			},
+			{
+				desc:  "string: unexpected newline",
+				input: "`foo\n",
+				msgs:  []string{"string", "newline"},
+				pos:   pipeline.Pos{1, 4},
+			},
+		}
+		for _, tc := range tcs {
+			t.Run(tc.desc, func(t *testing.T) {
+				require := require.New(t)
+
+				l := pipeline.NewLexer(bytes.NewReader([]byte(tc.input)))
+				token, err := l.Lex()
+				for _, msg := range tc.msgs {
+					require.ErrorContains(err, msg)
+				}
+				require.Equal(token.Pos, tc.pos)
+			})
+		}
 	}
 }
