@@ -57,8 +57,8 @@ RUN apt-get update \
 
 
 ARG USERNAME=hypnos
-RUN usermod -l thor -d /home/thor -m "node" \
-	&& groupmod -n ${USERNAME} node \
+RUN usermod -l "${USERNAME}" -d /home/"${USERNAME}" -m node \
+	&& groupmod -n "${USERNAME}" node \
 	&& echo "${USERNAME}:${USERNAME}" | chpasswd \
 	&& echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/${USERNAME}"
 
