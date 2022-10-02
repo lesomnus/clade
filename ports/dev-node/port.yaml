@@ -1,0 +1,9 @@
+name: ghcr.io/lesomnus/dev-node
+
+images:
+  - tags:
+      - '{{ printf "%d.%d" .Major .Minor }}'
+      - '{{ printf "%d"    .Major        }}'
+    from:
+      name: registry.hub.docker.com/library/node
+      tag: ( remoteTags | toSemver | semverN 2 2 1 )

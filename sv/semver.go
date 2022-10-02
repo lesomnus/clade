@@ -6,7 +6,6 @@ import (
 	"github.com/blang/semver/v4"
 )
 
-// TODO: create my own semver package?
 type Version struct {
 	semver.Version
 	Source string

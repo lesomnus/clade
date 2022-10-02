@@ -1,7 +1,8 @@
 # CLade
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/lesomnus/clade)](https://goreportcard.com/report/github.com/lesomnus/clade)
 [![test](https://github.com/lesomnus/clade/actions/workflows/test.yaml/badge.svg)](https://github.com/lesomnus/clade/actions/workflows/test.yaml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/lesomnus/clade)](https://goreportcard.com/report/github.com/lesomnus/clade)
+[![codecov](https://codecov.io/gh/lesomnus/clade/branch/main/graph/badge.svg?token=8CBVDL7AW7)](https://codecov.io/gh/lesomnus/clade)
 
 Keep your container images up to date.
 
