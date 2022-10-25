@@ -14,6 +14,7 @@ import (
 var tree_flags struct {
 	strip int
 	depth int
+	fold  bool
 }
 
 var tree_cmd = &cobra.Command{
@@ -72,6 +73,10 @@ var tree_cmd = &cobra.Command{
 			image := node.Value
 			for _, tag := range image.Tags {
 				fmt.Print(strings.Repeat("\t", lv), image.Name(), ":", tag, "\n")
+
+				if tree_flags.fold {
+					break
+				}
 			}
 
 			return nil
@@ -87,4 +92,5 @@ func init() {
 	flags := tree_cmd.Flags()
 	flags.IntVarP(&tree_flags.strip, "strip", "s", 0, "Skip first n levels")
 	flags.IntVarP(&tree_flags.depth, "depth", "d", 0, "Max levels to print")
+	flags.BoolVar(&tree_flags.fold, "fold", false, "Print only primary tags for same images")
 }
