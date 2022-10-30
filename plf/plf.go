@@ -1,7 +1,9 @@
 package plf
 
-func FuncMap() map[string]any {
-	return map[string]any{
+import "github.com/lesomnus/pl"
+
+func Funcs() pl.FuncMap {
+	return pl.FuncMap{
 		"contains":     Contains,
 		"regex":        Regex,
 		"toSemver":     ToSemver,

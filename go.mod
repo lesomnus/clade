@@ -6,13 +6,15 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/distribution/distribution v2.8.1+incompatible
 	github.com/docker/distribution v2.8.1+incompatible
+	github.com/lesomnus/pl v0.0.0-20221030083352-1b557aa08478
 	github.com/spf13/cobra v1.5.0
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	golang.org/x/exp v0.0.0-20220909182711-5c715a9e8561
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
+	github.com/alecthomas/participle/v2 v2.0.0-beta.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect

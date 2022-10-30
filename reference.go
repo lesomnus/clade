@@ -1,25 +1,24 @@
 package clade
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/distribution/distribution/reference"
-	"github.com/lesomnus/clade/pipeline"
+	"github.com/lesomnus/pl"
 	"gopkg.in/yaml.v3"
 )
 
 type RefNamedPipelineTagged interface {
 	reference.NamedTagged
-	Pipeline() pipeline.Pipeline
+	Pipeline() *pl.Pl
 }
 
 type refNamedPipelineTagged struct {
 	reference.Named
 	tag      string
-	pipeline pipeline.Pipeline
+	pipeline *pl.Pl
 }
 
 func (r *refNamedPipelineTagged) Domain() string {
@@ -38,7 +37,7 @@ func (r *refNamedPipelineTagged) String() string {
 	return fmt.Sprintf("%s:%s", r.Name(), r.tag)
 }
 
-func (r *refNamedPipelineTagged) Pipeline() pipeline.Pipeline {
+func (r *refNamedPipelineTagged) Pipeline() *pl.Pl {
 	return r.pipeline
 }
 
@@ -66,7 +65,8 @@ func (r *refNamedPipelineTagged) UnmarshalYAML(n *yaml.Node) error {
 		if pled, ok := ref.(RefNamedPipelineTagged); ok {
 			r.pipeline = pled.Pipeline()
 		} else {
-			r.pipeline = pipeline.Pipeline{&pipeline.Fn{Name: ">", Args: []any{r.tag}}}
+			fn, _ := pl.NewFn("pass", r.tag)
+			r.pipeline = pl.NewPl(fn)
 		}
 
 	case yaml.MappingNode:
@@ -87,7 +87,7 @@ func (r *refNamedPipelineTagged) UnmarshalYAML(n *yaml.Node) error {
 		}
 
 		r.tag = ref.Tag.Tag
-		r.pipeline = ref.Tag.Pl
+		r.pipeline = ref.Tag.pipeline
 
 	default:
 		return errors.New("invalid node type")
@@ -97,8 +97,8 @@ func (r *refNamedPipelineTagged) UnmarshalYAML(n *yaml.Node) error {
 }
 
 type tagExpr struct {
-	Tag string
-	Pl  pipeline.Pipeline
+	Tag      string
+	pipeline *pl.Pl
 }
 
 func (r *tagExpr) UnmarshalYAML(n *yaml.Node) error {
@@ -114,10 +114,10 @@ func (r *tagExpr) UnmarshalYAML(n *yaml.Node) error {
 			return err
 		}
 
-		r.Pl = ref.pipeline
+		r.pipeline = ref.pipeline
 
 	case yaml.SequenceNode:
-		if err := n.Decode(&r.Pl); err != nil {
+		if err := n.Decode(&r.pipeline); err != nil {
 			return err
 		}
 
@@ -134,10 +134,12 @@ func RefWithTag(named reference.Named, tag string) (RefNamedPipelineTagged, erro
 		return nil, err
 	}
 
+	fn, _ := pl.NewFn("pass", tag)
+
 	return &refNamedPipelineTagged{
 		Named:    named,
 		tag:      tag,
-		pipeline: pipeline.Return(tag),
+		pipeline: pl.NewPl(fn),
 	}, nil
 }
 
@@ -161,7 +163,7 @@ func ParseReference(s string) (reference.Named, error) {
 
 		tag := s[pos+1:]
 		if strings.HasPrefix(tag, "(") && strings.HasSuffix(tag, ")") {
-			pl, err := pipeline.Parse(bytes.NewReader([]byte(tag[1 : len(tag)-1])))
+			pl, err := pl.ParseString(tag)
 			if err != nil {
 				return nil, fmt.Errorf("%w: %s", reference.ErrDigestInvalidFormat, err.Error())
 			}

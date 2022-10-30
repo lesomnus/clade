@@ -6,9 +6,9 @@ import (
 	"github.com/blang/semver/v4"
 	"github.com/distribution/distribution/reference"
 	"github.com/lesomnus/clade"
-	"github.com/lesomnus/clade/pipeline"
 	"github.com/lesomnus/clade/plf"
 	"github.com/lesomnus/clade/sv"
+	"github.com/lesomnus/pl"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,8 +50,8 @@ func TestRefNamedPipelineTagged(t *testing.T) {
 	tagged, ok := named.(clade.RefNamedPipelineTagged)
 	require.True(ok)
 
-	exe := pipeline.Executor{
-		Funcs: pipeline.FuncMap{
+	exe := pl.Executor{
+		Funcs: pl.FuncMap{
 			"localTags":    func() []string { return []string{"1.0", "1.1", "2.0"} },
 			"toSemver":     plf.ToSemver,
 			"semverLatest": plf.SemverLatest,
