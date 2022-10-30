@@ -45,6 +45,8 @@ github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxv
 github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515/go.mod h1:+0opPa2QZZtGFBFZlji/RkVcI2GknAs/DXo4wKdlNEc=
 github.com/lesomnus/pl v0.0.0-20221030075305-89e65212dcfa h1:fh8TUVeA47FX7Ktk/x5CQ0+cxZUst0m9IVw//MP9j9k=
 github.com/lesomnus/pl v0.0.0-20221030075305-89e65212dcfa/go.mod h1:KDd3PSIfEEMP2D1HII03jdoiRm30OcnV+zr7H11DjYI=
+github.com/lesomnus/pl v0.0.0-20221030083352-1b557aa08478 h1:Jjtt0vGkaOwrfyuUZJpfiOaCpGXv2wSlEluYBNICF/M=
+github.com/lesomnus/pl v0.0.0-20221030083352-1b557aa08478/go.mod h1:KDd3PSIfEEMP2D1HII03jdoiRm30OcnV+zr7H11DjYI=
 github.com/matttproud/golang_protobuf_extensions v1.0.1 h1:4hp9jkHxhMHkqkrB3Ix0jegS5sx/RkqARlsWZ6pIwiU=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=

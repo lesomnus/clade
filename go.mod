@@ -6,7 +6,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/distribution/distribution v2.8.1+incompatible
 	github.com/docker/distribution v2.8.1+incompatible
-	github.com/lesomnus/pl v0.0.0-20221030075305-89e65212dcfa
+	github.com/lesomnus/pl v0.0.0-20221030083352-1b557aa08478
 	github.com/spf13/cobra v1.5.0
 	github.com/stretchr/testify v1.8.1
 	golang.org/x/exp v0.0.0-20220909182711-5c715a9e8561
