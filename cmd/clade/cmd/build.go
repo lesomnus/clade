@@ -3,30 +3,35 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"os"
-	"os/exec"
 
 	"github.com/distribution/distribution/reference"
 	"github.com/lesomnus/clade"
+	"github.com/lesomnus/clade/builder"
 	"github.com/lesomnus/clade/cmd/clade/cmd/internal"
 	"github.com/spf13/cobra"
 )
 
 var build_flags struct {
 	dry_run bool
+	builder string
 }
 
 var build_cmd = &cobra.Command{
-	Use:   "build [flags] reference",
+	Use:   "build [flags] reference [-- [Builder Args]]",
 	Short: "build image",
 
 	DisableFlagsInUseLine: true,
 
-	Args: cobra.ExactArgs(1),
+	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		named, err := reference.ParseNamed(args[0])
 		if err != nil {
 			return fmt.Errorf("failed to parse reference: %w", err)
+		}
+
+		builder_args := []string{}
+		if len(args) > 1 {
+			builder_args = args[1:]
 		}
 
 		target_ref, ok := named.(reference.NamedTagged)
@@ -34,17 +39,12 @@ var build_cmd = &cobra.Command{
 			return errors.New("reference must be tagged")
 		}
 
-		docker_binary, err := exec.LookPath("docker")
+		b, err := builder.New(build_flags.builder, builder.BuilderConfig{
+			DryRun: build_flags.dry_run,
+			Args:   builder_args,
+		})
 		if err != nil {
-			if errors.Is(err, exec.ErrNotFound) {
-				if build_flags.dry_run {
-					docker_binary = "docker"
-				} else {
-					return errors.New("docker not found")
-				}
-			} else {
-				return fmt.Errorf("failed to find docker: %w", err)
-			}
+			return fmt.Errorf("failed to create builder: %w", err)
 		}
 
 		bt := clade.NewBuildTree()
@@ -58,49 +58,7 @@ var build_cmd = &cobra.Command{
 		}
 
 		target_image := target_node.Value
-		builder := &exec.Cmd{
-			Path:   docker_binary,
-			Dir:    target_image.ContextPath,
-			Stdout: os.Stdout,
-			Stderr: os.Stderr,
-		}
-
-		builder.Args = func() []string {
-			args := []string{builder.Path, "build"}
-			args = append(args, "--file", target_image.Dockerfile)
-
-			for _, tag := range target_image.Tags {
-				args = append(args, "--tag", fmt.Sprintf("%s:%s", target_image.Name(), tag))
-			}
-
-			build_args := make(map[string]string)
-			for k, v := range target_image.Args {
-				build_args[k] = v
-			}
-
-			build_args["BASE"] = target_image.From.Name()
-			build_args["TAG"] = target_image.From.Tag()
-
-			for k, v := range build_args {
-				args = append(args, "--build-arg", fmt.Sprintf("%s=%s", k, v))
-			}
-
-			args = append(args, target_image.ContextPath)
-
-			return args
-		}()
-
-		fmt.Printf("run: %v\n", builder.Args)
-
-		if build_flags.dry_run {
-			return nil
-		}
-
-		if err := builder.Run(); err != nil {
-			return fmt.Errorf("failed to build: %w", err)
-		}
-
-		return nil
+		return b.Build(target_image)
 	},
 }
 
@@ -109,4 +67,5 @@ func init() {
 
 	flags := build_cmd.Flags()
 	flags.BoolVar(&build_flags.dry_run, "dry-run", false, "Do not start build")
+	flags.StringVar(&build_flags.builder, "builder", "docker-cmd", "Builder to use for the build.")
 }
