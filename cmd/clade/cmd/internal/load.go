@@ -8,16 +8,36 @@ import (
 	"text/template"
 
 	"github.com/lesomnus/clade"
-	"github.com/lesomnus/clade/pipeline"
 	"github.com/lesomnus/clade/plf"
 	"github.com/lesomnus/clade/tree"
+	"github.com/lesomnus/pl"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 )
 
+func hasFunc(pipeline *pl.Pl, name string) bool {
+	for _, fn := range pipeline.Funcs {
+		if fn.Name == name {
+			return true
+		}
+
+		for _, arg := range fn.Args {
+			if arg.Nested == nil {
+				continue
+			}
+
+			if hasFunc(arg.Nested, name) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) ([]*clade.Image, error) {
 	local_tags := make([]string, 0)
-	if image.From.Pipeline().HasFunction("localTags") {
+	if hasFunc(image.From.Pipeline(), "localTags") {
 		for _, node := range bt.Tree {
 			if node.Value.Name() != image.From.Name() {
 				continue
@@ -28,7 +48,7 @@ func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) (
 	}
 
 	remote_tags := make([]string, 0)
-	if image.From.Pipeline().HasFunction("remoteTags") {
+	if hasFunc(image.From.Pipeline(), "remoteTags") {
 		repo, err := NewRepository(image.From)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create client: %w", err)
@@ -42,16 +62,14 @@ func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) (
 		remote_tags = tags
 	}
 
-	exe := pipeline.Executor{
-		Funcs: plf.FuncMap(),
-	}
-
-	maps.Copy(exe.Funcs, pipeline.FuncMap{
+	executor := pl.NewExecutor()
+	maps.Copy(executor.Funcs, plf.Funcs())
+	maps.Copy(executor.Funcs, pl.FuncMap{
 		"localTags":  func() []string { return local_tags },
 		"remoteTags": func() []string { return remote_tags },
 	})
 
-	results, err := exe.Execute(image.From.Pipeline())
+	results, err := executor.Execute(image.From.Pipeline())
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute pipeline: %w", err)
 	}
