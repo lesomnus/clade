@@ -7,6 +7,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/distribution/distribution/reference"
 	"github.com/lesomnus/clade"
 	"github.com/lesomnus/clade/plf"
 	"github.com/lesomnus/clade/tree"
@@ -106,7 +107,7 @@ func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) (
 
 		tag := base_tags[i]
 
-		from, err := clade.RefWithTag(image.From, tag)
+		tagged, err := reference.WithTag(image.From, tag)
 		if err != nil {
 			return nil, fmt.Errorf("invalid tag %s: %w", tag, err)
 		}
@@ -114,7 +115,7 @@ func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) (
 		img := &clade.Image{}
 		*img = *image
 		img.Tags = tags
-		img.From = from
+		img.From = clade.AsRefNamedPipelineTagged(tagged)
 
 		images = append(images, img)
 	}
