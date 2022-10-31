@@ -18,7 +18,7 @@ RUN cd "${VCPKG_ROOT}" \
 		git fetch --depth=1 origin "${VCPKG_REF}" \
 		&& git checkout FETCH_HEAD \
 	; fi \
-	; sudo -u ${USERNAME} vcpkg install "ffmpeg[ \
+	; sudo -u "${USERNAME}" VCPKG_FORCE_SYSTEM_BINARIES=1 vcpkg install "ffmpeg[ \
 		aom, \
 		ilbc, \
 		openh264, \

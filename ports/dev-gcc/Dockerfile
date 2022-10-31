@@ -65,8 +65,8 @@ RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
 ARG USERNAME=hypnos
 ARG USER_UID=${UID:-1000}
 ARG USER_GID=${GID:-${USER_UID}}
-RUN groupadd ${USER_GID} --gid ${USER_GID} \
-	&& useradd --create-home ${USERNAME} --shell /bin/bash --uid ${USER_UID} --gid ${USER_GID} \
+RUN groupadd "${USERNAME}" --gid "${USER_GID}" \
+	&& useradd --create-home "${USERNAME}" --shell /bin/bash --uid "${USER_UID}" --gid "${USER_GID}" \
 	&& echo "${USERNAME}:${USERNAME}" | chpasswd \
 	&& echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/${USERNAME}"
 
@@ -91,13 +91,19 @@ RUN apt-get update \
 
 # Install CMake
 ARG CMAKE_VERSION
-RUN TMP_DIR=$(mktemp -d -t cmake-${CMAKE_VERSION}-XXXX) \
-	&& echo ${TMP_DIR} \
-	&& cd ${TMP_DIR} \
-	&& curl -sSL "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz" -O \
+RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
+	&& case "${dpkgArch##*-}" in \
+		amd64) ARCH='x86_64';; \
+		arm64) ARCH='aarch64';; \
+		*) echo "unsupported architecture"; exit 1 ;; \
+	esac \
+	&& TMP_DIR=$(mktemp -d -t cmake-${CMAKE_VERSION}-XXXX) \
+	&& echo "${TMP_DIR}" \
+	&& cd "${TMP_DIR}" \
+	&& curl -sSL "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-${ARCH}.tar.gz" -O \
 	&& curl -sSL "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-SHA-256.txt" -o checksum \
 	&& sha256sum --check --ignore-missing "checksum" \
-	&& tar -xzf "cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz" \
+	&& tar -xzf "cmake-${CMAKE_VERSION}-linux-${ARCH}.tar.gz" \
 		--exclude bin/cmake-gui \
 		--exclude doc/cmake \
 		--exclude "share/cmake-*/Help" \
@@ -106,17 +112,20 @@ RUN TMP_DIR=$(mktemp -d -t cmake-${CMAKE_VERSION}-XXXX) \
 	&& cp -rf * /opt/cmake/. \
 	&& ln -s /opt/cmake/bin/cmake /usr/local/bin/cmake \
 	&& ln -s /opt/cmake/bin/ctest /usr/local/bin/ctest \
-	&& rm -rf ${TMP_DIR}
+	&& cmake --version \
+	&& rm -rf "${TMP_DIR}"
 
 
 
 # Install vcpkg
 ENV VCPKG_ROOT=/opt/vcpkg \
-	VCPKG_DOWNLOADS=/opt/vcpkg-downloads
+	VCPKG_DOWNLOADS=/opt/vcpkg-downloads \
+	VCPKG_FORCE_SYSTEM_BINARIES=1
 RUN mkdir -p "${VCPKG_ROOT}" "${VCPKG_DOWNLOADS}" \
 	&& chown -R "${USER_UID}:${USER_GID}" "${VCPKG_ROOT}" "${VCPKG_DOWNLOADS}" \
-	&& sudo -u ${USERNAME} git clone --depth 1 --branch master --single-branch https://github.com/microsoft/vcpkg "${VCPKG_ROOT}" \
+	&& sudo -u "${USERNAME}" git clone --single-branch https://github.com/microsoft/vcpkg "${VCPKG_ROOT}" \
 	&& cd "${VCPKG_ROOT}" \
 	&& ./bootstrap-vcpkg.sh -disableMetrics \
 	&& ln -s /opt/vcpkg/vcpkg /usr/local/bin/vcpkg \
-	&& VCPKG_FORCE_SYSTEM_BINARIES=1 sudo -u ${USERNAME} "${VCPKG_ROOT}/vcpkg" integrate bash
+	&& sudo -u "${USERNAME}" VCPKG_FORCE_SYSTEM_BINARIES=1 vcpkg integrate bash \
+	&& vcpkg --version
