@@ -65,8 +65,8 @@ RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
 ARG USERNAME=hypnos
 ARG USER_UID=${UID:-1000}
 ARG USER_GID=${GID:-${USER_UID}}
-RUN groupadd ${USER_GID} --gid ${USER_GID} \
-	&& useradd --create-home ${USERNAME} --shell /bin/bash --uid ${USER_UID} --gid ${USER_GID} \
+RUN groupadd "${USERNAME}" --gid ${USER_GID} \
+	&& useradd --create-home "${USERNAME}" --shell /bin/bash --uid "${USER_UID}" --gid "${USER_GID}" \
 	&& echo "${USERNAME}:${USERNAME}" | chpasswd \
 	&& echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/${USERNAME}"
 
