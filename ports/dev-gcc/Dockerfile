@@ -91,13 +91,19 @@ RUN apt-get update \
 
 # Install CMake
 ARG CMAKE_VERSION
-RUN TMP_DIR=$(mktemp -d -t cmake-${CMAKE_VERSION}-XXXX) \
-	&& echo ${TMP_DIR} \
-	&& cd ${TMP_DIR} \
-	&& curl -sSL "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz" -O \
+RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
+	&& case "${dpkgArch##*-}" in \
+		amd64) ARCH='x86_64';; \
+		arm64) ARCH='aarch64';; \
+		*) echo "unsupported architecture"; exit 1 ;; \
+	esac \
+	&& TMP_DIR=$(mktemp -d -t cmake-${CMAKE_VERSION}-XXXX) \
+	&& echo "${TMP_DIR}" \
+	&& cd "${TMP_DIR}" \
+	&& curl -sSL "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-${ARCH}.tar.gz" -O \
 	&& curl -sSL "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-SHA-256.txt" -o checksum \
 	&& sha256sum --check --ignore-missing "checksum" \
-	&& tar -xzf "cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz" \
+	&& tar -xzf "cmake-${CMAKE_VERSION}-linux-${ARCH}.tar.gz" \
 		--exclude bin/cmake-gui \
 		--exclude doc/cmake \
 		--exclude "share/cmake-*/Help" \
@@ -107,7 +113,7 @@ RUN TMP_DIR=$(mktemp -d -t cmake-${CMAKE_VERSION}-XXXX) \
 	&& ln -s /opt/cmake/bin/cmake /usr/local/bin/cmake \
 	&& ln -s /opt/cmake/bin/ctest /usr/local/bin/ctest \
 	&& cmake --version \
-	&& rm -rf ${TMP_DIR}
+	&& rm -rf "${TMP_DIR}"
 
 
 
