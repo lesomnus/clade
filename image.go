@@ -36,10 +36,6 @@ func (i *Image) UnmarshalYAML(n *yaml.Node) error {
 }
 
 func (i *Image) Tagged() (reference.NamedTagged, error) {
-	if tagged, ok := i.Named.(reference.NamedTagged); ok {
-		return tagged, nil
-	}
-
 	if len(i.Tags) == 0 {
 		return nil, errors.New("not tagged")
 	}

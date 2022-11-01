@@ -99,41 +99,8 @@ func DeduplicateBySemver(lhs *[]string, rhs *[]string) error {
 	return nil
 }
 
-// ResolvePath returns an absolute representation of joined path of `base` and `path`.
-// If the joined path is not absolute, it will be joined with the current working directory to turn it into an absolute path.
-// If the `path` is empty, the `base` is joined with `fallback`.
-func ResolvePath(base string, path string, fallback string) (string, error) {
-	if base == "" {
-		wd, err := os.Getwd()
-		if err != nil {
-			return "", err
-		}
-
-		base = wd
-	}
-
-	if !filepath.IsAbs(base) {
-		abs, err := filepath.Abs(base)
-		if err != nil {
-			return "", err
-		}
-
-		base = abs
-	}
-
-	if path == "" {
-		path = fallback
-	}
-
-	if filepath.IsAbs(path) {
-		return path, nil
-	}
-
-	return filepath.Join(base, path), nil
-}
-
 // ReadPort parses port file at given path.
-// If fills empty fields in children by using fields in parent if possible according to Port rules.
+// It fills empty fields in children by using fields in parent if possible according to Port rules.
 // For example, if .Images[].Dockerfile empty, it will use .Dockerfile.
 func ReadPort(path string) (*Port, error) {
 	data, err := os.ReadFile(path)
