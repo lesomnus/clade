@@ -42,37 +42,18 @@ func (r *refNamedPipelineTagged) Pipeline() *pl.Pl {
 }
 
 func (r *refNamedPipelineTagged) UnmarshalYAML(n *yaml.Node) error {
+	ref_str := ""
+
 	switch n.Kind {
 	case yaml.ScalarNode:
-		var s string
-		if err := n.Decode(&s); err != nil {
+		if err := n.Decode(&ref_str); err != nil {
 			return err
-		}
-
-		ref, err := ParseReference(s)
-		if err != nil {
-			return err
-		} else {
-			r.Named = ref
-		}
-
-		if tagged, ok := ref.(reference.Tagged); !ok {
-			return errors.New("reference must be tagged")
-		} else {
-			r.tag = tagged.Tag()
-		}
-
-		if pled, ok := ref.(RefNamedPipelineTagged); ok {
-			r.pipeline = pled.Pipeline()
-		} else {
-			fn, _ := pl.NewFn("pass", r.tag)
-			r.pipeline = pl.NewPl(fn)
 		}
 
 	case yaml.MappingNode:
 		type refMap struct {
 			Name string
-			Tag  *tagExpr
+			Tag  string
 		}
 
 		var ref refMap
@@ -80,103 +61,73 @@ func (r *refNamedPipelineTagged) UnmarshalYAML(n *yaml.Node) error {
 			return err
 		}
 
-		if named, err := reference.ParseNamed(ref.Name); err != nil {
-			return err
-		} else {
-			r.Named = named
-		}
-
-		r.tag = ref.Tag.Tag
-		r.pipeline = ref.Tag.pipeline
+		ref_str = fmt.Sprintf("%s:%s", ref.Name, ref.Tag)
 
 	default:
 		return errors.New("invalid node type")
 	}
 
-	return nil
-}
-
-type tagExpr struct {
-	Tag      string
-	pipeline *pl.Pl
-}
-
-func (r *tagExpr) UnmarshalYAML(n *yaml.Node) error {
-	switch n.Kind {
-	case yaml.ScalarNode:
-		if err := n.Decode(&r.Tag); err != nil {
-			return err
-		}
-
-		expr := "x.x/x/x:" + r.Tag
-		var ref refNamedPipelineTagged
-		if err := yaml.Unmarshal([]byte(expr), &ref); err != nil {
-			return err
-		}
-
-		r.pipeline = ref.pipeline
-
-	case yaml.SequenceNode:
-		if err := n.Decode(&r.pipeline); err != nil {
-			return err
-		}
-
-	default:
-		return errors.New("invalid node type")
+	ref, err := ParseRefNamedTagged(ref_str)
+	if err != nil {
+		return err
 	}
 
+	*r = *asRefNamedPipelineTagged(ref)
+
 	return nil
 }
 
-func RefWithTag(named reference.Named, tag string) (RefNamedPipelineTagged, error) {
-	// Test if valid tag.
-	if _, err := reference.WithTag(named, tag); err != nil {
+// ParseRefNamedTagged parses given string into named tagged reference.
+// If the tag is a pipeline expression, returned reference implements `RefNamedPipelineTagged`.
+func ParseRefNamedTagged(s string) (reference.NamedTagged, error) {
+	pos := strings.LastIndex(s, ":")
+	if pos < 0 {
+		return nil, errors.New("no tag")
+	}
+
+	tag := s[pos+1:]
+	if tag == "" {
+		return nil, errors.New("no tag")
+	}
+
+	named, err := reference.ParseNamed(s[:pos])
+	if err != nil {
 		return nil, err
 	}
 
-	fn, _ := pl.NewFn("pass", tag)
+	if strings.HasPrefix(tag, "(") && strings.HasSuffix(tag, ")") {
+		pl, err := pl.ParseString(tag)
+		if err != nil {
+			return nil, fmt.Errorf("invalid pipeline: %w", err)
+		}
 
-	return &refNamedPipelineTagged{
-		Named:    named,
-		tag:      tag,
-		pipeline: pl.NewPl(fn),
-	}, nil
+		return &refNamedPipelineTagged{
+			Named:    named,
+			tag:      tag,
+			pipeline: pl,
+		}, nil
+	} else {
+		return reference.WithTag(named, tag)
+	}
 }
 
-func ParseReference(s string) (reference.Named, error) {
-	ref, err := reference.ParseNamed(s)
-	if err != nil {
-		if !errors.Is(err, reference.ErrReferenceInvalidFormat) {
-			return nil, err
-		}
-
-		pos := strings.LastIndex(s, ":")
-		if pos < 0 {
-			// Not tag field
-			return nil, err
-		}
-
-		named, err := reference.ParseNamed(s[:pos])
-		if err != nil {
-			return nil, err
-		}
-
-		tag := s[pos+1:]
-		if strings.HasPrefix(tag, "(") && strings.HasSuffix(tag, ")") {
-			pl, err := pl.ParseString(tag)
-			if err != nil {
-				return nil, fmt.Errorf("%w: %s", reference.ErrDigestInvalidFormat, err.Error())
-			}
-
-			ref = &refNamedPipelineTagged{
-				Named:    named,
-				tag:      tag,
-				pipeline: pl,
-			}
-		} else {
-			return nil, reference.ErrTagInvalidFormat
-		}
+func asRefNamedPipelineTagged(ref reference.NamedTagged) *refNamedPipelineTagged {
+	pl_ref, ok := ref.(*refNamedPipelineTagged)
+	if ok {
+		return pl_ref
 	}
 
-	return ref, nil
+	fn, _ := pl.NewFn("pass", ref.Tag())
+
+	return &refNamedPipelineTagged{
+		Named:    ref,
+		tag:      ref.Tag(),
+		pipeline: pl.NewPl(fn),
+	}
+}
+
+// AsRefNamedPipelineTagged returns reference implements RefNamedPipelineTagged by creating
+// pass-only pipeline that passes tag string of given reference.
+func AsRefNamedPipelineTagged(ref reference.NamedTagged) RefNamedPipelineTagged {
+	return asRefNamedPipelineTagged(ref)
 }
