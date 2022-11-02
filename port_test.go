@@ -1,6 +1,8 @@
 package clade_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/lesomnus/clade"
@@ -144,4 +146,52 @@ func TestDeduplicateBySemver(t *testing.T) {
 		require.ElementsMatch(t, tc.expected.lhs, actual.lhs)
 		require.ElementsMatch(t, tc.expected.rhs, actual.rhs)
 	}
+}
+
+func TestReadPort(t *testing.T) {
+	require := require.New(t)
+
+	data := `
+name: cr.io/foo/bar
+args:
+  YEAR: 2009
+
+images:
+  - tags: [a, b, c]
+    from: hub.io/foo/bar:baz
+
+  - tags: [inglourious]
+    from: hub.io/foo/bar:basterds
+    args:
+      VILLAIN: Hans Landa
+    dockerfile: 35mm Nitrate Film
+    context: Le Gamaar cinema
+`
+
+	dir := os.TempDir()
+	tmp, err := os.CreateTemp(dir, "")
+	require.NoError(err)
+
+	defer os.Remove(tmp.Name())
+
+	_, err = tmp.Write([]byte(data))
+	require.NoError(err)
+
+	port, err := clade.ReadPort(tmp.Name())
+	require.NoError(err)
+	require.Len(port.Images, 2)
+	require.Equal(port.Images[0].From.String(), "hub.io/foo/bar:baz")
+	require.Equal(port.Images[1].From.String(), "hub.io/foo/bar:basterds")
+
+	require.Equal(filepath.Join(dir, "Dockerfile"), port.Images[0].Dockerfile, "default dockerfile is {path}/Dockerfile")
+	require.Equal(filepath.Join(dir, "."), port.Images[0].ContextPath, "default context is {path}")
+	require.Contains(port.Images[0].Args, "YEAR", "root args are inherited")
+	require.Equal(port.Images[0].Args["YEAR"], "2009", "root args are inherited")
+
+	require.Equal(filepath.Join(dir, "35mm Nitrate Film"), port.Images[1].Dockerfile)
+	require.Equal(filepath.Join(dir, "Le Gamaar cinema"), port.Images[1].ContextPath)
+	require.Contains(port.Images[1].Args, "YEAR")
+	require.Equal(port.Images[1].Args["YEAR"], "2009")
+	require.Contains(port.Images[1].Args, "VILLAIN")
+	require.Equal(port.Images[1].Args["VILLAIN"], "Hans Landa")
 }
