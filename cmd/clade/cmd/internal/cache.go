@@ -2,6 +2,7 @@ package internal
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -31,6 +32,7 @@ func (s *CacheStore) GetTags(ref reference.Named) ([]string, bool) {
 		return nil, false
 	}
 
+	fmt.Println("cache hit: ", ref.Name())
 	return tags, true
 }
 
