@@ -51,10 +51,10 @@ func (s *CacheStore) SetTags(ref reference.Named, tags []string) {
 func init() {
 	now := time.Now().Format("2006-01-02")
 
-	tmp_dir := filepath.Join(os.TempDir(), "clade-cache-"+now)
-	if err := os.MkdirAll(tmp_dir, 0755); err != nil {
-		panic(err)
+	dir, ok := os.LookupEnv("CLADE_CACHE_DIR")
+	if ok {
+		Cache.Dir = dir
+	} else {
+		Cache.Dir = filepath.Join(os.TempDir(), "clade-cache-"+now)
 	}
-
-	Cache.Dir = tmp_dir
 }
