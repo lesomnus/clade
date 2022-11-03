@@ -14,8 +14,6 @@ on:
 jobs:
   outdated:
     runs-on: ubuntu-22.04
-    env:
-      CLADE_CACHE_DIR: ./.clade-cache
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
@@ -27,6 +25,8 @@ jobs:
         run: |
           _DATE=$(date '+%Y-%m-%d')
           echo ${_DATE}
+
+          echo "CLADE_CACHE_DIR=$(pwd)/.clade-cache" >> $GITHUB_ENV
           echo "CLADE_CI_DATE=${_DATE}" >> $GITHUB_ENV
 
       - uses: actions/cache@v3
