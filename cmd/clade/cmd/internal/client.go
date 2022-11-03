@@ -58,7 +58,16 @@ func NewTransport(ref reference.Named, actions ...string) http.RoundTripper {
 
 func NewRepository(ref reference.Named, actions ...string) (distribution.Repository, error) {
 	name_only, _ := reference.WithName(reference.Path(ref))
-	return client.NewRepository(name_only, "https://"+reference.Domain(ref), NewTransport(ref, actions...))
+
+	repo, err := client.NewRepository(name_only, "https://"+reference.Domain(ref), NewTransport(ref, actions...))
+	if err != nil {
+		return nil, err
+	}
+
+	return &repoWrapper{
+		Repository: repo,
+		ref:        ref,
+	}, nil
 }
 
 type ManifestGetter struct {

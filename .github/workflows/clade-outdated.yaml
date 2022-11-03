@@ -2,6 +2,12 @@ name: clade outdated
 
 on:
   workflow_dispatch:
+    inputs:
+      cascade:
+        description: Trigger builds on outdated images
+        required: false
+        default: false
+        type: boolean
   schedule:
     - cron: "0 0 * * *"
 
@@ -15,13 +21,26 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Env
+        run: |
+          _DATE=$(date '+%Y-%m-%d')
+          echo ${_DATE}
+
+          echo "CLADE_CACHE_DIR=$(pwd)/.clade-cache" >> $GITHUB_ENV
+          echo "CLADE_CI_DATE=${_DATE}" >> $GITHUB_ENV
+
+      - uses: actions/cache@v3
+        with:
+          path: ${{ env.CLADE_CACHE_DIR }}
+          key: clade-cache-${{ env.CLADE_CI_DATE }}
+
       - name: Outdated
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           for reference in $(go run ./cmd/clade outdated); do
             echo build ${reference}
-            ${{ env.ACT && 'echo' }} gh workflow run "clade build" \
+            ${{ (env.ACT || github.event.inputs.cascade == 'false') && 'echo' }} gh workflow run "clade build" \
               --ref "${{ github.ref }}" \
               --field "reference=${reference}" \
               --field "cascade=true"
