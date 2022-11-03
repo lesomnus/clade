@@ -29,6 +29,11 @@ jobs:
           echo ${_DATE}
           echo "CLADE_CI_DATE=${_DATE}" >> $GITHUB_ENV
 
+      - uses: actions/cache@v3
+        with:
+          path: ${{ env.CLADE_CACHE_DIR }}
+          key: clade-cache-${{ env.CLADE_CI_DATE }}
+
       - name: Outdated
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -40,8 +45,3 @@ jobs:
               --field "reference=${reference}" \
               --field "cascade=true"
           done
-
-      - uses: actions/cache@v3
-        with:
-          path: clade-cache-${{ env.CLADE_CACHE_DIR }}
-          key: ${{ env.CLADE_CI_DATE }}
