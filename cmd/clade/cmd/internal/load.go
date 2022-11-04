@@ -37,19 +37,13 @@ func hasFunc(pipeline *pl.Pl, name string) bool {
 }
 
 func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) ([]*clade.Image, error) {
-	local_tags := make([]string, 0)
-	if hasFunc(image.From.Pipeline(), "localTags") {
-		for _, node := range bt.Tree {
-			if node.Value.Name() != image.From.Name() {
-				continue
-			}
-
-			local_tags = append(local_tags, node.Value.Tags...)
+	executor := pl.NewExecutor()
+	maps.Copy(executor.Funcs, plf.Funcs())
+	executor.Funcs["tags"] = func() ([]string, error) {
+		if tags := bt.TagsByName[image.From.Name()]; len(tags) > 0 {
+			return tags, nil
 		}
-	}
 
-	remote_tags := make([]string, 0)
-	if hasFunc(image.From.Pipeline(), "remoteTags") {
 		repo, err := NewRepository(image.From)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create client: %w", err)
@@ -60,15 +54,8 @@ func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) (
 			return nil, fmt.Errorf("failed to get tags: %w", err)
 		}
 
-		remote_tags = tags
+		return tags, nil
 	}
-
-	executor := pl.NewExecutor()
-	maps.Copy(executor.Funcs, plf.Funcs())
-	maps.Copy(executor.Funcs, pl.FuncMap{
-		"localTags":  func() []string { return local_tags },
-		"remoteTags": func() []string { return remote_tags },
-	})
 
 	results, err := executor.Execute(image.From.Pipeline())
 	if err != nil {

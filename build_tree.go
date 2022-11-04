@@ -7,13 +7,20 @@ import (
 
 type BuildTree struct {
 	tree.Tree[*Image]
+	TagsByName map[string][]string
 }
 
 func NewBuildTree() *BuildTree {
-	return &BuildTree{make(tree.Tree[*Image])}
+	return &BuildTree{
+		Tree:       make(tree.Tree[*Image]),
+		TagsByName: make(map[string][]string),
+	}
 }
 
 func (t *BuildTree) Insert(image *Image) error {
+	name := image.Name()
+	t.TagsByName[name] = append(t.TagsByName[name], image.Tags...)
+
 	from := image.From.String()
 
 	for _, tag := range image.Tags {

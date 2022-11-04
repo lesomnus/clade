@@ -102,7 +102,16 @@ func TestBuildTree(t *testing.T) {
 		}
 
 		test("foo")
-		test("foo")
+		test("bar")
+	})
+
+	t.Run("Tags by name", func(t *testing.T) {
+		require := require.New(t)
+
+		require.ElementsMatch([]string{"a1", "a2", "a3", "b1", "b2"}, bt.TagsByName["local.io/foo/a"])
+		require.ElementsMatch([]string{"a1", "a2", "a3", "b1", "b2"}, bt.TagsByName["local.io/bar/a"])
+		require.ElementsMatch([]string{"c1", "c2", "c3", "c4", "bb1", "bb2", "bb3", "bb4", "bb5"}, bt.TagsByName["local.io/foo/b"])
+		require.ElementsMatch([]string{"c1", "c2", "c3", "c4", "bb1", "bb2", "bb3", "bb4", "bb5"}, bt.TagsByName["local.io/bar/b"])
 	})
 
 	t.Run("Insert fails if insert image with invalid tag", func(t *testing.T) {
