@@ -40,7 +40,13 @@ images:
 
 		require.Len(port.Images, 1)
 		require.Equal("cr.io/foo/bar", port.Images[0].Name())
-		require.Equal([]string{"a", "b", "c"}, port.Images[0].Tags)
+
+		tags := make([]string, len(port.Images[0].Tags))
+		for i, tag := range port.Images[0].Tags {
+			tags[i] = tag.String()
+		}
+		require.ElementsMatch([]string{"a", "b", "c"}, tags)
+
 		require.Equal("hub.io/foo/bar:a", port.Images[0].From.String())
 		require.Empty(port.Images[0].Args)
 		require.Empty(port.Images[0].Dockerfile)

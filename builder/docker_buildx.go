@@ -10,7 +10,7 @@ type dockerBuildxBuilder struct {
 	*dockerBuilder
 }
 
-func (b *dockerBuildxBuilder) Build(image *clade.Image) error {
+func (b *dockerBuildxBuilder) Build(image *clade.ResolvedImage) error {
 	cmd := b.dockerBuilder.newCmd(image)
 
 	args := []string{cmd.Args[0], "buildx", "build"}

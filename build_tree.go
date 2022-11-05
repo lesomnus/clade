@@ -1,29 +1,38 @@
 package clade
 
 import (
+	"fmt"
+
 	"github.com/docker/distribution/reference"
 	"github.com/lesomnus/clade/tree"
 )
 
 type BuildTree struct {
-	tree.Tree[*Image]
+	tree.Tree[*ResolvedImage]
+	TagsByName map[string][]string
 }
 
 func NewBuildTree() *BuildTree {
-	return &BuildTree{make(tree.Tree[*Image])}
+	return &BuildTree{
+		Tree:       make(tree.Tree[*ResolvedImage]),
+		TagsByName: make(map[string][]string),
+	}
 }
 
-func (t *BuildTree) Insert(image *Image) error {
+func (t *BuildTree) Insert(image *ResolvedImage) error {
+	name := image.Name()
+	t.TagsByName[name] = append(t.TagsByName[name], image.Tags...)
+
 	from := image.From.String()
 
 	for _, tag := range image.Tags {
 		ref, err := reference.WithTag(image.Named, tag)
 		if err != nil {
-			return err
+			return fmt.Errorf("%w: %s", err, tag)
 		}
 
 		if parent := t.Tree.Insert(from, ref.String(), image).Parent; parent.Value == nil {
-			parent.Value = &Image{
+			parent.Value = &ResolvedImage{
 				Named: image.From,
 				Tags:  []string{image.From.Tag()},
 			}
@@ -33,9 +42,9 @@ func (t *BuildTree) Insert(image *Image) error {
 	return nil
 }
 
-func (t *BuildTree) Walk(walker tree.Walker[*Image]) error {
-	visited := make(map[*Image]struct{})
-	return t.AsNode().Walk(func(level int, name string, node *tree.Node[*Image]) error {
+func (t *BuildTree) Walk(walker tree.Walker[*ResolvedImage]) error {
+	visited := make(map[*ResolvedImage]struct{})
+	return t.AsNode().Walk(func(level int, name string, node *tree.Node[*ResolvedImage]) error {
 		if _, ok := visited[node.Value]; ok {
 			return nil
 		} else {
