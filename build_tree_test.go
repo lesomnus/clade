@@ -66,9 +66,9 @@ func TestBuildTree(t *testing.T) {
 
 	bt := clade.NewBuildTree()
 	for _, img := range imgs {
-		bt.Insert(&clade.Image{
+		bt.Insert(&clade.ResolvedImage{
 			Named: must(reference.ParseNamed(img.name)),
-			From:  clade.AsRefNamedPipelineTagged(must(clade.ParseRefNamedTagged(img.from))),
+			From:  must(clade.ParseRefNamedTagged(img.from)),
 			Tags:  img.tags,
 		})
 	}
@@ -117,10 +117,10 @@ func TestBuildTree(t *testing.T) {
 	t.Run("Insert fails if insert image with invalid tag", func(t *testing.T) {
 		require := require.New(t)
 
-		err := bt.Insert(&clade.Image{
+		err := bt.Insert(&clade.ResolvedImage{
 			Named: must(reference.ParseNamed("cr.io/foo/bar")),
 			Tags:  []string{"John Wick"},
-			From:  clade.AsRefNamedPipelineTagged(must(clade.ParseRefNamedTagged("hub.io/foo/bar:baz"))),
+			From:  must(clade.ParseRefNamedTagged("hub.io/foo/bar:baz")),
 		})
 
 		require.ErrorContains(err, "invalid")
@@ -130,7 +130,7 @@ func TestBuildTree(t *testing.T) {
 		require := require.New(t)
 
 		cnt := map[string]int{}
-		bt.Walk(func(level int, name string, node *tree.Node[*clade.Image]) error {
+		bt.Walk(func(level int, name string, node *tree.Node[*clade.ResolvedImage]) error {
 			cnt[node.Value.Name()]++
 			return nil
 		})

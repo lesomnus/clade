@@ -100,7 +100,7 @@ func TestImageUnmarshalFromField(t *testing.T) {
 			{
 				desc:  "invalid image format",
 				input: "tags: 42",
-				msgs:  []string{"int", "42", "[]string"},
+				msgs:  []string{"int", "42"},
 			},
 			{
 				desc:  "invalid reference format for from",
