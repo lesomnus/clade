@@ -4,8 +4,8 @@ args:
 
 images:
   - tags:
-      - '{{ printf "%d.%d" .Major .Minor }}'
-      - '{{ printf "%d"    .Major        }}'
+      - ( printf "%d.%d" $.Major $.Minor )
+      - ( printf "%d"    $.Major )
     from:
       name: registry.hub.docker.com/library/gcc
       tag: ( tags | toSemver | semverMajorN 2 | semverMinorN 2 )

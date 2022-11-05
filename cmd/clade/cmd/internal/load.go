@@ -3,9 +3,6 @@ package internal
 import (
 	"context"
 	"fmt"
-	"reflect"
-	"strings"
-	"text/template"
 
 	"github.com/distribution/distribution/reference"
 	"github.com/lesomnus/clade"
@@ -13,30 +10,9 @@ import (
 	"github.com/lesomnus/clade/tree"
 	"github.com/lesomnus/pl"
 	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 )
 
-func hasFunc(pipeline *pl.Pl, name string) bool {
-	for _, fn := range pipeline.Funcs {
-		if fn.Name == name {
-			return true
-		}
-
-		for _, arg := range fn.Args {
-			if arg.Nested == nil {
-				continue
-			}
-
-			if hasFunc(arg.Nested, name) {
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
-func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) ([]*clade.Image, error) {
+func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) ([]*clade.ResolvedImage, error) {
 	executor := pl.NewExecutor()
 	maps.Copy(executor.Funcs, plf.Funcs())
 	executor.Funcs["tags"] = func() ([]string, error) {
@@ -57,68 +33,78 @@ func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) (
 		return tags, nil
 	}
 
-	results, err := executor.Execute(image.From.Pipeline())
+	from_results, err := executor.Execute(image.From.Pipeline(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute pipeline: %w", err)
 	}
 
-	base_tags := make([]string, len(results))
-	for i, result := range results {
-		if s, ok := result.(interface{ String() string }); ok {
-			base_tags[i] = s.String()
-			continue
+	delete(executor.Funcs, "tags")
+
+	resolved_images := make([]*clade.ResolvedImage, len(from_results))
+
+	for i, result := range from_results {
+		tag := ""
+		switch v := result.(type) {
+		case interface{ String() string }:
+			tag = v.String()
+		case string:
+			tag = v
+
+		default:
+			return nil, fmt.Errorf("failed convert to string from result of base image's tag: %v", v)
 		}
-
-		v := reflect.ValueOf(result)
-		if v.Kind() == reflect.String {
-			base_tags[i] = v.String()
-			continue
-		}
-
-		return nil, fmt.Errorf("failed to resolve string from pipeline result: %v", result)
-	}
-
-	images := make([]*clade.Image, 0, len(results))
-	for i, result := range results {
-		tags := slices.Clone(image.Tags)
-		for i, tag := range tags {
-			tmpl, err := template.New("").Parse(tag)
-			if err != nil {
-				continue
-			}
-
-			var sb strings.Builder
-			tmpl.Execute(&sb, result)
-			tags[i] = sb.String()
-		}
-
-		tag := base_tags[i]
 
 		tagged, err := reference.WithTag(image.From, tag)
 		if err != nil {
-			return nil, fmt.Errorf("invalid tag %s: %w", tag, err)
+			return nil, fmt.Errorf("invalid tag of base image: %w", err)
 		}
 
-		img := &clade.Image{}
-		*img = *image
-		img.Tags = tags
-		img.From = clade.AsRefNamedPipelineTagged(tagged)
+		resolved_images[i] = &clade.ResolvedImage{From: tagged}
+	}
 
-		images = append(images, img)
+	// fmt.Printf("from_results: %v\n", from_results)
+
+	for i, result := range from_results {
+		tags := make([]string, len(image.Tags))
+		for i, tag := range image.Tags {
+			tag_results, err := executor.Execute(tag.Pipeline(), result)
+			if err != nil {
+				return nil, fmt.Errorf("failed to execute pipeline: %w", err)
+			}
+			if len(tag_results) != 1 {
+				return nil, fmt.Errorf("result of pipeline for tags must be size 1 but was %d", len(tag_results))
+			}
+
+			v, ok := tag_results[0].(string)
+			if !ok {
+				return nil, fmt.Errorf("result of pipeline must be string")
+			}
+
+			tags[i] = v
+		}
+
+		resolved_images[i].Tags = tags
+	}
+
+	for i := range resolved_images {
+		resolved_images[i].Named = image.Named
+		resolved_images[i].Args = image.Args
+		resolved_images[i].Dockerfile = image.Dockerfile
+		resolved_images[i].ContextPath = image.ContextPath
 	}
 
 	// TODO: make it as functions.
-	for i := 0; i < len(images); i++ {
-		for j := i + 1; j < len(images); j++ {
-			clade.DeduplicateBySemver(&images[i].Tags, &images[j].Tags)
+	for i := 0; i < len(resolved_images); i++ {
+		for j := i + 1; j < len(resolved_images); j++ {
+			clade.DeduplicateBySemver(&resolved_images[i].Tags, &resolved_images[j].Tags)
 		}
 	}
 
 	// Test if duplicated tags are exist.
-	for i := 0; i < len(images); i++ {
-		for j := i + 1; j < len(images); j++ {
-			for _, lhs := range images[i].Tags {
-				for _, rhs := range images[j].Tags {
+	for i := 0; i < len(resolved_images); i++ {
+		for j := i + 1; j < len(resolved_images); j++ {
+			for _, lhs := range resolved_images[i].Tags {
+				for _, rhs := range resolved_images[j].Tags {
 					if lhs == rhs {
 						return nil, fmt.Errorf("%s: tag is duplicated: %s", image.From.String(), lhs)
 					}
@@ -127,7 +113,7 @@ func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) (
 		}
 	}
 
-	return images, nil
+	return resolved_images, nil
 }
 
 func LoadBuildTreeFromPorts(ctx context.Context, bt *clade.BuildTree, path string) error {

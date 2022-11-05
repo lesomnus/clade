@@ -30,7 +30,7 @@ var tree_cmd = &cobra.Command{
 			return fmt.Errorf("failed to load ports: %w", err)
 		}
 
-		var root_node *tree.Node[*clade.Image]
+		var root_node *tree.Node[*clade.ResolvedImage]
 
 		if len(args) == 0 {
 			root_node = bt.AsNode()
@@ -40,9 +40,9 @@ var tree_cmd = &cobra.Command{
 					continue
 				}
 
-				root_node = &tree.Node[*clade.Image]{
+				root_node = &tree.Node[*clade.ResolvedImage]{
 					Parent:   nil,
-					Children: map[string]*tree.Node[*clade.Image]{name: node},
+					Children: map[string]*tree.Node[*clade.ResolvedImage]{name: node},
 				}
 				break
 			}
@@ -52,8 +52,8 @@ var tree_cmd = &cobra.Command{
 			}
 		}
 
-		visited := make(map[*clade.Image]struct{})
-		root_node.Walk(func(level int, name string, node *tree.Node[*clade.Image]) error {
+		visited := make(map[*clade.ResolvedImage]struct{})
+		root_node.Walk(func(level int, name string, node *tree.Node[*clade.ResolvedImage]) error {
 			if level < tree_flags.strip {
 				return nil
 			}

@@ -122,11 +122,11 @@ func TestImageUnmarshalFromField(t *testing.T) {
 	})
 }
 
-func TestImageTagged(t *testing.T) {
+func TestResolvedImageTagged(t *testing.T) {
 	t.Run("tagged with first element", func(t *testing.T) {
 		require := require.New(t)
 
-		img := clade.Image{
+		img := clade.ResolvedImage{
 			Named: must(reference.ParseNamed("cr.io/foo/bar")),
 			Tags:  []string{"a", "b", "c"},
 		}
@@ -139,7 +139,7 @@ func TestImageTagged(t *testing.T) {
 	t.Run("fails if tag format invalid", func(t *testing.T) {
 		require := require.New(t)
 
-		img := clade.Image{
+		img := clade.ResolvedImage{
 			Named: must(reference.ParseNamed("cr.io/foo/bar")),
 			Tags:  []string{"Edgar Wright"},
 		}
@@ -151,7 +151,7 @@ func TestImageTagged(t *testing.T) {
 	t.Run("fails if not tagged", func(t *testing.T) {
 		require := require.New(t)
 
-		img := clade.Image{
+		img := clade.ResolvedImage{
 			Named: must(reference.ParseNamed("cr.io/foo/bar")),
 			Tags:  []string{},
 		}

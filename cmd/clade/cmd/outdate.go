@@ -57,7 +57,7 @@ var outdated_cmd = &cobra.Command{
 
 		o := os.Stdout
 
-		return bt.Walk(func(level int, name string, node *tree.Node[*clade.Image]) error {
+		return bt.Walk(func(level int, name string, node *tree.Node[*clade.ResolvedImage]) error {
 			if level == 0 {
 				return nil
 			}

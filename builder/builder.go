@@ -7,7 +7,7 @@ import (
 )
 
 type Builder interface {
-	Build(image *clade.Image) error
+	Build(image *clade.ResolvedImage) error
 }
 
 type BuilderConfig struct {

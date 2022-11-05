@@ -14,7 +14,7 @@ type dockerBuilder struct {
 	binary string
 }
 
-func (b *dockerBuilder) newCmd(image *clade.Image) *exec.Cmd {
+func (b *dockerBuilder) newCmd(image *clade.ResolvedImage) *exec.Cmd {
 	cmd := &exec.Cmd{
 		Path:   b.binary,
 		Dir:    image.ContextPath,
@@ -41,7 +41,7 @@ func (b *dockerBuilder) newCmd(image *clade.Image) *exec.Cmd {
 	return cmd
 }
 
-func (b *dockerBuilder) Build(image *clade.Image) error {
+func (b *dockerBuilder) Build(image *clade.ResolvedImage) error {
 	cmd := b.newCmd(image)
 
 	if b.config.DryRun {
