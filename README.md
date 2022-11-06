@@ -6,7 +6,7 @@
 
 Keep your container images up to date.
 
-CLade allows you to manage multiple Dockerfiles as a dependency tree and list images older than the upstream image.
+*CLade* allows you to manage multiple Dockerfiles as a dependency tree and list images older than the upstream image.
 
 ## Installation
 
@@ -48,10 +48,10 @@ How can we create a new image with that version name whenever a new version of G
 name: ghcr.io/my_name/my-gcc
 
 images:
-  - tags: ['{{ .Major }}.{{ .Minor }}']
+  - tags: ( printf "%d.%d" $.Major $.Minor )
     from:
       name: registry.hub.docker.com/library/gcc
-      tag: ( remoteTags | toSemver | semverLatest )
+      tag: ( tags | semverLatest )
 ```
 
 ```sh
@@ -59,9 +59,9 @@ $ clade tree
 registry.hub.docker.com/library/gcc:12.2
         ghcr.io/my_name/my-gcc:12.2
 ```
-What happened? Where did *12.2* come from? Let's find out one by one. First, what `{ remoteTags | toSemver | semverLatest }` is? This is [pipeline expression](pipeline). The result of the previous function becomes the argument of the next function. So it means, fetch the remote tag from `registry.hub.docker.com`, then convert the fetched strings into *Semver*, and take the latest version. That would be *12.2* at this point. What is `'{{ .Major }}.{{ .Minor }}'`? This is [golang templates](https://pkg.go.dev/text/template). The result of the pipeline is *Semver* type and it is passed to template.
+What happened? Where did *12.2* come from? Let's find out one by one. First, what `( remoteTags | semverLatest )` is? This is [pipeline expression](https://github.com/lesomnus/pl). The result of the previous function becomes the argument of the next function. So it means, fetch the tags from `registry.hub.docker.com`, then take the latest semver. That would be *12.2* at this point. The result of the pipeline is *Semver* type and it is passed to pipeline in `tags` as a data and the result of the pipeline become result tags.
 
-If pipeline results more than one tag, CLade will generate more images from the same template. Let's create `my-gcc:12.X` for all gcc 12 versions using `semverMajorN` which filters last N major versions. Also if there are more than one tag template is provided, multiple tags will be created from the same image.
+If there is more than one result of the `from` pipeline, *CLade* generates that many images. Let's create `my-gcc:12.X` for all gcc 12 versions using `semverMajorN` which filters last N major versions. Also if there are more than one *tag* or *tag* pipeline is provided, multiple tags will be created from the same image.
 
 
 ```yaml
@@ -69,10 +69,12 @@ If pipeline results more than one tag, CLade will generate more images from the 
 name: ghcr.io/my_name/my-gcc
 
 images:
-  - tags: ['{{ .Major }}.{{ .Minor }}', '{{ .Major }}']
+  - tags:
+      - ( printf "%d.%d" $.Major $.Minor )
+      - ( printf "%d"    $.Major         )
     from:
       name: registry.hub.docker.com/library/gcc
-      tag: ( remoteTags | toSemver | semverMajorN 1 )
+      tag: ( tags | semverMajorN 1 )
 ```
 
 ```sh
@@ -113,12 +115,12 @@ WORKDIR /home/${USERNAME}
 USER ${USERNAME}
 ```
 
-Note that arguments `TAG` and `BASE` are upstream container image names and tags.
-The command `clade build` simply spawns `docker` command with proper arguments.
+Note that arguments `TAG` and `BASE` are upstream container image name and tag.
+The command for the default option, `clade build` simply spawns `docker` command with proper arguments.
 Let's see what *CLade* runs:
 ```sh
 $ clade build --dry-run ghcr.io/my_name/my-gcc:12
-run: [/usr/bin/docker build --file /path/to/ports/my-gcc/port.yaml/Dockerfile --tag ghcr.io/my_name/my-gcc:12.2 --tag ghcr.io/my_name/my-gcc:12 --build-arg BASE=registry.hub.docker.com/library/gcc --build-arg TAG=12.2 /path/to/ports/my-gcc]
+[/usr/bin/docker build --file /path/to/ports/my-gcc/port.yaml/Dockerfile --tag ghcr.io/my_name/my-gcc:12.2 --tag ghcr.io/my_name/my-gcc:12 --build-arg BASE=registry.hub.docker.com/library/gcc --build-arg TAG=12.2 /path/to/ports/my-gcc]
 ```
 
 ## Materials
