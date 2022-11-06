@@ -9,10 +9,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestToSemver(t *testing.T) {
+func TestSemver(t *testing.T) {
 	require := require.New(t)
 
-	vs := plf.ToSemver("1.2", "1.2.3.4", "1.2.3-alpine")
+	vs := plf.Semver("1.2", "1.2.3.4", "1.2.3-alpine")
+	require.Len(vs, 2)
+	require.Equal("1.2", vs[0].String())
+	require.Equal("1.2.3-alpine", vs[1].String())
+}
+
+func TestFinalized(t *testing.T) {
+	require := require.New(t)
+
+	vs := plf.Semver("1.2", "1.2.3.4", "1.2.3-alpine")
 	require.Len(vs, 2)
 	require.Equal("1.2", vs[0].String())
 	require.Equal("1.2.3-alpine", vs[1].String())
