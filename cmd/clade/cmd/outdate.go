@@ -69,7 +69,12 @@ var outdated_cmd = &cobra.Command{
 
 			child_manif_getter, err := internal.NewManifestGetter(cmd.Context(), child_name)
 			if err != nil {
-				return fmt.Errorf("failed to create manifest getter for child image: %w", err)
+				if errors.Is(err, internal.ErrManifestUnknown) {
+					fmt.Fprintln(o, child_name.String())
+					return tree.WalkContinue
+				} else {
+					return fmt.Errorf("failed to create manifest getter for child image: %w", err)
+				}
 			}
 
 			parent_manif_getter, err := internal.NewManifestGetter(cmd.Context(), node.Value.From)
@@ -79,12 +84,7 @@ var outdated_cmd = &cobra.Command{
 
 			child_layers, err := getLayers(cmd.Context(), child_manif_getter)
 			if err != nil {
-				if errors.Is(err, internal.ErrManifestUnknown) {
-					fmt.Fprintln(o, child_name.String())
-					return tree.WalkContinue
-				} else {
-					return fmt.Errorf("failed to get layers of %s: %w", child_name.String(), err)
-				}
+				return fmt.Errorf("failed to get layers of %s: %w", child_name.String(), err)
 			}
 
 			parent_layers, err := getLayers(cmd.Context(), parent_manif_getter)
