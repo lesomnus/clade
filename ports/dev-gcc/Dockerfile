@@ -128,7 +128,7 @@ RUN mkdir -p "${VCPKG_ROOT}" "${VCPKG_DOWNLOADS}" \
 	&& ./bootstrap-vcpkg.sh -disableMetrics \
 	&& ln -s /opt/vcpkg/vcpkg /usr/local/bin/vcpkg \
 	&& sudo -u "${USERNAME}" VCPKG_FORCE_SYSTEM_BINARIES=1 vcpkg integrate bash \
-	&& vcpkg --version
+	&& vcpkg --version \
 	&& rm -rf \
 		"${VCPKG_ROOT}/buildtrees" \
 		"${VCPKG_ROOT}/packages" \
