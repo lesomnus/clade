@@ -8,4 +8,4 @@ images:
       - ( printf "%d"    $.Major )
     from:
       name: registry.hub.docker.com/library/gcc
-      tag: ( tags | toSemver | semverMajorN 2 | semverMinorN 2 )
+      tag: ( tags | semverFinalized | semverN 2 2 0 )

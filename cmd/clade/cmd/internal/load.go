@@ -15,6 +15,7 @@ import (
 func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) ([]*clade.ResolvedImage, error) {
 	executor := pl.NewExecutor()
 	maps.Copy(executor.Funcs, plf.Funcs())
+	executor.Convs.MergeWith(plf.Convs())
 	executor.Funcs["tags"] = func() ([]string, error) {
 		if tags := bt.TagsByName[image.From.Name()]; len(tags) > 0 {
 			return tags, nil
@@ -61,8 +62,6 @@ func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) (
 
 		resolved_images[i] = &clade.ResolvedImage{From: tagged}
 	}
-
-	// fmt.Printf("from_results: %v\n", from_results)
 
 	for i, result := range from_results {
 		tags := make([]string, len(image.Tags))

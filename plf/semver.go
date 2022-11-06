@@ -5,7 +5,21 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func ToSemver(ss ...string) []*sv.Version {
+func noNil[T any](vs []*T) []*T {
+	cursor := 0
+	for _, v := range vs {
+		if v == nil {
+			continue
+		}
+
+		vs[cursor] = v
+		cursor++
+	}
+
+	return vs[:cursor]
+}
+
+func Semver(ss ...string) []*sv.Version {
 	rst := make([]*sv.Version, 0, len(ss))
 
 	for _, s := range ss {
@@ -20,6 +34,20 @@ func ToSemver(ss ...string) []*sv.Version {
 	return rst
 }
 
+func SemverFinalized(vs ...*sv.Version) []*sv.Version {
+	vs = noNil(vs)
+
+	for i, v := range vs {
+		if len(v.Build) == 0 && len(v.Pre) == 0 {
+			continue
+		}
+
+		vs[i] = nil
+	}
+
+	return noNil(vs)
+}
+
 func SemverLatest(v *sv.Version, vs ...*sv.Version) *sv.Version {
 	for _, c := range vs {
 		if v.LT(c.Version) {
@@ -31,6 +59,7 @@ func SemverLatest(v *sv.Version, vs ...*sv.Version) *sv.Version {
 }
 
 func SemverMajorN(n int, vs ...*sv.Version) []*sv.Version {
+	vs = noNil(vs)
 	if n == 0 {
 		return vs
 	}
@@ -58,6 +87,7 @@ func SemverMajorN(n int, vs ...*sv.Version) []*sv.Version {
 }
 
 func SemverMinorN(n int, vs ...*sv.Version) []*sv.Version {
+	vs = noNil(vs)
 	if n == 0 {
 		return vs
 	}
@@ -96,6 +126,7 @@ func SemverMinorN(n int, vs ...*sv.Version) []*sv.Version {
 }
 
 func SemverPatchN(n int, vs ...*sv.Version) []*sv.Version {
+	vs = noNil(vs)
 	if n == 0 {
 		return vs
 	}
@@ -145,6 +176,7 @@ func SemverPatchN(n int, vs ...*sv.Version) []*sv.Version {
 }
 
 func SemverN(major int, minor int, patch int, vs ...*sv.Version) []*sv.Version {
+	vs = noNil(vs)
 	vs = SemverMajorN(major, vs...)
 	vs = SemverMinorN(minor, vs...)
 	vs = SemverPatchN(patch, vs...)

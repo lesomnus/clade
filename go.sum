@@ -43,14 +43,8 @@ github.com/json-iterator/go v1.1.7/go.mod h1:KdQUCv79m/52Kvf8AW2vK1V8akMuk1QjK/u
 github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7VTCxuUUipMqKk8s4w=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515/go.mod h1:+0opPa2QZZtGFBFZlji/RkVcI2GknAs/DXo4wKdlNEc=
-github.com/lesomnus/pl v0.0.0-20221030083352-1b557aa08478 h1:Jjtt0vGkaOwrfyuUZJpfiOaCpGXv2wSlEluYBNICF/M=
-github.com/lesomnus/pl v0.0.0-20221030083352-1b557aa08478/go.mod h1:KDd3PSIfEEMP2D1HII03jdoiRm30OcnV+zr7H11DjYI=
-github.com/lesomnus/pl v0.0.0-20221105090611-bc1c6ce05fbc h1:Ph2aAlN4YeqfTbrGiwEKujHB6y3j96KLXolrX2W0hTY=
-github.com/lesomnus/pl v0.0.0-20221105090611-bc1c6ce05fbc/go.mod h1:KDd3PSIfEEMP2D1HII03jdoiRm30OcnV+zr7H11DjYI=
-github.com/lesomnus/pl v0.0.0-20221105151611-c0391e65a2c1 h1:emA1YpH+BX0NufP+BO+9LHxlJ+BfZTMrdDmX+hJ2TwA=
-github.com/lesomnus/pl v0.0.0-20221105151611-c0391e65a2c1/go.mod h1:KDd3PSIfEEMP2D1HII03jdoiRm30OcnV+zr7H11DjYI=
-github.com/lesomnus/pl v0.0.0-20221105152510-b235a9e9677e h1:r+e0XfYVXxQ17/wgHRWB6RFwsT1YZHen3Q4VAQJYC2w=
-github.com/lesomnus/pl v0.0.0-20221105152510-b235a9e9677e/go.mod h1:KDd3PSIfEEMP2D1HII03jdoiRm30OcnV+zr7H11DjYI=
+github.com/lesomnus/pl v0.0.0-20221106105300-04535031e29b h1:HtxIqUdpAUgsaEVJmpH8MbPn+pyWvyfv0fAj0LESwDE=
+github.com/lesomnus/pl v0.0.0-20221106105300-04535031e29b/go.mod h1:KDd3PSIfEEMP2D1HII03jdoiRm30OcnV+zr7H11DjYI=
 github.com/matttproud/golang_protobuf_extensions v1.0.1 h1:4hp9jkHxhMHkqkrB3Ix0jegS5sx/RkqARlsWZ6pIwiU=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
