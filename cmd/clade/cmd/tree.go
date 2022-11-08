@@ -35,20 +35,26 @@ var tree_cmd = &cobra.Command{
 		if len(args) == 0 {
 			root_node = bt.AsNode()
 		} else {
-			for name, node := range bt.Tree {
-				if name != args[0] {
-					continue
-				}
+			root_name := args[0]
 
-				root_node = &tree.Node[*clade.ResolvedImage]{
-					Parent:   nil,
-					Children: map[string]*tree.Node[*clade.ResolvedImage]{name: node},
-				}
-				break
+			node, ok := bt.Tree[root_name]
+			if !ok {
+				return errors.New(root_name + " not found")
 			}
 
-			if root_node == nil {
-				return errors.New(args[0] + " not found")
+			major_name, err := node.Value.Tagged()
+			if err != nil {
+				panic(fmt.Errorf("broken image def: %s: .tags empty?", root_name))
+			}
+
+			node, ok = bt.Tree[major_name.String()]
+			if !ok {
+				panic(fmt.Errorf("broken build tree: %s: same image with different tag not found", major_name.String()))
+			}
+
+			root_node = &tree.Node[*clade.ResolvedImage]{
+				Parent:   nil,
+				Children: map[string]*tree.Node[*clade.ResolvedImage]{root_name: node},
 			}
 		}
 
