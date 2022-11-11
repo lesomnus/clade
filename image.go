@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/distribution/distribution/reference"
+	ba "github.com/lesomnus/boolal"
 	"github.com/lesomnus/pl"
 	"gopkg.in/yaml.v3"
 )
@@ -55,7 +56,8 @@ type Image struct {
 	Args map[string]string
 
 	Dockerfile  string
-	ContextPath string `yaml:"context"`
+	ContextPath string   `yaml:"context"`
+	Platform    *ba.Expr `yaml:"-"`
 }
 
 func (i *Image) UnmarshalYAML(n *yaml.Node) error {
@@ -67,10 +69,20 @@ func (i *Image) UnmarshalYAML(n *yaml.Node) error {
 	type I struct {
 		Tags []*pipeliner
 		From *refNamedPipelineTagged
+
+		Platform string
 	}
 	var tmp I
 	if err := n.Decode(&tmp); err != nil {
 		return err
+	}
+
+	if tmp.Platform == "" {
+		i.Platform = nil
+	} else if expr, err := ba.ParseString(tmp.Platform); err != nil {
+		return fmt.Errorf("platform: %w", err)
+	} else {
+		i.Platform = expr
 	}
 
 	i.Tags = make([]Pipeliner, len(tmp.Tags))
@@ -92,6 +104,7 @@ type ResolvedImage struct {
 
 	Dockerfile  string
 	ContextPath string
+	Platform    *ba.Expr
 }
 
 func (i *ResolvedImage) Tagged() (reference.NamedTagged, error) {

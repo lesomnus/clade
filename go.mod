@@ -6,6 +6,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/distribution/distribution v2.8.1+incompatible
 	github.com/docker/distribution v2.8.1+incompatible
+	github.com/lesomnus/boolal v0.0.0-20221110173418-ff382ed222b3
 	github.com/lesomnus/pl v0.0.0-20221106105300-04535031e29b
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/spf13/cobra v1.5.0

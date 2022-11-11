@@ -1,9 +1,11 @@
 package clade_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/distribution/distribution/reference"
+	ba "github.com/lesomnus/boolal"
 	"github.com/lesomnus/clade"
 	"github.com/lesomnus/pl"
 	"github.com/stretchr/testify/require"
@@ -119,6 +121,43 @@ func TestImageUnmarshalFromField(t *testing.T) {
 				}
 			})
 		}
+	})
+}
+
+func TestImageUnmarshalPlatformField(t *testing.T) {
+	tcs := []struct {
+		desc     string
+		input    string
+		expected *ba.Expr
+	}{
+		{
+			desc:     "nil if empty",
+			input:    "",
+			expected: nil,
+		},
+		{
+			desc:     "with expr",
+			input:    "x & y | z",
+			expected: ba.And("x", "y").Or("z"),
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.desc, func(t *testing.T) {
+			require := require.New(t)
+
+			var img clade.Image
+			err := yaml.Unmarshal([]byte(fmt.Sprintf("platform: %s", tc.input)), &img)
+			require.NoError(err)
+			require.Equal(tc.expected, img.Platform)
+		})
+	}
+
+	t.Run("it fails if expression is invalid", func(t *testing.T) {
+		require := require.New(t)
+
+		var img clade.Image
+		err := yaml.Unmarshal([]byte(`platform: x && y || z`), &img)
+		require.ErrorContains(err, "platform:")
 	})
 }
 
