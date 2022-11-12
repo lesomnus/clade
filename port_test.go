@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	ba "github.com/lesomnus/boolal"
 	"github.com/lesomnus/clade"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
@@ -23,22 +24,26 @@ args:
 
 dockerfile: ./path/to/dockerfile
 context: ./../ctx
+platform: x & y | z
 
 images:
   - tags: [a, b, c]
     from: hub.io/foo/bar:a
+
+  - platform: a | b & c
 `), &port)
 
 		require.NoError(err)
 		require.Equal("cr.io/foo/bar", port.Name.String())
 
 		require.Contains(port.Args, "USERNAME")
-		require.Equal(port.Args["USERNAME"], "hypnos")
+		require.Equal("hypnos", port.Args["USERNAME"])
 
-		require.Equal(port.Dockerfile, "./path/to/dockerfile")
-		require.Equal(port.ContextPath, "./../ctx")
+		require.Equal("./path/to/dockerfile", port.Dockerfile)
+		require.Equal("./../ctx", port.ContextPath)
+		require.Equal(ba.And("x", "y").Or("z"), port.Platform)
 
-		require.Len(port.Images, 1)
+		require.Len(port.Images, 2)
 		require.Equal("cr.io/foo/bar", port.Images[0].Name())
 
 		tags := make([]string, len(port.Images[0].Tags))
@@ -51,6 +56,9 @@ images:
 		require.Empty(port.Images[0].Args)
 		require.Empty(port.Images[0].Dockerfile)
 		require.Empty(port.Images[0].ContextPath)
+
+		require.Equal(ba.And("x", "y").Or("z"), port.Images[0].Platform)
+		require.Equal(ba.Or("a", "b").And("c"), port.Images[1].Platform)
 	})
 
 	t.Run("fails if", func(t *testing.T) {
@@ -65,15 +73,19 @@ images:
 				msgs:  []string{"seq", "map[string]string"},
 			},
 			{
-				desc: "name not string",
-				input: `name:
-  - Somnus`,
-				msgs: []string{"seq", "string"},
+				desc:  "name not string",
+				input: "name:\n  - Somnus",
+				msgs:  []string{"seq", "string"},
 			},
 			{
 				desc:  "name is invalid reference format",
 				input: "name: no/domain",
 				msgs:  []string{"repo", "canonical"},
+			},
+			{
+				desc:  "platform is invalid syntax",
+				input: "name: cr.io/foo/bar\nplatform: x && y || z",
+				msgs:  []string{"platform:"},
 			},
 		}
 		for _, tc := range tcs {

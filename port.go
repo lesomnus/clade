@@ -7,6 +7,7 @@ import (
 
 	"github.com/blang/semver/v4"
 	"github.com/distribution/distribution/reference"
+	ba "github.com/lesomnus/boolal"
 	"github.com/lesomnus/clade/sv"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
@@ -17,7 +18,8 @@ type Port struct {
 	Args map[string]string
 
 	Dockerfile  string
-	ContextPath string `yaml:"context"`
+	ContextPath string   `yaml:"context"`
+	Platform    *ba.Expr `yaml:"-"`
 
 	Images []*Image
 }
@@ -28,7 +30,10 @@ func (p *Port) UnmarshalYAML(n *yaml.Node) error {
 		return err
 	}
 
-	type P struct{ Name string }
+	type P struct {
+		Name     string
+		Platform string
+	}
 	var tmp P
 	if err := n.Decode(&tmp); err != nil {
 		return err
@@ -39,8 +44,19 @@ func (p *Port) UnmarshalYAML(n *yaml.Node) error {
 		return fmt.Errorf("name: %w", err)
 	}
 
-	for i := range p.Images {
-		p.Images[i].Named = named
+	if tmp.Platform == "" {
+		p.Platform = &ba.Expr{Lhs: ba.Var("t")}
+	} else if expr, err := ba.ParseString(tmp.Platform); err != nil {
+		return fmt.Errorf("platform: %w", err)
+	} else {
+		p.Platform = expr
+	}
+
+	for _, img := range p.Images {
+		img.Named = named
+		if img.Platform == nil {
+			img.Platform = p.Platform
+		}
 	}
 
 	p.Name = named

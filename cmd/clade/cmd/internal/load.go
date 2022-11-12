@@ -90,6 +90,7 @@ func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) (
 		resolved_images[i].Args = image.Args
 		resolved_images[i].Dockerfile = image.Dockerfile
 		resolved_images[i].ContextPath = image.ContextPath
+		resolved_images[i].Platform = image.Platform
 	}
 
 	// TODO: make it as functions.
