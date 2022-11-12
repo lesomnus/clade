@@ -9,6 +9,7 @@ require (
 	github.com/lesomnus/boolal v0.0.0-20221110173418-ff382ed222b3
 	github.com/lesomnus/pl v0.0.0-20221106105300-04535031e29b
 	github.com/opencontainers/go-digest v1.0.0
+	github.com/rs/zerolog v1.28.0
 	github.com/spf13/cobra v1.5.0
 	github.com/stretchr/testify v1.8.1
 	golang.org/x/exp v0.0.0-20220909182711-5c715a9e8561
@@ -24,6 +25,8 @@ require (
 	github.com/golang/protobuf v1.3.2 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/mattn/go-colorable v0.1.12 // indirect
+	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

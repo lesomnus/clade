@@ -31,6 +31,7 @@ func (s *CacheStore) GetTags(ref reference.Named) ([]string, bool) {
 		return nil, false
 	}
 
+	Log.Trace().Str("path", tgt).Msg("tag cache hit")
 	return tags, true
 }
 

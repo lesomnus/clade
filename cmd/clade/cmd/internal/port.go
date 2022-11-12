@@ -10,6 +10,8 @@ import (
 )
 
 func ReadPorts(path string) ([]*clade.Port, error) {
+	Log.Info().Str("path", path).Msg("read ports")
+
 	entries, err := os.ReadDir(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read directory: %w", err)
@@ -22,6 +24,8 @@ func ReadPorts(path string) ([]*clade.Port, error) {
 		}
 
 		port_path := filepath.Join(path, entry.Name(), "port.yaml")
+		Log.Debug().Str("path", port_path).Msg("read port")
+
 		port, err := clade.ReadPort(port_path)
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
