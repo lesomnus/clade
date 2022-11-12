@@ -16,15 +16,10 @@ func TestSemver(t *testing.T) {
 	require.Len(vs, 2)
 	require.Equal("1.2", vs[0].String())
 	require.Equal("1.2.3-alpine", vs[1].String())
-}
 
-func TestFinalized(t *testing.T) {
-	require := require.New(t)
-
-	vs := plf.Semver("1.2", "1.2.3.4", "1.2.3-alpine")
-	require.Len(vs, 2)
+	vs = plf.SemverFinalized(vs...)
+	require.Len(vs, 1)
 	require.Equal("1.2", vs[0].String())
-	require.Equal("1.2.3-alpine", vs[1].String())
 }
 
 func TestSemverLatest(t *testing.T) {
@@ -230,6 +225,114 @@ func TestSemverPatchN(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		actual := plf.SemverPatchN(tc.input.n, tc.input.vs...)
+		require.ElementsMatch(tc.expected, actual)
+	}
+}
+
+func TestSemverN(t *testing.T) {
+	type Input struct {
+		i, j, k int
+		vs      []*sv.Version
+	}
+
+	require := require.New(t)
+
+	tcs := []struct {
+		input    Input
+		expected []*sv.Version
+	}{
+		{
+			input: Input{
+				i: 0,
+				j: 0,
+				k: 0,
+				vs: []*sv.Version{
+					{Version: semver.Version{Major: 0, Minor: 1, Patch: 0}, Source: ""},
+					{Version: semver.Version{Major: 2, Minor: 3, Patch: 4}, Source: ""},
+					{Version: semver.Version{Major: 2, Minor: 3, Patch: 3}, Source: ""},
+					{Version: semver.Version{Major: 2, Minor: 2, Patch: 3}, Source: ""},
+				},
+			},
+			expected: []*sv.Version{
+				{Version: semver.Version{Major: 0, Minor: 1, Patch: 0}, Source: ""},
+				{Version: semver.Version{Major: 2, Minor: 3, Patch: 4}, Source: ""},
+				{Version: semver.Version{Major: 2, Minor: 3, Patch: 3}, Source: ""},
+				{Version: semver.Version{Major: 2, Minor: 2, Patch: 3}, Source: ""},
+			},
+		},
+		{
+			input: Input{
+				i: 1,
+				j: 0,
+				k: 0,
+				vs: []*sv.Version{
+					{Version: semver.Version{Major: 0, Minor: 1, Patch: 0}, Source: ""},
+					{Version: semver.Version{Major: 2, Minor: 3, Patch: 4}, Source: ""},
+					{Version: semver.Version{Major: 2, Minor: 3, Patch: 3}, Source: ""},
+					{Version: semver.Version{Major: 2, Minor: 2, Patch: 3}, Source: ""},
+				},
+			},
+			expected: []*sv.Version{
+				{Version: semver.Version{Major: 2, Minor: 3, Patch: 4}, Source: ""},
+				{Version: semver.Version{Major: 2, Minor: 3, Patch: 3}, Source: ""},
+				{Version: semver.Version{Major: 2, Minor: 2, Patch: 3}, Source: ""},
+			},
+		},
+		{
+			input: Input{
+				i: 0,
+				j: 1,
+				k: 0,
+				vs: []*sv.Version{
+					{Version: semver.Version{Major: 0, Minor: 1, Patch: 0}, Source: ""},
+					{Version: semver.Version{Major: 2, Minor: 3, Patch: 4}, Source: ""},
+					{Version: semver.Version{Major: 2, Minor: 3, Patch: 3}, Source: ""},
+					{Version: semver.Version{Major: 2, Minor: 2, Patch: 3}, Source: ""},
+				},
+			},
+			expected: []*sv.Version{
+				{Version: semver.Version{Major: 0, Minor: 1, Patch: 0}, Source: ""},
+				{Version: semver.Version{Major: 2, Minor: 3, Patch: 4}, Source: ""},
+				{Version: semver.Version{Major: 2, Minor: 3, Patch: 3}, Source: ""},
+			},
+		},
+		{
+			input: Input{
+				i: 0,
+				j: 0,
+				k: 1,
+				vs: []*sv.Version{
+					{Version: semver.Version{Major: 0, Minor: 1, Patch: 0}, Source: ""},
+					{Version: semver.Version{Major: 2, Minor: 3, Patch: 4}, Source: ""},
+					{Version: semver.Version{Major: 2, Minor: 3, Patch: 3}, Source: ""},
+					{Version: semver.Version{Major: 2, Minor: 2, Patch: 3}, Source: ""},
+				},
+			},
+			expected: []*sv.Version{
+				{Version: semver.Version{Major: 0, Minor: 1, Patch: 0}, Source: ""},
+				{Version: semver.Version{Major: 2, Minor: 3, Patch: 4}, Source: ""},
+				{Version: semver.Version{Major: 2, Minor: 2, Patch: 3}, Source: ""},
+			},
+		},
+		{
+			input: Input{
+				i: 1,
+				j: 1,
+				k: 1,
+				vs: []*sv.Version{
+					{Version: semver.Version{Major: 0, Minor: 1, Patch: 0}, Source: ""},
+					{Version: semver.Version{Major: 2, Minor: 3, Patch: 4}, Source: ""},
+					{Version: semver.Version{Major: 2, Minor: 3, Patch: 3}, Source: ""},
+					{Version: semver.Version{Major: 2, Minor: 2, Patch: 3}, Source: ""},
+				},
+			},
+			expected: []*sv.Version{
+				{Version: semver.Version{Major: 2, Minor: 3, Patch: 4}, Source: ""},
+			},
+		},
+	}
+	for _, tc := range tcs {
+		actual := plf.SemverN(tc.input.i, tc.input.j, tc.input.k, tc.input.vs...)
 		require.ElementsMatch(tc.expected, actual)
 	}
 }

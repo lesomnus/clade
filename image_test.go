@@ -19,6 +19,69 @@ func must[T any](obj T, err error) T {
 	return obj
 }
 
+func TestImageUnmarshalTagsField(t *testing.T) {
+	t.Run("parsed into pipeline", func(t *testing.T) {
+		require := require.New(t)
+
+		var img clade.Image
+		err := yaml.Unmarshal([]byte(`tags: [foo, (pass "bar")]`), &img)
+		require.NoError(err)
+		require.Len(img.Tags, 2)
+		require.Equal("foo", img.Tags[0].String())
+		require.Equal(`(pass "bar")`, img.Tags[1].String())
+
+		executor := pl.NewExecutor()
+		{
+			rst, err := executor.Execute(img.Tags[0].Pipeline(), nil)
+			require.NoError(err)
+			require.Equal([]any{"foo"}, rst)
+		}
+
+		{
+			rst, err := executor.Execute(img.Tags[1].Pipeline(), nil)
+			require.NoError(err)
+			require.Equal([]any{"bar"}, rst)
+		}
+	})
+
+	t.Run("fails if", func(t *testing.T) {
+		tcs := []struct {
+			desc  string
+			input string
+			msgs  []string
+		}{
+			{
+				desc:  "not a list",
+				input: "foo",
+				msgs:  []string{"str"},
+			},
+			{
+				desc: "not a list of string",
+				input: `
+  - !!binary |
+    $`,
+				msgs: []string{"binary"},
+			},
+			{
+				desc:  "invalid pipeline expression",
+				input: "[(foo bar)]",
+				msgs:  []string{"unexpected token", "bar"},
+			},
+		}
+		for _, tc := range tcs {
+			t.Run(tc.desc, func(t *testing.T) {
+				require := require.New(t)
+
+				var img clade.Image
+				err := yaml.Unmarshal([]byte(fmt.Sprintf("tags: %s", tc.input)), &img)
+				for _, msg := range tc.msgs {
+					require.ErrorContains(err, msg)
+				}
+			})
+		}
+	})
+}
+
 func TestImageUnmarshalFromField(t *testing.T) {
 	type TagExpr struct {
 		name string

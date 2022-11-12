@@ -12,12 +12,18 @@ import (
 )
 
 var (
-	DefaultCredentialStore  = &CredentialStore{}
+	DefaultCredentialStore  = NewCredentialStore()
 	DefaultChallengeManager = challenge.NewSimpleManager()
 )
 
 type CredentialStore struct {
 	refresh_tokens map[string]string
+}
+
+func NewCredentialStore() *CredentialStore {
+	return &CredentialStore{
+		refresh_tokens: make(map[string]string),
+	}
 }
 
 func (s *CredentialStore) Basic(u *url.URL) (string, string) {
@@ -29,9 +35,7 @@ func (s *CredentialStore) RefreshToken(u *url.URL, service string) string {
 }
 
 func (s *CredentialStore) SetRefreshToken(u *url.URL, service string, token string) {
-	if s.refresh_tokens != nil {
-		s.refresh_tokens[service] = token
-	}
+	s.refresh_tokens[service] = token
 }
 
 func NewAuthorizer(ref reference.Named, actions ...string) transport.RequestModifier {

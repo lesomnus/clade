@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -23,6 +24,10 @@ func ReadPorts(path string) ([]*clade.Port, error) {
 		port_path := filepath.Join(path, entry.Name(), "port.yaml")
 		port, err := clade.ReadPort(port_path)
 		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				continue
+			}
+
 			return nil, fmt.Errorf("failed to read port at %s: %w", port_path, err)
 		}
 

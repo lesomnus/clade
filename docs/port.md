@@ -25,6 +25,7 @@ images:
 
     # dockerfile:
     # context:
+    # platform:
 
   - tags:
       - ( printf "%d.%d-%s" $.Major $.Minor $.Pre[0] )
@@ -38,6 +39,7 @@ images:
 
     dockerfile: ./alpine/Dockerfile  
     context: ./alpine
+    platform: linux & amd64
 ```
 
 If the path of the above *Port* file is `/foo/bar/port.yaml`, it is evaluated as follows:
@@ -94,6 +96,7 @@ Relative paths are resolved from the path of the *Port* file.
 | `args`       | {string: scalar}  | Variables passed when building the image. See [this](https://docs.docker.com/engine/reference/commandline/build/#description) for more details                   |
 | `dockerfile` | filename          | Dockerfile to use for the build. See [this](https://docs.docker.com/engine/reference/commandline/build/#description) for more details. (Default: "./Dockerfile") |
 | `context`    | dirname           | Docker build context. See [this](https://docs.docker.com/engine/reference/commandline/build/#description) for more details. (Default: ".")                       |
+| `platform`   | string            | Platforms where the images can be built.                                                                                                                         |
 | `images`     | [Image](#image)[] | Description of the image reference this image depends on and the corresponding tag.                                                                              |
 
 - `images[].args` is merged with `args`.
@@ -109,3 +112,4 @@ Relative paths are resolved from the path of the *Port* file.
 | `args`       | {string: scalar}       | Variables passed when building the image. See [this](https://docs.docker.com/engine/reference/commandline/build/#description) for more details |
 | `dockerfile` | filename               | Dockerfile to use for the build. See [this](https://docs.docker.com/engine/reference/commandline/build/#description) for more details.         |
 | `context`    | dirname                | Docker build context. See [this](https://docs.docker.com/engine/reference/commandline/build/#description) for more details.                    |
+| `platform`   | string                 | Platforms where the images can be built.                                                                                                       |

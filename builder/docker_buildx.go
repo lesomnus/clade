@@ -83,7 +83,7 @@ func newDockerBuildxBuilder(conf BuilderConfig) (Builder, error) {
 		vs := strings.Split(b.config.Args[i+1], ",")
 		for _, v := range vs {
 			specifier := strings.SplitN(v, "/", 2)
-			if len(specifier) == 1 || specifier[0] == "" || specifier[1] == "" {
+			if len(specifier) < 2 || specifier[0] == "" || specifier[1] == "" {
 				return nil, fmt.Errorf("invalid format of --platform value: %s", v)
 			}
 
