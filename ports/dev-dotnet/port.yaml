@@ -1,0 +1,17 @@
+name: ghcr.io/lesomnus/dev-dotnet
+
+images:
+  - tags:
+      - ( printf "%d.%d.%d" $.Major $.Minor $.Patch )
+      - ( printf "%d.%d"    $.Major $.Minor         )
+    from:
+      name: mcr.microsoft.com/dotnet/sdk
+      tag: ( tags | regex "\\d+\\.\\d+\\.\\d+$" | semverFinalized | semverN 1 1 2 )
+
+  - tags:
+      - ( printf "%d.%d.%d-android" $.Major $.Minor $.Patch )
+      - ( printf "%d.%d-android"    $.Major $.Minor         )
+    from:
+      name: ghcr.io/lesomnus/dev-dotnet
+      tag: ( tags | regex "\\d+\\.\\d+\\.\\d+" | semver )
+    dockerfile: android.Dockerfile

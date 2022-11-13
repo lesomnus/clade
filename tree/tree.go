@@ -36,6 +36,12 @@ func (t Tree[V]) Insert(pname string, name string, value V) *Node[V] {
 		t[pname] = parent
 	}
 
+	if pname == name {
+		// Self-referencing node.
+		parent.Value = value
+		return parent
+	}
+
 	node, ok := t[name]
 	if !ok {
 		node = &Node[V]{
