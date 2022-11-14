@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/distribution/distribution/reference"
 	"github.com/lesomnus/clade"
@@ -13,9 +14,15 @@ import (
 )
 
 func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) ([]*clade.ResolvedImage, error) {
+	Log.Debug().Str("name", image.Name()).Msg("expand")
+
 	executor := pl.NewExecutor()
 	maps.Copy(executor.Funcs, plf.Funcs())
 	executor.Convs.MergeWith(plf.Convs())
+	executor.Funcs["log"] = func(vs ...string) []string {
+		Log.Debug().Str("name", image.Name()).Msg(strings.Join(vs, ", "))
+		return vs
+	}
 	executor.Funcs["tags"] = func() ([]string, error) {
 		if tags := bt.TagsByName[image.From.Name()]; len(tags) > 0 {
 			return tags, nil
