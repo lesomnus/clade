@@ -6,14 +6,17 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/distribution/distribution/reference"
 	"github.com/distribution/distribution/registry/client"
+	"github.com/distribution/distribution/registry/client/auth"
 	"github.com/distribution/distribution/registry/client/transport"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/registry/api/errcode"
 	v2 "github.com/docker/distribution/registry/api/v2"
 	"github.com/opencontainers/go-digest"
+	"golang.org/x/exp/slices"
 )
 
 type authTransport struct {
@@ -29,7 +32,12 @@ func (t *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, fmt.Errorf("failed to get challenge: %w", err)
 	} else if len(c) == 0 {
 		if err := func() error {
-			res, err := http.Get(endpoint.String())
+			client := http.Client{
+				Transport: t.base,
+				Timeout:   10 * time.Second,
+			}
+
+			res, err := client.Get(endpoint.String())
 			if err != nil {
 				return err
 			}
@@ -49,17 +57,22 @@ func (t *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return t.base.RoundTrip(req)
 }
 
-func NewTransport(ref reference.Named, actions ...string) http.RoundTripper {
-	return &authTransport{
-		ref:  ref,
-		base: transport.NewTransport(http.DefaultTransport, NewAuthorizer(ref, actions...)),
+func NewRepositoryWithRoundTripper(base http.RoundTripper, ref reference.Named, actions ...string) (distribution.Repository, error) {
+	repo_path := reference.Path(ref)
+	name_only, _ := reference.WithName(repo_path)
+
+	if !slices.Contains(actions, "pull") {
+		actions = append(actions, "pull")
 	}
-}
 
-func NewRepository(ref reference.Named, actions ...string) (distribution.Repository, error) {
-	name_only, _ := reference.WithName(reference.Path(ref))
+	authorizer := auth.NewAuthorizer(DefaultChallengeManager, auth.NewTokenHandler(base, DefaultCredentialStore, repo_path, actions...))
 
-	repo, err := client.NewRepository(name_only, "https://"+reference.Domain(ref), NewTransport(ref, actions...))
+	tr := &authTransport{
+		ref:  ref,
+		base: transport.NewTransport(base, authorizer),
+	}
+
+	repo, err := client.NewRepository(name_only, "https://"+reference.Domain(ref), tr)
 	if err != nil {
 		return nil, err
 	}
@@ -68,6 +81,10 @@ func NewRepository(ref reference.Named, actions ...string) (distribution.Reposit
 		Repository: repo,
 		ref:        ref,
 	}, nil
+}
+
+func NewRepository(ref reference.Named, actions ...string) (distribution.Repository, error) {
+	return NewRepositoryWithRoundTripper(http.DefaultTransport, ref, actions...)
 }
 
 type ManifestGetter struct {
