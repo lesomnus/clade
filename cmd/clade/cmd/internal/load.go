@@ -13,7 +13,7 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) ([]*clade.ResolvedImage, error) {
+func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree, modifiers ...ClientOptionModifier) ([]*clade.ResolvedImage, error) {
 	Log.Debug().Str("name", image.Name()).Msg("expand")
 
 	executor := pl.NewExecutor()
@@ -28,7 +28,7 @@ func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) (
 			return tags, nil
 		}
 
-		repo, err := NewRepository(image.From)
+		repo, err := NewRepository(image.From, modifiers...)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create client: %w", err)
 		}
@@ -123,7 +123,7 @@ func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree) (
 	return resolved_images, nil
 }
 
-func LoadBuildTreeFromPorts(ctx context.Context, bt *clade.BuildTree, path string) error {
+func LoadBuildTreeFromPorts(ctx context.Context, bt *clade.BuildTree, path string, modifiers ...ClientOptionModifier) error {
 	ports, err := ReadPorts(path)
 	if err != nil {
 		return fmt.Errorf("failed to read ports: %w", err)
@@ -142,7 +142,7 @@ func LoadBuildTreeFromPorts(ctx context.Context, bt *clade.BuildTree, path strin
 		}
 
 		for _, image := range node.Value {
-			images, err := ExpandImage(ctx, image, bt)
+			images, err := ExpandImage(ctx, image, bt, modifiers...)
 			if err != nil {
 				return fmt.Errorf("failed to expand image %s: %w", image.String(), err)
 			}

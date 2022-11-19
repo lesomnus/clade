@@ -57,19 +57,48 @@ func (t *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return t.base.RoundTrip(req)
 }
 
-func NewRepositoryWithRoundTripper(base http.RoundTripper, ref reference.Named, actions ...string) (distribution.Repository, error) {
+type ClientOption struct {
+	transport http.RoundTripper
+	actions   []string
+}
+
+func NewClientOption() *ClientOption {
+	return &ClientOption{
+		transport: http.DefaultTransport,
+		actions:   make([]string, 0),
+	}
+}
+
+func (o *ClientOption) apply(modifiers []ClientOptionModifier) {
+	for _, m := range modifiers {
+		m(o)
+	}
+}
+
+func WithTransport(transport http.RoundTripper) ClientOptionModifier {
+	return func(o *ClientOption) {
+		o.transport = transport
+	}
+}
+
+type ClientOptionModifier func(o *ClientOption)
+
+func NewRepository(ref reference.Named, modifiers ...ClientOptionModifier) (distribution.Repository, error) {
+	opt := NewClientOption()
+	opt.apply(modifiers)
+
+	if !slices.Contains(opt.actions, "pull") {
+		opt.actions = append(opt.actions, "pull")
+	}
+
 	repo_path := reference.Path(ref)
 	name_only, _ := reference.WithName(repo_path)
 
-	if !slices.Contains(actions, "pull") {
-		actions = append(actions, "pull")
-	}
-
-	authorizer := auth.NewAuthorizer(DefaultChallengeManager, auth.NewTokenHandler(base, DefaultCredentialStore, repo_path, actions...))
+	authorizer := auth.NewAuthorizer(DefaultChallengeManager, auth.NewTokenHandler(opt.transport, DefaultCredentialStore, repo_path, opt.actions...))
 
 	tr := &authTransport{
 		ref:  ref,
-		base: transport.NewTransport(base, authorizer),
+		base: transport.NewTransport(opt.transport, authorizer),
 	}
 
 	repo, err := client.NewRepository(name_only, "https://"+reference.Domain(ref), tr)
@@ -83,18 +112,14 @@ func NewRepositoryWithRoundTripper(base http.RoundTripper, ref reference.Named, 
 	}, nil
 }
 
-func NewRepository(ref reference.Named, actions ...string) (distribution.Repository, error) {
-	return NewRepositoryWithRoundTripper(http.DefaultTransport, ref, actions...)
-}
-
 type ManifestGetter struct {
 	svc distribution.ManifestService
 	tag string
 	img digest.Digest // Digest for image
 }
 
-func NewManifestGetter(ctx context.Context, ref reference.NamedTagged) (*ManifestGetter, error) {
-	repo, err := NewRepository(ref)
+func NewManifestGetter(ctx context.Context, ref reference.NamedTagged, modifiers ...ClientOptionModifier) (*ManifestGetter, error) {
+	repo, err := NewRepository(ref, modifiers...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create repository accessor: %w", err)
 	}
@@ -128,33 +153,4 @@ func (g *ManifestGetter) GetByDigest(ctx context.Context, digest digest.Digest) 
 
 func (g *ManifestGetter) Get(ctx context.Context) (distribution.Manifest, error) {
 	return g.svc.Get(ctx, g.img, distribution.WithTag(g.tag))
-}
-
-func GetManifest(ctx context.Context, ref reference.NamedTagged) (distribution.Manifest, error) {
-	repo, err := NewRepository(ref)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create repository accessor: %w", err)
-	}
-
-	img_desc, err := repo.Tags(ctx).Get(ctx, ref.Tag())
-	if err != nil {
-		var errs errcode.Errors
-		if errors.As(err, &errs) {
-			for _, e := range errs {
-				if errors.Is(e, v2.ErrorCodeManifestUnknown) ||
-					errors.Is(e, errcode.ErrorCode(1003)) { // ghcr.io returns 1003 if manifest not exists
-					return nil, ErrManifestUnknown
-				}
-			}
-		}
-
-		return nil, fmt.Errorf("failed to get image descriptor: %w", err)
-	}
-
-	svc, err := repo.Manifests(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create manifest service: %w", err)
-	}
-
-	return svc.Get(ctx, img_desc.Digest, distribution.WithTag(ref.Tag()))
 }
