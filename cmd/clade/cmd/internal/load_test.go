@@ -155,6 +155,106 @@ from:
 		require.Equal("42", images[0].Tags[0])
 		require.Equal("1.0.42", images[0].From.Tag())
 	})
+
+	t.Run("fails if", func(t *testing.T) {
+		tcs := []struct {
+			desc string
+			port string
+			msgs []string
+		}{
+			{
+				desc: "remote repo not exists",
+				port: fmt.Sprintf(`
+tags: [foo]
+from:
+  name: %s/repo/not-exists
+  tag: ( tags | semver)`, u.Host),
+				msgs: []string{"get", "tags"},
+			},
+			{
+				desc: "from pipeline with undefined functions",
+				port: fmt.Sprintf(`
+tags: [foo]
+from:
+  name: %s/repo/single
+  tag: ( awesome )`, u.Host),
+				msgs: []string{"awesome", "defined"},
+			},
+			{
+				desc: "from pipeline result is not string",
+				port: fmt.Sprintf(`
+tags: [foo]
+from:
+  name: %s/repo/single
+  tag: ( pass 42 )`, u.Host),
+				msgs: []string{"convert", "string"},
+			},
+			{
+				desc: "from pipeline results invalid tag format",
+				port: fmt.Sprintf(`
+tags: [foo]
+from:
+  name: %s/repo/single
+  tag: ( log "invalid tag" )`, u.Host),
+				msgs: []string{"invalid", "tag"},
+			},
+			{
+				desc: "tag pipeline with undefined functions",
+				port: fmt.Sprintf(`
+tags: [( awesome )]
+from:
+  name: %s/repo/single
+  tag: "1.0.0"`, u.Host),
+				msgs: []string{"awesome", "defined"},
+			},
+			{
+				desc: "tag pipeline results multiple value",
+				port: fmt.Sprintf(`
+tags: [( log "foo" "bar" )]
+from:
+  name: %s/repo/single
+  tag: "1.0.0"`, u.Host),
+				msgs: []string{"size 1", "2"},
+			},
+			{
+				desc: "tag pipeline results type not string",
+				port: fmt.Sprintf(`
+tags: [( pass 42 )]
+from:
+  name: %s/repo/single
+  tag: "1.0.0"`, u.Host),
+				msgs: []string{"string"},
+			},
+			{
+				desc: "tag is duplicated",
+				port: fmt.Sprintf(`
+tags: [ foo ]
+from:
+  name: %s/repo/patched
+  tag: ( tags | semver )`, u.Host),
+				msgs: []string{"duplicated", "foo"},
+			},
+		}
+		for _, tc := range tcs {
+			t.Run(tc.desc, func(t *testing.T) {
+				require := require.New(t)
+
+				image := &clade.Image{Named: image_name}
+				err = yaml.Unmarshal([]byte(tc.port), image)
+				require.NoError(err)
+
+				err = internal.Cache.Clear()
+				require.NoError(err)
+
+				ctx := context.Background()
+				_, err := internal.ExpandImage(ctx, image, clade.NewBuildTree(), internal.WithTransport(s.Client().Transport))
+				require.Error(err)
+				for _, msg := range tc.msgs {
+					require.ErrorContains(err, msg)
+				}
+			})
+		}
+	})
 }
 
 func TestLoadBuildTreeFromPorts(t *testing.T) {
