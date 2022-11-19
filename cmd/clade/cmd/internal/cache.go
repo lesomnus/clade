@@ -17,6 +17,10 @@ type CacheStore struct {
 	Dir string
 }
 
+func (s *CacheStore) Clear() error {
+	return os.RemoveAll(filepath.Join(s.Dir, "tags"))
+}
+
 func (s *CacheStore) GetTags(ref reference.Named) ([]string, bool) {
 	tgt := filepath.Join(s.Dir, "tags", ref.Name())
 	tags := make([]string, 0)
