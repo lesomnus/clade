@@ -1,4 +1,4 @@
-package internal_test
+package registry
 
 import (
 	"bytes"
@@ -10,32 +10,33 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
 )
 
 // Implements mock container registry for testing.
 
-type manifest struct {
-	contentType string
-	blob        []byte
+type Manifest struct {
+	ContentType string
+	Blob        []byte
 }
 
-type repository struct {
-	name      string
-	manifests map[string]manifest
+type Repository struct {
+	Name      string
+	Manifests map[string]Manifest
 }
 
-type registry struct {
-	t *testing.T
+type Registry struct {
+	T *testing.T
 
-	repos map[string]*repository
+	Repos map[string]*Repository
 }
 
-func (r *repository) Tags() []string {
-	tags := make([]string, len(r.manifests))
+func (r *Repository) Tags() []string {
+	tags := make([]string, len(r.Manifests))
 
 	i := 0
-	for tag := range r.manifests {
+	for tag := range r.Manifests {
 		tags[i] = tag
 		i++
 	}
@@ -48,8 +49,8 @@ type registryError struct {
 	Message string `json:"message"`
 }
 
-func (r *registry) handleRoot(res http.ResponseWriter, req *http.Request) {
-	r.t.Logf("[%5s] %s", req.Method, req.URL.String())
+func (r *Registry) handleRoot(res http.ResponseWriter, req *http.Request) {
+	r.T.Logf("[%5s] %s", req.Method, req.URL.String())
 
 	if req.URL.Path == "/" && req.URL.Query().Has("scope") {
 		res.WriteHeader(http.StatusOK)
@@ -85,7 +86,7 @@ func (r *registry) handleRoot(res http.ResponseWriter, req *http.Request) {
 	name := strings.Join(parts[0:2], "/")
 	parts = append(parts[2:], "")
 
-	repo, ok := r.repos[name]
+	repo, ok := r.Repos[name]
 	if !ok {
 		res.WriteHeader(http.StatusNotFound)
 		return
@@ -118,52 +119,50 @@ func (r *registry) handleRoot(res http.ResponseWriter, req *http.Request) {
 	}
 
 	err_res, err := json.Marshal(errs)
-	if err != nil {
-		r.t.Fatal(err)
-	}
+	require.NoError(r.T, err)
 
 	res.Write([]byte(fmt.Sprintf(`{"errors":%s}`, string(err_res))))
 }
 
-func (r *registry) handleTagsList(res http.ResponseWriter, req *http.Request, repo *repository) []registryError {
+func (r *Registry) handleTagsList(res http.ResponseWriter, req *http.Request, repo *Repository) []registryError {
 	tags := slices.Clone(repo.Tags())
 	for i, tag := range tags {
 		tags[i] = fmt.Sprintf(`"%s"`, tag)
 	}
 
 	res.WriteHeader(http.StatusOK)
-	res.Write([]byte(fmt.Sprintf(`{"name": "%s", "tags": [%s]}`, repo.name, strings.Join(tags, ","))))
+	res.Write([]byte(fmt.Sprintf(`{"name": "%s", "tags": [%s]}`, repo.Name, strings.Join(tags, ","))))
 
 	return []registryError{}
 }
 
-func (r *registry) handleManifests(res http.ResponseWriter, req *http.Request, repo *repository, tag string) []registryError {
-	manifest, ok := repo.manifests[tag]
+func (r *Registry) handleManifests(res http.ResponseWriter, req *http.Request, repo *Repository, tag string) []registryError {
+	manifest, ok := repo.Manifests[tag]
 	if !ok {
 		res.WriteHeader(http.StatusNotFound)
 		return []registryError{{Code: "MANIFEST_UNKNOWN", Message: "manifest unknown"}}
 	}
 
-	res.Header().Set("Content-Type", manifest.contentType)
-	res.Header().Set("Content-Length", fmt.Sprint(len(manifest.blob)))
+	res.Header().Set("Content-Type", manifest.ContentType)
+	res.Header().Set("Content-Length", fmt.Sprint(len(manifest.Blob)))
 	res.WriteHeader(http.StatusOK)
 
 	if req.Method == "HEAD" {
 		return []registryError{}
 	}
 
-	io.Copy(res, bytes.NewReader(manifest.blob))
+	io.Copy(res, bytes.NewReader(manifest.Blob))
 
 	return []registryError{}
 }
 
-func (r *registry) handler() http.HandlerFunc {
+func (r *Registry) Handler() http.HandlerFunc {
 	return http.HandlerFunc(r.handleRoot)
 }
 
-func newRegistry(t *testing.T) *registry {
-	return &registry{
-		t:     t,
-		repos: make(map[string]*repository),
+func NewRegistry(t *testing.T) *Registry {
+	return &Registry{
+		T:     t,
+		Repos: make(map[string]*Repository),
 	}
 }

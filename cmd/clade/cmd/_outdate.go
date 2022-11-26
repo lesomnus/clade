@@ -1,49 +1,44 @@
 package cmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
 
-	"github.com/docker/distribution"
-	"github.com/docker/distribution/manifest/manifestlist"
-	"github.com/docker/distribution/manifest/schema2"
 	"github.com/lesomnus/clade"
-	"github.com/lesomnus/clade/cmd/clade/cmd/internal"
 	"github.com/lesomnus/clade/tree"
 	"github.com/spf13/cobra"
 )
 
-func getLayers(ctx context.Context, getter *internal.ManifestGetter) ([]distribution.Descriptor, error) {
-	manif, err := getter.Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get manifest: %w", err)
-	}
+// func getLayers(ctx context.Context, getter *internal.ManifestGetter) ([]distribution.Descriptor, error) {
+// 	manif, err := getter.Get(ctx)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to get manifest: %w", err)
+// 	}
 
-	switch m := manif.(type) {
-	case *schema2.DeserializedManifest:
-		return m.Layers, nil
-	case *manifestlist.DeserializedManifestList:
-		if len(m.Manifests) == 0 {
-			return nil, errors.New("manifest list is empty")
-		}
+// 	switch m := manif.(type) {
+// 	case *schema2.DeserializedManifest:
+// 		return m.Layers, nil
+// 	case *manifestlist.DeserializedManifestList:
+// 		if len(m.Manifests) == 0 {
+// 			return nil, errors.New("manifest list is empty")
+// 		}
 
-		// I think it's OK to check only the first one
-		// since the images are all updated at once.
-		sub_m, err := getter.GetByDigest(ctx, m.Manifests[0].Digest)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get manifest: %w", err)
-		}
+// 		// I think it's OK to check only the first one
+// 		// since the images are all updated at once.
+// 		sub_m, err := getter.GetByDigest(ctx, m.Manifests[0].Digest)
+// 		if err != nil {
+// 			return nil, fmt.Errorf("failed to get manifest: %w", err)
+// 		}
 
-		switch m := sub_m.(type) {
-		case *schema2.DeserializedManifest:
-			return m.Layers, nil
-		}
-	}
+// 		switch m := sub_m.(type) {
+// 		case *schema2.DeserializedManifest:
+// 			return m.Layers, nil
+// 		}
+// 	}
 
-	panic("unsupported manifest schema")
-}
+// 	panic("unsupported manifest schema")
+// }
 
 var outdated_cmd = &cobra.Command{
 	Use:   "outdated",
@@ -51,7 +46,7 @@ var outdated_cmd = &cobra.Command{
 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		bt := clade.NewBuildTree()
-		if err := internal.LoadBuildTreeFromPorts(cmd.Context(), bt, root_flags.portsPath); err != nil {
+		if err := loadBuildTreeFromPorts(cmd.Context(), bt, root_flags.portsPath); err != nil {
 			return fmt.Errorf("failed to load ports: %w", err)
 		}
 

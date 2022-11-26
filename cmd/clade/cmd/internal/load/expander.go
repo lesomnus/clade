@@ -1,26 +1,30 @@
-package internal
+package load
 
 import (
 	"context"
 	"fmt"
-	"strings"
 
-	"github.com/distribution/distribution/reference"
+	"github.com/distribution/distribution/v3/reference"
 	"github.com/lesomnus/clade"
+	"github.com/lesomnus/clade/cmd/clade/cmd/internal/client"
 	"github.com/lesomnus/clade/plf"
-	"github.com/lesomnus/clade/tree"
 	"github.com/lesomnus/pl"
 	"golang.org/x/exp/maps"
 )
 
-func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree, modifiers ...ClientOptionModifier) ([]*clade.ResolvedImage, error) {
-	Log.Debug().Str("name", image.Name()).Msg("expand")
+type Expander struct {
+	Registry client.Registry
+	// Expand(ctx context.Context, image *clade.Image)
+}
+
+func (e *Expander) Expand(ctx context.Context, image *clade.Image, bt *clade.BuildTree) ([]*clade.ResolvedImage, error) {
+	// Log.Debug().Str("name", image.Name()).Msg("expand")
 
 	executor := pl.NewExecutor()
 	maps.Copy(executor.Funcs, plf.Funcs())
 	executor.Convs.MergeWith(plf.Convs())
 	executor.Funcs["log"] = func(vs ...string) []string {
-		Log.Debug().Str("name", image.Name()).Msg(strings.Join(vs, ", "))
+		// Log.Debug().Str("name", image.Name()).Msg(strings.Join(vs, ", "))
 		return vs
 	}
 	executor.Funcs["tags"] = func() ([]string, error) {
@@ -28,7 +32,7 @@ func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree, m
 			return tags, nil
 		}
 
-		repo, err := NewRepository(image.From, modifiers...)
+		repo, err := e.Registry.Repository(image.From)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create client: %w", err)
 		}
@@ -121,43 +125,4 @@ func ExpandImage(ctx context.Context, image *clade.Image, bt *clade.BuildTree, m
 	}
 
 	return resolved_images, nil
-}
-
-func LoadBuildTreeFromPorts(ctx context.Context, bt *clade.BuildTree, path string, modifiers ...ClientOptionModifier) error {
-	ports, err := ReadPorts(path)
-	if err != nil {
-		return fmt.Errorf("failed to read ports: %w", err)
-	}
-
-	dt := clade.NewDependencyTree()
-	for _, port := range ports {
-		for _, image := range port.Images {
-			dt.Insert(image)
-		}
-	}
-
-	return dt.AsNode().Walk(func(level int, name string, node *tree.Node[[]*clade.Image]) error {
-		if level == 0 {
-			return nil
-		}
-
-		for _, image := range node.Value {
-			images, err := ExpandImage(ctx, image, bt, modifiers...)
-			if err != nil {
-				return fmt.Errorf("failed to expand image %s: %w", image.String(), err)
-			}
-
-			for _, image := range images {
-				if len(image.Tags) == 0 {
-					continue
-				}
-
-				if err := bt.Insert(image); err != nil {
-					return fmt.Errorf("failed to insert image %s into build tree: %w", image.String(), err)
-				}
-			}
-		}
-
-		return nil
-	})
 }

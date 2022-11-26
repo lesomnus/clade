@@ -1,4 +1,4 @@
-package internal_test
+package cache_test
 
 import (
 	"os"
@@ -6,20 +6,16 @@ import (
 	"testing"
 
 	"github.com/distribution/distribution/reference"
-	"github.com/lesomnus/clade/cmd/clade/cmd/internal"
+	"github.com/lesomnus/clade/cmd/clade/cmd/internal/cache"
 	"github.com/stretchr/testify/require"
 )
 
-func TestCacheStoreTags(t *testing.T) {
+func TestFsCacheStoreTags(t *testing.T) {
 	t.Run("overwrite", func(t *testing.T) {
 		require := require.New(t)
 
-		tmp, err := os.MkdirTemp(os.TempDir(), "clade-test-*")
-		require.NoError(err)
-
-		defer os.RemoveAll(tmp)
-
-		cache := internal.CacheStore{Dir: tmp}
+		tmp := t.TempDir()
+		cache := cache.FsCacheStore{Dir: tmp}
 
 		named, err := reference.ParseNamed("ghcr.io/repo/name")
 		require.NoError(err)
@@ -44,7 +40,7 @@ func TestCacheStoreTags(t *testing.T) {
 	t.Run("not fails if there is no directory", func(t *testing.T) {
 		require := require.New(t)
 
-		cache := internal.CacheStore{Dir: "/not exists"}
+		cache := cache.FsCacheStore{Dir: "/not exists"}
 
 		named, err := reference.ParseNamed("ghcr.io/repo/name")
 		require.NoError(err)
@@ -57,12 +53,8 @@ func TestCacheStoreTags(t *testing.T) {
 	t.Run("not fails if data is invalid", func(t *testing.T) {
 		require := require.New(t)
 
-		tmp, err := os.MkdirTemp(os.TempDir(), "clade-test-*")
-		require.NoError(err)
-
-		defer os.RemoveAll(tmp)
-
-		cache := internal.CacheStore{Dir: tmp}
+		tmp := t.TempDir()
+		cache := cache.FsCacheStore{Dir: tmp}
 
 		named, err := reference.ParseNamed("ghcr.io/repo/name")
 		require.NoError(err)
@@ -73,4 +65,21 @@ func TestCacheStoreTags(t *testing.T) {
 		_, ok := cache.GetTags(named)
 		require.False(ok)
 	})
+
+	t.Run("clear only removes its content not the directory", func(t *testing.T) {
+		require := require.New(t)
+
+		tmp := t.TempDir()
+		cache := cache.FsCacheStore{Dir: tmp}
+
+		named, err := reference.ParseNamed("ghcr.io/repo/name")
+		require.NoError(err)
+
+		cache.SetTags(named, []string{"foo", "bar", "baz"})
+		cache.Clear()
+
+		_, err = os.Stat(tmp)
+		require.NoError(err)
+	})
+
 }
