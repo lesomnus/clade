@@ -1,27 +1,26 @@
-package internal
+package cache
 
 import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/distribution/distribution/reference"
 )
 
-var (
-	Cache CacheStore
-)
-
-type CacheStore struct {
+type FsCacheStore struct {
 	Dir string
 }
 
-func (s *CacheStore) Clear() error {
+func (s *FsCacheStore) Name() string {
+	return s.Dir
+}
+
+func (s *FsCacheStore) Clear() error {
 	return os.RemoveAll(filepath.Join(s.Dir, "tags"))
 }
 
-func (s *CacheStore) GetTags(ref reference.Named) ([]string, bool) {
+func (s *FsCacheStore) GetTags(ref reference.Named) ([]string, bool) {
 	tgt := filepath.Join(s.Dir, "tags", ref.Name())
 	tags := make([]string, 0)
 
@@ -35,11 +34,11 @@ func (s *CacheStore) GetTags(ref reference.Named) ([]string, bool) {
 		return nil, false
 	}
 
-	Log.Trace().Str("path", tgt).Msg("tag cache hit")
+	// Log.Trace().Str("path", tgt).Msg("tag cache hit")
 	return tags, true
 }
 
-func (s *CacheStore) SetTags(ref reference.Named, tags []string) {
+func (s *FsCacheStore) SetTags(ref reference.Named, tags []string) {
 	tgt := filepath.Join(s.Dir, "tags", ref.Name())
 	data, err := json.Marshal(tags)
 	if err != nil {
@@ -51,15 +50,4 @@ func (s *CacheStore) SetTags(ref reference.Named, tags []string) {
 	}
 
 	os.WriteFile(tgt, data, 0655)
-}
-
-func init() {
-	now := time.Now().Format("2006-01-02")
-
-	dir, ok := os.LookupEnv("CLADE_CACHE_DIR")
-	if ok {
-		Cache.Dir = dir
-	} else {
-		Cache.Dir = filepath.Join(os.TempDir(), "clade-cache-"+now)
-	}
 }

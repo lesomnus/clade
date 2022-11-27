@@ -1,16 +1,19 @@
-package internal
+package load
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/lesomnus/clade"
+	"github.com/rs/zerolog"
 )
 
-func ReadPorts(path string) ([]*clade.Port, error) {
-	Log.Info().Str("path", path).Msg("read ports")
+func ReadFromFs(ctx context.Context, path string) ([]*clade.Port, error) {
+	l := zerolog.Ctx(ctx)
+	l.Info().Str("path", path).Msg("read ports")
 
 	entries, err := os.ReadDir(path)
 	if err != nil {
@@ -24,7 +27,7 @@ func ReadPorts(path string) ([]*clade.Port, error) {
 		}
 
 		port_path := filepath.Join(path, entry.Name(), "port.yaml")
-		Log.Debug().Str("path", port_path).Msg("read port")
+		l.Debug().Str("path", port_path).Msg("read port")
 
 		port, err := clade.ReadPort(port_path)
 		if err != nil {

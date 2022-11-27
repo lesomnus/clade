@@ -1,118 +1,126 @@
 package cmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"os"
 
-	"github.com/docker/distribution"
-	"github.com/docker/distribution/manifest/manifestlist"
-	"github.com/docker/distribution/manifest/schema2"
+	"github.com/distribution/distribution/v3/registry/api/errcode"
+	v2 "github.com/distribution/distribution/v3/registry/api/v2"
 	"github.com/lesomnus/clade"
-	"github.com/lesomnus/clade/cmd/clade/cmd/internal"
 	"github.com/lesomnus/clade/tree"
 	"github.com/spf13/cobra"
 )
 
-func getLayers(ctx context.Context, getter *internal.ManifestGetter) ([]distribution.Descriptor, error) {
-	manif, err := getter.Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get manifest: %w", err)
-	}
-
-	switch m := manif.(type) {
-	case *schema2.DeserializedManifest:
-		return m.Layers, nil
-	case *manifestlist.DeserializedManifestList:
-		if len(m.Manifests) == 0 {
-			return nil, errors.New("manifest list is empty")
-		}
-
-		// I think it's OK to check only the first one
-		// since the images are all updated at once.
-		sub_m, err := getter.GetByDigest(ctx, m.Manifests[0].Digest)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get manifest: %w", err)
-		}
-
-		switch m := sub_m.(type) {
-		case *schema2.DeserializedManifest:
-			return m.Layers, nil
-		}
-	}
-
-	panic("unsupported manifest schema")
+type OutdatedFlags struct {
+	*RootFlags
 }
 
-var outdated_cmd = &cobra.Command{
-	Use:   "outdated",
-	Short: "List outdated images",
+func CreateOutdatedCmd(flags *OutdatedFlags, svc Service) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "outdated",
+		Short: "List outdated images",
 
-	RunE: func(cmd *cobra.Command, args []string) error {
-		bt := clade.NewBuildTree()
-		if err := internal.LoadBuildTreeFromPorts(cmd.Context(), bt, root_flags.portsPath); err != nil {
-			return fmt.Errorf("failed to load ports: %w", err)
-		}
-
-		o := os.Stdout
-
-		return bt.Walk(func(level int, name string, node *tree.Node[*clade.ResolvedImage]) error {
-			if level == 0 {
-				return nil
+		RunE: func(cmd *cobra.Command, args []string) error {
+			bt := clade.NewBuildTree()
+			if err := svc.LoadBuildTreeFromFs(cmd.Context(), bt, flags.PortsPath); err != nil {
+				return fmt.Errorf("failed to load ports: %w", err)
 			}
 
-			child_name, err := node.Value.Tagged()
-			if err != nil {
-				return err
-			}
+			return bt.Walk(func(level int, name string, node *tree.Node[*clade.ResolvedImage]) error {
+				if level == 0 {
+					return nil
+				}
 
-			child_manif_getter, err := internal.NewManifestGetter(cmd.Context(), child_name)
-			if err != nil {
-				if errors.Is(err, internal.ErrManifestUnknown) {
-					fmt.Fprintln(o, child_name.String())
+				child_name, err := node.Value.Tagged()
+				if err != nil {
+					return err
+				}
+
+				child_layers, err := svc.GetLayer(cmd.Context(), child_name)
+				if err != nil {
+					var errs errcode.Errors
+					if errors.As(err, &errs) {
+						if len(errs) == 0 {
+							panic("how errors can be empty?")
+						}
+
+						for _, err := range errs {
+							if errors.Is(err, v2.ErrorCodeManifestUnknown) {
+								fmt.Fprintln(svc.Output(), child_name.String())
+								return tree.WalkContinue
+							}
+						}
+					}
+
+					return fmt.Errorf("failed to get layers of %s: %w", child_name.String(), err)
+				}
+
+				parent_layers, err := svc.GetLayer(cmd.Context(), node.Value.From)
+				if err != nil {
+					return fmt.Errorf("failed to get layers of %s: %w", node.Value.From.String(), err)
+				}
+
+				// repo, err := opt.Registry().Repository(child_name)
+				// if err != nil {
+				// 	return fmt.Errorf("failed to create repository service: %w", err)
+				// }
+
+				// // repo.Manifests(cmd.Context(), distribution.WithTag()
+
+				// child_manif_getter, err := internal.NewManifestGetter(cmd.Context(), child_name)
+				// if err != nil {
+				// 	if errors.Is(err, internal.ErrManifestUnknown) {
+				// 		fmt.Fprintln(o, child_name.String())
+				// 		return tree.WalkContinue
+				// 	} else {
+				// 		return fmt.Errorf("failed to create manifest getter for child image: %w", err)
+				// 	}
+				// }
+
+				// parent_manif_getter, err := internal.NewManifestGetter(cmd.Context(), node.Value.From)
+				// if err != nil {
+				// 	return fmt.Errorf("failed to create manifest getter for parent image: %w", err)
+				// }
+
+				// child_layers, err := getLayers(cmd.Context(), child_manif_getter)
+				// if err != nil {
+				// 	return fmt.Errorf("failed to get layers of %s: %w", child_name.String(), err)
+				// }
+
+				// parent_layers, err := getLayers(cmd.Context(), parent_manif_getter)
+				// if err != nil {
+				// 	return fmt.Errorf("failed to get layers of %s: %w", node.Value.From.String(), err)
+				// }
+
+				if len(parent_layers) == 0 {
+					panic("layer empty")
+				}
+
+				is_contains := false
+				for _, layer := range child_layers {
+					if layer.Digest == parent_layers[len(parent_layers)-1].Digest {
+						is_contains = true
+						break
+					}
+				}
+
+				if !is_contains {
+					fmt.Fprintln(svc.Output(), child_name.String())
 					return tree.WalkContinue
-				} else {
-					return fmt.Errorf("failed to create manifest getter for child image: %w", err)
 				}
-			}
 
-			parent_manif_getter, err := internal.NewManifestGetter(cmd.Context(), node.Value.From)
-			if err != nil {
-				return fmt.Errorf("failed to create manifest getter for parent image: %w", err)
-			}
+				return nil
+			})
+		},
+	}
 
-			child_layers, err := getLayers(cmd.Context(), child_manif_getter)
-			if err != nil {
-				return fmt.Errorf("failed to get layers of %s: %w", child_name.String(), err)
-			}
-
-			parent_layers, err := getLayers(cmd.Context(), parent_manif_getter)
-			if err != nil {
-				return fmt.Errorf("failed to get layers of %s: %w", node.Value.From.String(), err)
-			}
-
-			if len(parent_layers) == 0 {
-				panic("layer empty")
-			}
-
-			is_contains := false
-			for _, layer := range child_layers {
-				if layer.Digest == parent_layers[len(parent_layers)-1].Digest {
-					is_contains = true
-					break
-				}
-			}
-
-			if !is_contains {
-				fmt.Fprintln(o, child_name.String())
-				return tree.WalkContinue
-			}
-
-			return nil
-		})
-	},
+	return cmd
 }
+
+var (
+	outdated_flags = OutdatedFlags{RootFlags: &root_flags}
+	outdated_cmd   = CreateOutdatedCmd(&outdated_flags, NewCmdService())
+)
 
 func init() {
 	root_cmd.AddCommand(outdated_cmd)

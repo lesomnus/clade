@@ -3,7 +3,7 @@ package clade
 import (
 	"fmt"
 
-	"github.com/docker/distribution/reference"
+	"github.com/distribution/distribution/v3/reference"
 	"github.com/lesomnus/clade/tree"
 )
 

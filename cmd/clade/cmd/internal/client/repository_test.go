@@ -1,74 +1,49 @@
-package internal_test
+package client_test
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net/http/httptest"
 	"net/url"
 	"testing"
 
-	"github.com/distribution/distribution/reference"
-	"github.com/docker/distribution/manifest/manifestlist"
-	"github.com/docker/distribution/manifest/schema2"
-	"github.com/lesomnus/clade/cmd/clade/cmd/internal"
+	"github.com/distribution/distribution/v3"
+	"github.com/distribution/distribution/v3/manifest/manifestlist"
+	"github.com/distribution/distribution/v3/manifest/schema2"
+	"github.com/distribution/distribution/v3/reference"
+	"github.com/distribution/distribution/v3/registry/api/errcode"
+	v2 "github.com/distribution/distribution/v3/registry/api/v2"
+	"github.com/lesomnus/clade/cmd/clade/cmd/internal/cache"
+	"github.com/lesomnus/clade/cmd/clade/cmd/internal/client"
+	"github.com/lesomnus/clade/cmd/clade/cmd/internal/registry"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/require"
 )
 
-func TestRepositoryTagsAll(t *testing.T) {
-	require := require.New(t)
+func TestRepositoryTags(t *testing.T) {
 
-	reg := newRegistry(t)
-	reg.repos["repo/name"] = &repository{
-		name: "repo/name",
-		manifests: map[string]manifest{
-			"a": {},
-			"b": {},
-			"c": {},
-		},
-	}
+	reg := registry.NewRegistry(t)
 
-	s := httptest.NewTLSServer(reg.handler())
+	s := httptest.NewTLSServer(reg.Handler())
 	defer s.Close()
 
-	u, err := url.Parse(s.URL)
-	require.NoError(err)
+	reg_rul, err := url.Parse(s.URL)
+	require.NoError(t, err)
 
-	named, err := reference.ParseNamed(fmt.Sprintf("%s/repo/name", u.Host))
-	require.NoError(err)
+	named, err := reference.ParseNamed(reg_rul.Host + "/repo/name")
+	require.NoError(t, err)
 
-	repo, err := internal.NewRepository(named, internal.WithTransport(s.Client().Transport))
-	require.NoError(err)
+	name := reference.Path(named)
 
-	ctx := context.Background()
-	tags, err := repo.Tags(ctx).All(ctx)
-	require.NoError(err)
-
-	require.ElementsMatch(reg.repos["repo/name"].Tags(), tags)
-}
-
-func TestManifestGetter(t *testing.T) {
-	require := require.New(t)
-
-	reg := newRegistry(t)
-	reg.repos["repo/name"] = &repository{
-		name: "repo/name",
-		manifests: map[string]manifest{
-			"tag": {
-				contentType: "application/vnd.docker.distribution.manifest.list.v2+json",
-				blob: []byte(`{
+	reg.Repos[name] = &registry.Repository{
+		Name: name,
+		Manifests: map[string]registry.Manifest{
+			"foo": {
+				ContentType: "application/vnd.docker.distribution.manifest.list.v2+json",
+				Blob: []byte(`{
 					"schemaVersion": 2,
 					"mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
 					"manifests": [
-						{
-							"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-							"size": 7143,
-							"digest": "sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f",
-							"platform": {
-								"architecture": "ppc64le",
-								"os": "linux"
-							}
-						},
 						{
 							"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
 							"size": 7682,
@@ -85,8 +60,8 @@ func TestManifestGetter(t *testing.T) {
 				}`),
 			},
 			"sha256:5b0bcabd1ed22e9fb1310cf6c2dec7cdef19f0ad69efa1f392e94a4333501270": {
-				contentType: "application/vnd.docker.distribution.manifest.v2+json",
-				blob: []byte(`{
+				ContentType: "application/vnd.docker.distribution.manifest.v2+json",
+				Blob: []byte(`{
 					"schemaVersion": 1,
 					"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
 					"name": "hello-world",
@@ -135,46 +110,70 @@ func TestManifestGetter(t *testing.T) {
 		},
 	}
 
-	s := httptest.NewTLSServer(reg.handler())
-	defer s.Close()
+	reg_client := client.NewDistRegistry()
+	reg_client.Transport = s.Client().Transport
+	reg_client.Cache = cache.NewMemCacheStore()
 
-	u, err := url.Parse(s.URL)
-	require.NoError(err)
+	repo, err := reg_client.Repository(named)
+	require.NoError(t, err)
 
-	named, err := reference.ParseNamed(fmt.Sprintf("%s/repo/name", u.Host))
-	require.NoError(err)
+	ctx := context.Background()
 
-	tagged, err := reference.WithTag(named, "tag")
-	require.NoError(err)
+	t.Run("tags are cached", func(t *testing.T) {
+		require := require.New(t)
 
-	t.Run("returns manifest getter if tag is exists", func(t *testing.T) {
-		ctx := context.Background()
-		getter, err := internal.NewManifestGetter(ctx, tagged, internal.WithTransport(s.Client().Transport))
+		defer reg_client.Cache.Clear()
+
+		tags, err := repo.Tags(ctx).All(ctx)
 		require.NoError(err)
+		require.ElementsMatch([]string{"foo"}, tags)
 
-		t.Run("gets (fat) manifest", func(t *testing.T) {
-			manifest, err := getter.Get(ctx)
-			require.NoError(err)
+		cached_tags, ok := reg_client.Cache.GetTags(named)
+		require.True(ok)
+		require.ElementsMatch([]string{"foo"}, cached_tags)
 
-			_, ok := manifest.(*manifestlist.DeserializedManifestList)
-			require.True(ok)
-		})
-
-		t.Run("gets manifest with digest", func(t *testing.T) {
-			manifest, err := getter.GetByDigest(ctx, digest.NewDigestFromEncoded(digest.SHA256, "5b0bcabd1ed22e9fb1310cf6c2dec7cdef19f0ad69efa1f392e94a4333501270"))
-			require.NoError(err)
-
-			_, ok := manifest.(*schema2.DeserializedManifest)
-			require.True(ok)
-		})
+		reg_client.Cache.SetTags(named, []string{"bar"})
+		cached_tags, err = repo.Tags(ctx).All(ctx)
+		require.NoError(err)
+		require.ElementsMatch([]string{"bar"}, cached_tags)
 	})
 
-	t.Run("returns ErrManifestUnknown if tag is not exists", func(t *testing.T) {
-		tagged, err := reference.WithTag(named, "not_exists")
+	t.Run("get manifest", func(t *testing.T) {
+		require := require.New(t)
+
+		svc, err := repo.Manifests(ctx)
 		require.NoError(err)
 
-		ctx := context.Background()
-		_, err = internal.NewManifestGetter(ctx, tagged, internal.WithTransport(s.Client().Transport))
-		require.ErrorIs(err, internal.ErrManifestUnknown)
+		manifest, err := svc.Get(ctx, digest.Digest(""), distribution.WithTag("foo"))
+		require.NoError(err)
+
+		manifest_list, ok := manifest.(*manifestlist.DeserializedManifestList)
+		require.True(ok)
+
+		manifests := manifest_list.References()
+		require.Len(manifests, 1)
+		require.Equal(digest.NewDigestFromEncoded(digest.SHA256, "5b0bcabd1ed22e9fb1310cf6c2dec7cdef19f0ad69efa1f392e94a4333501270"), manifests[0].Digest)
+
+		manifest_child, err := svc.Get(ctx, manifests[0].Digest)
+		require.NoError(err)
+
+		_, ok = manifest_child.(*schema2.DeserializedManifest)
+		require.True(ok)
+	})
+
+	t.Run("returns ErrorCodeManifestUnknown if tag is not exists", func(t *testing.T) {
+		require := require.New(t)
+
+		svc, err := repo.Manifests(ctx)
+		require.NoError(err)
+
+		_, err = svc.Get(ctx, digest.Digest(""), distribution.WithTag("not-exists"))
+		require.Error(err)
+
+		var errs errcode.Errors
+		ok := errors.As(err, &errs)
+		require.True(ok)
+		require.Len(errs, 1)
+		require.ErrorIs(errs[0], v2.ErrorCodeManifestUnknown)
 	})
 }
