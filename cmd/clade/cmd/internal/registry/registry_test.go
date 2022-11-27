@@ -23,7 +23,7 @@ func (t *AuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return t.base.RoundTrip(req)
 }
 
-func Test_V2(t *testing.T) {
+func TestRegistry(t *testing.T) {
 	reg := registry.NewRegistry(t)
 	reg.Repos["spider-man/tom"] = &registry.Repository{
 		Name: "spider-man/tom",
@@ -32,6 +32,7 @@ func Test_V2(t *testing.T) {
 				ContentType: "movie",
 				Blob:        []byte("great power"),
 			},
+			"sha256:asdf": {},
 		},
 	}
 

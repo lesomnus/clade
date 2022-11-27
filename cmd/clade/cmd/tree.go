@@ -10,10 +10,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type TreeOption struct {
-	Option
-}
-
 type TreeFlags struct {
 	*RootFlags
 	Strip int
@@ -21,7 +17,7 @@ type TreeFlags struct {
 	Fold  bool
 }
 
-func CreateCmdTree(flags *TreeFlags, opt *Option) *cobra.Command {
+func CreateTreeCmd(flags *TreeFlags, svc Service) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tree [flags] [reference]",
 		Short: "List images",
@@ -31,7 +27,7 @@ func CreateCmdTree(flags *TreeFlags, opt *Option) *cobra.Command {
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			bt := clade.NewBuildTree()
-			if err := opt.LoadBuildTreeFromFs(cmd.Context(), bt, flags.PortsPath); err != nil {
+			if err := svc.LoadBuildTreeFromFs(cmd.Context(), bt, flags.PortsPath); err != nil {
 				return fmt.Errorf("failed to load ports: %w", err)
 			}
 
@@ -83,7 +79,7 @@ func CreateCmdTree(flags *TreeFlags, opt *Option) *cobra.Command {
 
 				image := node.Value
 				for _, tag := range image.Tags {
-					fmt.Fprint(opt.Output, strings.Repeat("\t", lv), image.Name(), ":", tag, "\n")
+					fmt.Fprint(svc.Output(), strings.Repeat("\t", lv), image.Name(), ":", tag, "\n")
 
 					if flags.Fold {
 						break
@@ -107,7 +103,7 @@ func CreateCmdTree(flags *TreeFlags, opt *Option) *cobra.Command {
 
 var (
 	tree_flags = TreeFlags{RootFlags: &root_flags}
-	tree_cmd   = CreateCmdTree(&tree_flags, NewOption())
+	tree_cmd   = CreateTreeCmd(&tree_flags, NewCmdService())
 )
 
 func init() {

@@ -29,16 +29,28 @@ type Repository struct {
 type Registry struct {
 	T *testing.T
 
-	Repos map[string]*Repository
+	Repos      map[string]*Repository
+	EnableAuth bool
+}
+
+func NewRegistry(t *testing.T) *Registry {
+	return &Registry{
+		T: t,
+
+		Repos:      make(map[string]*Repository),
+		EnableAuth: true,
+	}
 }
 
 func (r *Repository) Tags() []string {
-	tags := make([]string, len(r.Manifests))
+	tags := make([]string, 0, len(r.Manifests))
 
-	i := 0
 	for tag := range r.Manifests {
-		tags[i] = tag
-		i++
+		if strings.HasPrefix(tag, "sha256:") {
+			continue
+		}
+
+		tags = append(tags, tag)
 	}
 
 	return tags
@@ -58,7 +70,7 @@ func (r *Registry) handleRoot(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if req.Header.Get("Authorization") == "" {
+	if r.EnableAuth && req.Header.Get("Authorization") == "" {
 		res.Header().Add("WWW-Authenticate", fmt.Sprintf(`Bearer realm="https://%s"`, req.Host))
 		res.WriteHeader(http.StatusUnauthorized)
 		res.Write([]byte(`{"errors": [{"code": "UNAUTHORIZED", "message": "authentication required", "detail": null}]}`))
@@ -158,11 +170,4 @@ func (r *Registry) handleManifests(res http.ResponseWriter, req *http.Request, r
 
 func (r *Registry) Handler() http.HandlerFunc {
 	return http.HandlerFunc(r.handleRoot)
-}
-
-func NewRegistry(t *testing.T) *Registry {
-	return &Registry{
-		T:     t,
-		Repos: make(map[string]*Repository),
-	}
 }

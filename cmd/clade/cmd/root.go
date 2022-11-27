@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/lesomnus/clade"
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 )
 
@@ -43,7 +44,7 @@ func (f *RootFlags) Evaluate() error {
 	return nil
 }
 
-func CreateCmdRoot(flags *RootFlags) *cobra.Command {
+func CreateRootCmd(flags *RootFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "clade",
 		Short: "Lade container images with your taste",
@@ -52,34 +53,33 @@ func CreateCmdRoot(flags *RootFlags) *cobra.Command {
 				return err
 			}
 
-			// var level zerolog.Level
-			// switch root_flags.logLevel {
-			// case "trace":
-			// 	level = zerolog.TraceLevel
-			// case "debug":
-			// 	level = zerolog.DebugLevel
-			// case "info":
-			// 	level = zerolog.InfoLevel
-			// case "warn":
-			// 	level = zerolog.WarnLevel
-			// case "error":
-			// 	level = zerolog.ErrorLevel
-			// case "fatal":
-			// 	level = zerolog.FatalLevel
-			// default:
-			// 	panic(fmt.Errorf("invalid log level: %s", root_flags.logLevel))
-			// }
+			var level zerolog.Level
+			switch root_flags.LogLevel {
+			case "trace":
+				level = zerolog.TraceLevel
+			case "debug":
+				level = zerolog.DebugLevel
+			case "info":
+				level = zerolog.InfoLevel
+			case "warn":
+				level = zerolog.WarnLevel
+			case "error":
+				level = zerolog.ErrorLevel
+			case "fatal":
+				level = zerolog.FatalLevel
+			default:
+				panic(fmt.Errorf("invalid log level: %s", root_flags.LogLevel))
+			}
 
-			// zerolog.Ctx(cmd.Context()).le
-
-			// internal.Log = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Timestamp().Logger().Level(level)
+			l := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Timestamp().Logger().Level(level)
+			cmd.SetContext(l.WithContext(cmd.Context()))
 
 			return nil
 		},
 	}
 
 	cmd_flags := cmd.PersistentFlags()
-	cmd_flags.StringVarP(&flags.LogLevel, "log-level", "l", "warn", `Set the logging level ("debug"|"info"|"warn"|"error"|"fatal")`)
+	cmd_flags.StringVarP(&flags.LogLevel, "log-level", "l", "info", `Set the logging level ("debug"|"info"|"warn"|"error"|"fatal")`)
 	cmd_flags.StringVar(&flags.PortsPath, "ports", "ports", "Path to repository")
 
 	return cmd
@@ -87,7 +87,7 @@ func CreateCmdRoot(flags *RootFlags) *cobra.Command {
 
 var (
 	root_flags RootFlags
-	root_cmd   = CreateCmdRoot(&root_flags)
+	root_cmd   = CreateRootCmd(&root_flags)
 )
 
 func Execute() error {

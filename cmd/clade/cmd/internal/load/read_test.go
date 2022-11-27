@@ -1,6 +1,7 @@
 package load_test
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,6 +11,8 @@ import (
 )
 
 func TestReadPorts(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("reads port.yaml for each directory", func(t *testing.T) {
 		require := require.New(t)
 
@@ -36,7 +39,7 @@ func TestReadPorts(t *testing.T) {
 		err = os.WriteFile(filepath.Join(tmp, "baz"), []byte("Sarah Ross"), 0644)
 		require.NoError(err)
 
-		ports, err := load.ReadFromFs(tmp)
+		ports, err := load.ReadFromFs(ctx, tmp)
 		require.NoError(err)
 		require.Len(ports, 1)
 	})
@@ -44,7 +47,7 @@ func TestReadPorts(t *testing.T) {
 	t.Run("fails if directory not exists", func(t *testing.T) {
 		require := require.New(t)
 
-		_, err := load.ReadFromFs("/not exists")
+		_, err := load.ReadFromFs(ctx, "/not exists")
 		require.ErrorIs(err, os.ErrNotExist)
 	})
 
@@ -63,7 +66,7 @@ func TestReadPorts(t *testing.T) {
 			0644)
 		require.NoError(err)
 
-		_, err = load.ReadFromFs(tmp)
+		_, err = load.ReadFromFs(ctx, tmp)
 		require.ErrorContains(err, filepath.Join(tmp, "foo", "port.yaml"))
 		require.ErrorContains(err, "name")
 		require.ErrorContains(err, "invalid")
