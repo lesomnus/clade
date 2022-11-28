@@ -7,15 +7,23 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var cache_path_cmd = &cobra.Command{
-	Use:   "path",
-	Short: "Print path cache directory",
+func CreateCachePathCmd(svc Service) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "path",
+		Short: "Print path cache directory",
 
-	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println(cache.Cache.Name())
-		return nil
-	},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			fmt.Fprintln(svc.Output(), cache.Cache.Name())
+			return nil
+		},
+	}
+
+	return cmd
 }
+
+var (
+	cache_path_cmd = CreateCachePathCmd(DefaultCmdService)
+)
 
 func init() {
 	cache_cmd.AddCommand(cache_path_cmd)

@@ -104,7 +104,7 @@ ghcr.io/lesomnus/gcc:12
 	})
 
 	t.Run("fails if", func(t *testing.T) {
-		t.Run("ports directory does not exists", func(t *testing.T) {
+		t.Run("ports directory does not exist", func(t *testing.T) {
 			require := require.New(t)
 
 			svc := cmd.NewCmdService()
@@ -120,7 +120,7 @@ ghcr.io/lesomnus/gcc:12
 			require.ErrorContains(err, "no such file or directory")
 		})
 
-		t.Run("sub-tree does not exists", func(t *testing.T) {
+		t.Run("sub-tree does not exist", func(t *testing.T) {
 			require := require.New(t)
 
 			svc := cmd.NewCmdService()
