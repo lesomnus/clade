@@ -2,6 +2,7 @@
 
 [![test](https://github.com/lesomnus/clade/actions/workflows/test.yaml/badge.svg)](https://github.com/lesomnus/clade/actions/workflows/test.yaml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/lesomnus/clade)](https://goreportcard.com/report/github.com/lesomnus/clade)
+[![codebeat badge](https://codebeat.co/badges/3f52fdb4-c46d-4e79-b2d5-11c9ee89e80d)](https://codebeat.co/projects/github-com-lesomnus-clade-main)
 [![codecov](https://codecov.io/gh/lesomnus/clade/branch/main/graph/badge.svg?token=8CBVDL7AW7)](https://codecov.io/gh/lesomnus/clade)
 
 Keep your container images up to date.
