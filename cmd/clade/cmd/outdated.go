@@ -60,51 +60,19 @@ func CreateOutdatedCmd(flags *OutdatedFlags, svc Service) *cobra.Command {
 					return fmt.Errorf("failed to get layers of %s: %w", node.Value.From.String(), err)
 				}
 
-				// repo, err := opt.Registry().Repository(child_name)
-				// if err != nil {
-				// 	return fmt.Errorf("failed to create repository service: %w", err)
-				// }
-
-				// // repo.Manifests(cmd.Context(), distribution.WithTag()
-
-				// child_manif_getter, err := internal.NewManifestGetter(cmd.Context(), child_name)
-				// if err != nil {
-				// 	if errors.Is(err, internal.ErrManifestUnknown) {
-				// 		fmt.Fprintln(o, child_name.String())
-				// 		return tree.WalkContinue
-				// 	} else {
-				// 		return fmt.Errorf("failed to create manifest getter for child image: %w", err)
-				// 	}
-				// }
-
-				// parent_manif_getter, err := internal.NewManifestGetter(cmd.Context(), node.Value.From)
-				// if err != nil {
-				// 	return fmt.Errorf("failed to create manifest getter for parent image: %w", err)
-				// }
-
-				// child_layers, err := getLayers(cmd.Context(), child_manif_getter)
-				// if err != nil {
-				// 	return fmt.Errorf("failed to get layers of %s: %w", child_name.String(), err)
-				// }
-
-				// parent_layers, err := getLayers(cmd.Context(), parent_manif_getter)
-				// if err != nil {
-				// 	return fmt.Errorf("failed to get layers of %s: %w", node.Value.From.String(), err)
-				// }
-
 				if len(parent_layers) == 0 {
 					panic("layer empty")
 				}
 
-				is_contains := false
-				for _, layer := range child_layers {
-					if layer.Digest == parent_layers[len(parent_layers)-1].Digest {
-						is_contains = true
+				is_outdated := false
+				for i := 0; i < len(parent_layers); i++ {
+					is_outdated = child_layers[i].Digest != parent_layers[i].Digest
+					if is_outdated {
 						break
 					}
 				}
 
-				if !is_contains {
+				if is_outdated {
 					fmt.Fprintln(svc.Output(), child_name.String())
 					return tree.WalkContinue
 				}
@@ -119,7 +87,7 @@ func CreateOutdatedCmd(flags *OutdatedFlags, svc Service) *cobra.Command {
 
 var (
 	outdated_flags = OutdatedFlags{RootFlags: &root_flags}
-	outdated_cmd   = CreateOutdatedCmd(&outdated_flags, NewCmdService())
+	outdated_cmd   = CreateOutdatedCmd(&outdated_flags, DefaultCmdService)
 )
 
 func init() {

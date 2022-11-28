@@ -24,7 +24,7 @@ func (f *RootFlags) Evaluate() error {
 	case "error":
 	case "fatal":
 	case "":
-		f.LogLevel = "warn"
+		f.LogLevel = "info"
 	default:
 		return fmt.Errorf("invalid log-level value: %s", f.LogLevel)
 	}
@@ -49,12 +49,12 @@ func CreateRootCmd(flags *RootFlags) *cobra.Command {
 		Use:   "clade",
 		Short: "Lade container images with your taste",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := root_flags.Evaluate(); err != nil {
+			if err := flags.Evaluate(); err != nil {
 				return err
 			}
 
 			var level zerolog.Level
-			switch root_flags.LogLevel {
+			switch flags.LogLevel {
 			case "trace":
 				level = zerolog.TraceLevel
 			case "debug":
@@ -68,7 +68,7 @@ func CreateRootCmd(flags *RootFlags) *cobra.Command {
 			case "fatal":
 				level = zerolog.FatalLevel
 			default:
-				panic(fmt.Errorf("invalid log level: %s", root_flags.LogLevel))
+				panic(fmt.Errorf("invalid log level: %s", flags.LogLevel))
 			}
 
 			l := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Timestamp().Logger().Level(level)

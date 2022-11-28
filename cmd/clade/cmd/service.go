@@ -17,6 +17,8 @@ import (
 	"github.com/opencontainers/go-digest"
 )
 
+var DefaultCmdService = NewCmdService()
+
 type Service interface {
 	Output() io.Writer
 	LoadBuildTreeFromFs(ctx context.Context, bt *clade.BuildTree, path string) error
@@ -48,12 +50,12 @@ func (o *CmdService) LoadBuildTreeFromFs(ctx context.Context, bt *clade.BuildTre
 	return o.Loader.Load(ctx, bt, ports)
 }
 
-func (o *CmdService) registry() client.Registry {
-	return o.Loader.Expander.Registry
+func (s *CmdService) registry() client.Registry {
+	return s.Loader.Expander.Registry
 }
 
-func (o *CmdService) GetLayer(ctx context.Context, named_tagged reference.NamedTagged) ([]distribution.Descriptor, error) {
-	repo, err := o.registry().Repository(named_tagged)
+func (s *CmdService) GetLayer(ctx context.Context, named_tagged reference.NamedTagged) ([]distribution.Descriptor, error) {
+	repo, err := s.registry().Repository(named_tagged)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create repository service: %w", err)
 	}
@@ -77,7 +79,7 @@ func (o *CmdService) GetLayer(ctx context.Context, named_tagged reference.NamedT
 		return nil, fmt.Errorf("failed to get manifest for tag %s: %w", tag, err)
 	}
 
-	return o.getLayer(ctx, manif_svc, manifest)
+	return s.getLayer(ctx, manif_svc, manifest)
 }
 
 func (o *CmdService) getLayer(ctx context.Context, manif_svc distribution.ManifestService, manifest distribution.Manifest) ([]distribution.Descriptor, error) {

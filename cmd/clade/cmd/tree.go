@@ -103,7 +103,7 @@ func CreateTreeCmd(flags *TreeFlags, svc Service) *cobra.Command {
 
 var (
 	tree_flags = TreeFlags{RootFlags: &root_flags}
-	tree_cmd   = CreateTreeCmd(&tree_flags, NewCmdService())
+	tree_cmd   = CreateTreeCmd(&tree_flags, DefaultCmdService)
 )
 
 func init() {
