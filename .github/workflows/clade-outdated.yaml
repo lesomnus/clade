@@ -15,30 +15,13 @@ jobs:
   outdated:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Env
-        run: |
-          _DATE=$(date '+%Y-%m-%d')
-          echo ${_DATE}
-
-          echo "CLADE_CACHE_DIR=$(pwd)/.clade-cache" >> $GITHUB_ENV
-          echo "CLADE_CI_DATE=${_DATE}" >> $GITHUB_ENV
-
-      - uses: actions/cache@v3
-        with:
-          path: ${{ env.CLADE_CACHE_DIR }}
-          key: clade-cache-${{ env.CLADE_CI_DATE }}
+      - uses: lesomnus/clade/init@3ff72d0775216b7ee4a4dd94d92c4764256878f1
 
       - name: Outdated
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          for reference in $(go run ./cmd/clade outdated); do
+          for reference in $(clade outdated); do
             echo build ${reference}
             ${{ (env.ACT || (github.event_name == 'workflow_dispatch' && github.event.inputs.cascade == 'false')) && 'echo' || '' }} gh workflow run "clade build" \
               --ref "${{ github.ref }}" \

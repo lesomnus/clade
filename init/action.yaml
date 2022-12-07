@@ -1,0 +1,35 @@
+name: "CLade: Init"
+description: "Set up CLade"
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v3
+      with:
+        name: lesomnus/clade
+
+    - uses: actions/setup-go@v3
+      with:
+        go-version-file: go.mod
+        cache: true
+
+    - name: Build
+      shell: bash
+      run: |
+        go build -o ./clade ./cmd/clade
+        cp ./clade /usr/local/bin/.
+
+    - name: Env
+      shell: bash
+      run: |
+        _DATE=$(date '+%Y-%m-%d')
+        CLADE_CACHE_DIR="/tmp/clade-cache-${_DATE}"
+        echo ${CLADE_CACHE_DIR}
+
+        echo "CLADE_CACHE_DIR=${CLADE_CACHE_DIR}" >> $GITHUB_ENV
+        echo "CLADE_CI_DATE=${_DATE}" >> $GITHUB_ENV
+
+    - uses: actions/cache@v3
+      with:
+        path: ${{ env.CLADE_CACHE_DIR }}
+        key: clade-cache-${{ env.CLADE_CI_DATE }}
