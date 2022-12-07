@@ -12,6 +12,7 @@ runs:
     - uses: actions/setup-go@v3
       with:
         go-version-file: ./.clade-src/go.mod
+        cache-dependency-pat: ./.clade-src/go.mod
         cache: true
 
     - name: Build
