@@ -15,7 +15,7 @@ jobs:
   outdated:
     runs-on: ubuntu-22.04
     steps:
-      - uses: lesomnus/clade/init@210ebd3676aaf4baefcab70bb3f1f909216bfa13
+      - uses: lesomnus/clade/init@feature/composite-action
 
       - name: Outdated
         env:
