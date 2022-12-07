@@ -15,7 +15,7 @@ jobs:
   outdated:
     runs-on: ubuntu-22.04
     steps:
-      - uses: lesomnus/clade/init@3ff72d0775216b7ee4a4dd94d92c4764256878f1
+      - uses: lesomnus/clade/init@210ebd3676aaf4baefcab70bb3f1f909216bfa13
 
       - name: Outdated
         env:
