@@ -7,15 +7,17 @@ runs:
     - uses: actions/checkout@v3
       with:
         repository: lesomnus/clade
+        path: ./.clade-src
 
     - uses: actions/setup-go@v3
       with:
-        go-version-file: go.mod
+        go-version-file: ./.clade-src/go.mod
         cache: true
 
     - name: Build
       shell: bash
       run: |
+        cd ./.clade-src
         go build -o ./clade ./cmd/clade
         cp ./clade /usr/local/bin/.
 
