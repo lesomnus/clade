@@ -6,7 +6,7 @@ runs:
   steps:
     - uses: actions/checkout@v3
       with:
-        name: lesomnus/clade
+        repository: lesomnus/clade
 
     - uses: actions/setup-go@v3
       with:
