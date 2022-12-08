@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -13,6 +14,7 @@ import (
 
 type OutdatedFlags struct {
 	*RootFlags
+	ToJson bool
 }
 
 func CreateOutdatedCmd(flags *OutdatedFlags, svc Service) *cobra.Command {
@@ -26,7 +28,8 @@ func CreateOutdatedCmd(flags *OutdatedFlags, svc Service) *cobra.Command {
 				return fmt.Errorf("failed to load ports: %w", err)
 			}
 
-			return bt.Walk(func(level int, name string, node *tree.Node[*clade.ResolvedImage]) error {
+			outdated_images := []string{}
+			if err := bt.Walk(func(level int, name string, node *tree.Node[*clade.ResolvedImage]) error {
 				if level == 0 {
 					return nil
 				}
@@ -46,7 +49,7 @@ func CreateOutdatedCmd(flags *OutdatedFlags, svc Service) *cobra.Command {
 
 						for _, err := range errs {
 							if errors.Is(err, v2.ErrorCodeManifestUnknown) {
-								fmt.Fprintln(svc.Output(), child_name.String())
+								outdated_images = append(outdated_images, child_name.String())
 								return tree.WalkContinue
 							}
 						}
@@ -73,14 +76,34 @@ func CreateOutdatedCmd(flags *OutdatedFlags, svc Service) *cobra.Command {
 				}
 
 				if is_outdated {
-					fmt.Fprintln(svc.Output(), child_name.String())
+					outdated_images = append(outdated_images, child_name.String())
 					return tree.WalkContinue
 				}
 
 				return nil
-			})
+			}); err != nil {
+				return err
+			}
+
+			if flags.ToJson {
+				data, err := json.Marshal(outdated_images)
+				if err != nil {
+					return err
+				}
+
+				fmt.Fprint(svc.Output(), string(data))
+			} else {
+				for _, img := range outdated_images {
+					fmt.Fprintln(svc.Output(), img)
+				}
+			}
+
+			return nil
 		},
 	}
+
+	outdated_flags := cmd.Flags()
+	outdated_flags.BoolVar(&flags.ToJson, "to-json", false, "print as JSON")
 
 	return cmd
 }

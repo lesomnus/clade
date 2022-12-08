@@ -3,6 +3,7 @@ package cmd_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"testing"
 
@@ -158,6 +159,44 @@ func TestOutdatedCmd(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("print as JSON", func(t *testing.T) {
+		require := require.New(t)
+		buff := new(bytes.Buffer)
+
+		svc := cmd.NewCmdService()
+		svc.Sink = buff
+		layer_svc := &LayerService{
+			Service: svc,
+			Layers: (func() map[string][]distribution.Descriptor {
+				layers := newLayers()
+				delete(layers, "ghcr.io/lesomnus/pcl:1.11.1")
+				layers["registry.hub.docker.com/library/node:19"][0].Digest = "a2"
+				return layers
+			})(),
+		}
+		flags := cmd.OutdatedFlags{
+			RootFlags: &cmd.RootFlags{
+				PortsPath: ports,
+			},
+		}
+
+		c := cmd.CreateOutdatedCmd(&flags, layer_svc)
+		c.SetArgs([]string{"--to-json"})
+		c.SetOut(io.Discard)
+		err := c.Execute()
+		require.NoError(err)
+		require.True(flags.ToJson)
+
+		outdated_images := []string{}
+		output := buff.String()
+		err = json.Unmarshal([]byte(output), &outdated_images)
+		require.NoError(err)
+		require.ElementsMatch(outdated_images, []string{
+			"ghcr.io/lesomnus/pcl:1.11.1",
+			"ghcr.io/lesomnus/node:19",
+		})
+	})
 
 	t.Run("fails if", func(t *testing.T) {
 		t.Run("ports directory does not exist", func(t *testing.T) {

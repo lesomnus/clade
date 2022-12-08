@@ -1,8 +1,8 @@
 name: "CLade: Init"
-description: "Set up CLade"
+description: Set up CLade CLI
 
 runs:
-  using: "composite"
+  using: composite
   steps:
     - uses: actions/checkout@v3
       with:

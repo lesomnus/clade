@@ -1,0 +1,14 @@
+name: "CLade: Outdated"
+description: Lists outdated images
+
+outputs:
+  references:
+    description: Outdated images
+    value: ${{ steps.outdated.references }}
+
+runs:
+  using: composite
+  steps:
+    - id: outdated
+      shell: bash
+      run: echo "references=$(clade outdated --to-json)" >> $GITHUB_OUTPUT
