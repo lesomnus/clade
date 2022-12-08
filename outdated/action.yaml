@@ -11,4 +11,7 @@ runs:
   steps:
     - id: outdated
       shell: bash
-      run: echo "references=$(clade outdated --to-json)" >> $GITHUB_OUTPUT
+      run: |
+        REFERENCES=$(clade outdated --to-json)
+        echo ${REFERENCES}
+        echo "references=${REFERENCE}" >> $GITHUB_OUTPUT
