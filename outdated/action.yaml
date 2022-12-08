@@ -4,7 +4,7 @@ description: Lists outdated images
 outputs:
   references:
     description: Outdated images
-    value: ${{ steps.outdated.references }}
+    value: ${{ steps.outdated.outputs.references }}
 
 runs:
   using: composite
