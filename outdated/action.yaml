@@ -14,4 +14,4 @@ runs:
       run: |
         REFERENCES=$(clade outdated --to-json)
         echo ${REFERENCES}
-        echo "references=${REFERENCE}" >> $GITHUB_OUTPUT
+        echo "references=${REFERENCES}" >> $GITHUB_OUTPUT
