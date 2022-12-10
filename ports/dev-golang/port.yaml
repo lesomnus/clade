@@ -6,7 +6,7 @@ images:
       - ( printf "%d"    $.Major         )
     from:
       name: registry.hub.docker.com/library/golang
-      tag: ( tags | semverFinalized | semverN 1 2 1 )
+      tag: ( tags | semverFinalized | semverN 1 4 1 )
 
   - tags:
       - ( printf "%d.%d-%s" $.Major $.Minor $.Pre[0] )
