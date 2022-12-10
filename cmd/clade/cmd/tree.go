@@ -12,6 +12,7 @@ import (
 
 type TreeFlags struct {
 	*RootFlags
+	All   bool
 	Strip int
 	Depth int
 	Fold  bool
@@ -61,6 +62,10 @@ func CreateTreeCmd(flags *TreeFlags, svc Service) *cobra.Command {
 
 			visited := make(map[*clade.ResolvedImage]struct{})
 			root_node.Walk(func(level int, name string, node *tree.Node[*clade.ResolvedImage]) error {
+				if level != 0 && !flags.All && node.Value.Skip {
+					return tree.WalkContinue
+				}
+
 				if level < flags.Strip {
 					return nil
 				}
@@ -94,6 +99,7 @@ func CreateTreeCmd(flags *TreeFlags, svc Service) *cobra.Command {
 	}
 
 	cmd_flags := cmd.Flags()
+	cmd_flags.BoolVar(&flags.All, "all", false, "Print all images including skipped images")
 	cmd_flags.IntVarP(&flags.Strip, "strip", "s", 0, "Skip first n levels")
 	cmd_flags.IntVarP(&flags.Depth, "depth", "d", 0, "Max levels to print")
 	cmd_flags.BoolVar(&flags.Fold, "fold", false, "Print only primary tags for same images")

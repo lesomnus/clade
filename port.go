@@ -17,7 +17,8 @@ type Port struct {
 	Name reference.Named `yaml:"-"`
 	Args map[string]string
 
-	Dockerfile  string
+	Skip        bool     `yaml:"skip"`
+	Dockerfile  string   `yaml:"dockerfile"`
 	ContextPath string   `yaml:"context"`
 	Platform    *ba.Expr `yaml:"-"`
 
@@ -143,17 +144,21 @@ func ReadPort(path string) (*Port, error) {
 		port.ContextPath = p
 	}
 
-	for i, image := range port.Images {
+	for _, image := range port.Images {
 		if p, err := ResolvePath(dirname, image.Dockerfile, port.Dockerfile); err != nil {
 			return nil, fmt.Errorf("failed to resolve path to Dockerfile: %w", err)
 		} else {
-			port.Images[i].Dockerfile = p
+			image.Dockerfile = p
 		}
 
 		if p, err := ResolvePath(dirname, image.ContextPath, port.ContextPath); err != nil {
 			return nil, fmt.Errorf("failed to resolve path to context: %w", err)
 		} else {
-			port.Images[i].ContextPath = p
+			image.ContextPath = p
+		}
+
+		if image.Skip == nil {
+			image.Skip = &port.Skip
 		}
 
 		if image.Args == nil {

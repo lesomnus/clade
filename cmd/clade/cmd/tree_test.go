@@ -69,6 +69,31 @@ func TestTreeCmd(t *testing.T) {
 					`	ghcr.io/lesomnus/pcl:1.11`,
 				},
 			},
+			{
+				desc: "skipped image is not printed including its children",
+				args: []string{},
+				exclude: []string{
+					`ghcr.io/lesomnus/skipped:42`,
+					`ghcr.io/lesomnus/skipped-child:36`,
+				},
+			},
+			{
+				desc: "--all flag prints all images including skipped images",
+				args: []string{"--all"},
+				include: []string{
+					`ghcr.io/lesomnus/gcc:12.2`,
+					`	ghcr.io/lesomnus/skipped:42`,
+					`		ghcr.io/lesomnus/skipped-child:36`,
+				},
+			},
+			{
+				desc: "skipped image is printed if it is root",
+				args: []string{"ghcr.io/lesomnus/skipped:42"},
+				include: []string{
+					`ghcr.io/lesomnus/skipped:42`,
+					`	ghcr.io/lesomnus/skipped-child:36`,
+				},
+			},
 		}
 		for _, tc := range tcs {
 			t.Run(tc.desc, func(t *testing.T) {

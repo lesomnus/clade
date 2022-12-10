@@ -1,6 +1,8 @@
 package clade
 
-import "github.com/lesomnus/clade/tree"
+import (
+	"github.com/lesomnus/clade/tree"
+)
 
 type DependencyTree struct {
 	tree.Tree[[]*Image]
