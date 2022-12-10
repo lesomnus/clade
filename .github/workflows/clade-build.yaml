@@ -7,6 +7,7 @@ on:
       reference:
         description: Image reference to build
         required: true
+        type: string
       cascade:
         description: Trigger builds on child images
         required: false
@@ -45,14 +46,14 @@ jobs:
 
       - id: child
         uses: lesomnus/clade/child@feature/composite-action
-        if: ${{ inputs.cascade == 'true' }}
+        if: ${{ inputs.cascade }}
         with:
           reference: ${{ inputs.reference }}
 
   trigger:
     runs-on: ubuntu-22.04
     needs: [build]
-    if: ${{ inputs.cascade == 'true' }}
+    if: ${{ inputs.cascade }}
     strategy:
       fail-fast: false
       matrix:
