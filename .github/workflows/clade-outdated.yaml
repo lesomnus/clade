@@ -26,7 +26,7 @@ jobs:
       - name: Trigger
         if: ${{ inputs.cascade }}
         run: |
-          echo ${{ steps.outdated.outputs.references }} | jq '.[]' | while read ref; do
+          echo '${{ steps.outdated.outputs.references }}' | jq '.[]' | while read ref; do
             gh workflow run clade-build.yaml \
               --ref "${{ github.ref }}" \
               --field "reference=${ref}" \
