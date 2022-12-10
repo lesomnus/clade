@@ -1,0 +1,17 @@
+name: "CLade: Outdated"
+description: Lists outdated images
+
+outputs:
+  references:
+    description: Outdated images
+    value: ${{ steps.outdated.outputs.references }}
+
+runs:
+  using: composite
+  steps:
+    - id: outdated
+      shell: bash
+      run: |
+        REFERENCES=$(clade outdated | jq --raw-input . | jq --slurp --compact-output 'map(select(length > 0))')
+        echo ${REFERENCES}
+        echo "references=${REFERENCES}" >> $GITHUB_OUTPUT

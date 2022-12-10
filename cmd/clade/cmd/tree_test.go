@@ -9,10 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// type MockService struct {
-// 	Sink io.Writer
-// }
-
 func TestTreeCmd(t *testing.T) {
 	ports := GenerateSamplePorts(t)
 
@@ -27,50 +23,50 @@ func TestTreeCmd(t *testing.T) {
 				desc: "different tags of the same image are output together with their full names",
 				args: []string{},
 				include: []string{
-					`registry.hub.docker.com/library/gcc:12.2
-	ghcr.io/lesomnus/gcc:12.2
-	ghcr.io/lesomnus/gcc:12
-		ghcr.io/lesomnus/pcl:1.11.1
-		ghcr.io/lesomnus/pcl:1.11`,
+					`registry.hub.docker.com/library/gcc:12.2`,
+					`	ghcr.io/lesomnus/gcc:12.2`,
+					`	ghcr.io/lesomnus/gcc:12`,
+					`		ghcr.io/lesomnus/pcl:1.11.1`,
+					`		ghcr.io/lesomnus/pcl:1.11`,
 				},
 			},
 			{
 				desc: "--strip flag omits first N levels",
 				args: []string{"--strip", "1"},
 				include: []string{
-					`ghcr.io/lesomnus/gcc:12.2
-ghcr.io/lesomnus/gcc:12
-	ghcr.io/lesomnus/pcl:1.11.1
-	ghcr.io/lesomnus/pcl:1.11`,
+					`ghcr.io/lesomnus/gcc:12.2`,
+					`ghcr.io/lesomnus/gcc:12`,
+					`	ghcr.io/lesomnus/pcl:1.11.1`,
+					`	ghcr.io/lesomnus/pcl:1.11`,
 				},
 			},
 			{
 				desc: "--depth flag prints first N levels only",
 				args: []string{"--depth", "1"},
 				include: []string{
-					"registry.hub.docker.com/library/gcc:12.2",
+					`registry.hub.docker.com/library/gcc:12.2`,
 				},
 				exclude: []string{
-					"ghcr.io/lesomnus/gcc:12.2",
+					`ghcr.io/lesomnus/gcc:12.2`,
 				},
 			},
 			{
 				desc: "--fold flag prints only major tag",
 				args: []string{"--fold"},
 				include: []string{
-					`registry.hub.docker.com/library/gcc:12.2
-	ghcr.io/lesomnus/gcc:12.2
-		ghcr.io/lesomnus/pcl:1.11.1`,
+					`registry.hub.docker.com/library/gcc:12.2`,
+					`	ghcr.io/lesomnus/gcc:12.2`,
+					`		ghcr.io/lesomnus/pcl:1.11.1`,
 				},
 			},
 			{
 				desc: "print sub-tree",
 				args: []string{"ghcr.io/lesomnus/gcc:12.2"},
 				include: []string{
-					`ghcr.io/lesomnus/gcc:12.2
-ghcr.io/lesomnus/gcc:12
-	ghcr.io/lesomnus/pcl:1.11.1
-	ghcr.io/lesomnus/pcl:1.11`,
+					`ghcr.io/lesomnus/gcc:12.2`,
+					`ghcr.io/lesomnus/gcc:12`,
+					`	ghcr.io/lesomnus/pcl:1.11.1`,
+					`	ghcr.io/lesomnus/pcl:1.11`,
 				},
 			},
 		}

@@ -43,6 +43,11 @@ func TestOutdatedCmd(t *testing.T) {
 				{Digest: digest.Digest("a")},
 				{Digest: digest.Digest("b")},
 			},
+			"ghcr.io/lesomnus/ffmpeg:4.4.1": {
+				{Digest: digest.Digest("a")},
+				{Digest: digest.Digest("b")},
+				{Digest: digest.Digest("f")},
+			},
 			"ghcr.io/lesomnus/pcl:1.11.1": {
 				{Digest: digest.Digest("a")},
 				{Digest: digest.Digest("b")},
