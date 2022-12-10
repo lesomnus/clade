@@ -5,7 +5,7 @@ import "github.com/spf13/cobra"
 func CreateChildCmd(tree_flags *TreeFlags, tree_cmd *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "child Reference",
-		Short: "List child references of the given reference",
+		Short: "List child images of the given reference",
 
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

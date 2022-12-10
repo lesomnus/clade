@@ -17,8 +17,8 @@ jobs:
     outputs:
       references: ${{ steps.outdated.outputs.references }}
     steps:
-      - uses: lesomnus/clade/init@feature/composite-action
       - uses: actions/checkout@v3
+      - uses: lesomnus/clade/init@feature/composite-action
 
       - id: outdated
         uses: lesomnus/clade/outdated@feature/composite-action

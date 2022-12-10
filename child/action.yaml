@@ -1,0 +1,22 @@
+name: "CLade: Child"
+description: Lists child images
+
+inputs:
+  reference:
+    description: Reference to print
+    required: true
+
+outputs:
+  references:
+    description: Child images
+    value: ${{ steps.child.outputs.references }}
+
+runs:
+  using: composite
+  steps:
+    - id: child
+      shell: bash
+      run: |
+        REFERENCES=$(clade child ${{ inputs.reference }} --to-json | jq --raw-input . | jq --slurp 'map(select(length > 0))')
+        echo ${REFERENCES}
+        echo "references=${REFERENCES}" >> $GITHUB_OUTPUT

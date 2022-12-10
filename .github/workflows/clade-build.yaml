@@ -16,28 +16,14 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    outputs:
+      references: ${{ steps.child.outputs.references }}
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
-        with:
-          go-version-file: go.mod
-          cache: true
+      - uses: lesomnus/clade/init@feature/composite-action
 
       - uses: docker/setup-qemu-action@v2
       - uses: docker/setup-buildx-action@v2
-
-      - name: Env
-        run: |
-          _DATE=$(date '+%Y-%m-%d')
-          echo ${_DATE}
-
-          echo "CLADE_CACHE_DIR=$(pwd)/.clade-cache" >> $GITHUB_ENV
-          echo "CLADE_CI_DATE=${_DATE}" >> $GITHUB_ENV
-
-      - uses: actions/cache@v3
-        with:
-          path: ${{ env.CLADE_CACHE_DIR }}
-          key: clade-cache-${{ env.CLADE_CI_DATE }}
 
       - name: Login GHCR
         uses: docker/login-action@v2
@@ -48,23 +34,36 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and Push
-        run: |
-          go run ./cmd/clade build ${{ env.ACT && '--dry-run' }} \
-            --builder buildx \
-            ${{ github.event.inputs.reference }} \
-            -- \
-            --platform linux/amd64,linux/arm64 \
-            --push
+        run: echo ${{ inputs.reference }}
+        # run: |
+        #   clade build ${{ env.ACT && '--dry-run' }} \
+        #     --builder buildx \
+        #     ${{ inputs.reference }} \
+        #     -- \
+        #     --platform linux/amd64,linux/arm64 \
+        #     --push
 
-      - name: Cascade
-        if: ${{ github.event.inputs.cascade == 'true' }}
+      - id: child
+        uses: lesomnus/clade/child@feature/composite-action
+        if: ${{ inputs.cascade == 'true' }}
+        with:
+          reference: ${{ inputs.reference }}
+
+  trigger:
+    runs-on: ubuntu-22.04
+    needs: [build]
+    if: ${{ inputs.cascade == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        reference: ${{ fromJson(needs.build.outputs.references) }}
+    steps:
+      - name: Trigger
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          for reference in $(go run ./cmd/clade tree --fold --strip 1 --depth 1 ${{ github.event.inputs.reference }}); do
-            echo build ${reference}
-            ${{ env.ACT && 'echo' }} gh workflow run clade-build.yaml \
+          echo build ${{ matrix.reference }}
+          gh workflow run clade-build.yaml \
               --ref "${{ github.ref }}" \
               --field "reference=${reference}" \
               --field "cascade=true"
-          done

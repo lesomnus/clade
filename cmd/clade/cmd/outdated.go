@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -14,7 +13,6 @@ import (
 
 type OutdatedFlags struct {
 	*RootFlags
-	ToJson bool
 }
 
 func CreateOutdatedCmd(flags *OutdatedFlags, svc Service) *cobra.Command {
@@ -85,25 +83,13 @@ func CreateOutdatedCmd(flags *OutdatedFlags, svc Service) *cobra.Command {
 				return err
 			}
 
-			if flags.ToJson {
-				data, err := json.Marshal(outdated_images)
-				if err != nil {
-					return err
-				}
-
-				fmt.Fprint(svc.Output(), string(data))
-			} else {
-				for _, img := range outdated_images {
-					fmt.Fprintln(svc.Output(), img)
-				}
+			for _, img := range outdated_images {
+				fmt.Fprintln(svc.Output(), img)
 			}
 
 			return nil
 		},
 	}
-
-	outdated_flags := cmd.Flags()
-	outdated_flags.BoolVar(&flags.ToJson, "to-json", false, "print as JSON")
 
 	return cmd
 }
