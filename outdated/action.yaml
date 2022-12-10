@@ -12,6 +12,6 @@ runs:
     - id: outdated
       shell: bash
       run: |
-        REFERENCES=$(clade outdated --to-json | jq --raw-input . | jq --slurp 'map(select(length > 0))')
+        REFERENCES=$(clade outdated | jq --raw-input . | jq --slurp 'map(select(length > 0))')
         echo ${REFERENCES}
         echo "references=${REFERENCES}" >> $GITHUB_OUTPUT

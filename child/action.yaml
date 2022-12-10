@@ -17,6 +17,6 @@ runs:
     - id: child
       shell: bash
       run: |
-        REFERENCES=$(clade child ${{ inputs.reference }} --to-json | jq --raw-input . | jq --slurp 'map(select(length > 0))')
+        REFERENCES=$(clade child ${{ inputs.reference }} | jq --raw-input . | jq --slurp 'map(select(length > 0))')
         echo ${REFERENCES}
         echo "references=${REFERENCES}" >> $GITHUB_OUTPUT
