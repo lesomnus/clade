@@ -74,7 +74,10 @@ func (e *Expander) Expand(ctx context.Context, image *clade.Image, bt *clade.Bui
 			return nil, fmt.Errorf("invalid tag of base image: %w", err)
 		}
 
-		resolved_images[i] = &clade.ResolvedImage{From: tagged}
+		resolved_images[i] = &clade.ResolvedImage{
+			From: tagged,
+			Skip: false,
+		}
 	}
 
 	for i, result := range from_results {
@@ -102,6 +105,7 @@ func (e *Expander) Expand(ctx context.Context, image *clade.Image, bt *clade.Bui
 	for i := range resolved_images {
 		resolved_images[i].Named = image.Named
 		resolved_images[i].Args = image.Args
+		resolved_images[i].Skip = *image.Skip
 		resolved_images[i].Dockerfile = image.Dockerfile
 		resolved_images[i].ContextPath = image.ContextPath
 		resolved_images[i].Platform = image.Platform

@@ -13,6 +13,7 @@ import (
 
 type OutdatedFlags struct {
 	*RootFlags
+	All bool
 }
 
 func CreateOutdatedCmd(flags *OutdatedFlags, svc Service) *cobra.Command {
@@ -30,6 +31,10 @@ func CreateOutdatedCmd(flags *OutdatedFlags, svc Service) *cobra.Command {
 			if err := bt.Walk(func(level int, name string, node *tree.Node[*clade.ResolvedImage]) error {
 				if level == 0 {
 					return nil
+				}
+
+				if !flags.All && node.Value.Skip {
+					return tree.WalkContinue
 				}
 
 				child_name, err := node.Value.Tagged()
@@ -90,6 +95,9 @@ func CreateOutdatedCmd(flags *OutdatedFlags, svc Service) *cobra.Command {
 			return nil
 		},
 	}
+
+	cmd_flags := cmd.Flags()
+	cmd_flags.BoolVar(&flags.All, "all", false, "Print all images including skipped images")
 
 	return cmd
 }

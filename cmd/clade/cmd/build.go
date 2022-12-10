@@ -63,9 +63,9 @@ func CreateBuildCmd(flags *BuildFlags, svc Service) *cobra.Command {
 		},
 	}
 
-	build_flags := cmd.Flags()
-	build_flags.BoolVar(&flags.DryRun, "dry-run", false, "Do not start build")
-	build_flags.StringVar(&flags.Builder, "builder", "docker-cmd", "Builder to use for the build.")
+	cmd_flags := cmd.Flags()
+	cmd_flags.BoolVar(&flags.DryRun, "dry-run", false, "Do not start build")
+	cmd_flags.StringVar(&flags.Builder, "builder", "docker-cmd", "Builder to use for the build.")
 
 	return cmd
 }

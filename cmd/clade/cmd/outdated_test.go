@@ -65,6 +65,7 @@ func TestOutdatedCmd(t *testing.T) {
 
 	tcs := []struct {
 		desc    string
+		args    []string
 		layers  map[string][]distribution.Descriptor
 		include []string
 		exclude []string
@@ -131,6 +132,31 @@ func TestOutdatedCmd(t *testing.T) {
 				"ghcr.io/lesomnus/node:19",
 			},
 		},
+		{
+			desc:   "skipped image is not printed",
+			layers: newLayers(),
+			exclude: []string{
+				`ghcr.io/lesomnus/skipped:42`,
+				`ghcr.io/lesomnus/skipped-child:36`,
+			},
+		},
+		{
+			desc: "--all flag prints all images including skipped images",
+			layers: (func() map[string][]distribution.Descriptor {
+				layers := newLayers()
+				layers["ghcr.io/lesomnus/skipped:42"] = []distribution.Descriptor{
+					{Digest: digest.Digest("a")},
+					{Digest: digest.Digest("b")},
+					{Digest: digest.Digest("s")},
+				}
+
+				return layers
+			})(),
+			args: []string{"--all"},
+			include: []string{
+				`ghcr.io/lesomnus/skipped-child:36`,
+			},
+		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -151,6 +177,10 @@ func TestOutdatedCmd(t *testing.T) {
 
 			c := cmd.CreateOutdatedCmd(&flags, layer_svc)
 			c.SetOut(io.Discard)
+			if tc.args != nil {
+				c.SetArgs(tc.args)
+			}
+
 			err := c.Execute()
 			require.NoError(err)
 

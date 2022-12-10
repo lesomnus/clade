@@ -48,5 +48,20 @@ images:
     from: ghcr.io/lesomnus/gcc:12.2
 `)
 
+	add("skipped", `
+name: ghcr.io/lesomnus/skipped
+skip: true
+images:
+  - tags: [42]
+    from: ghcr.io/lesomnus/gcc:12.2
+`)
+
+	add("skipped-child", `
+name: ghcr.io/lesomnus/skipped-child
+images:
+  - tags: [36]
+    from: ghcr.io/lesomnus/skipped:42
+`)
+
 	return tmp
 }
