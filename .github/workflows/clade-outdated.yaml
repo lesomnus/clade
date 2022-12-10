@@ -23,14 +23,12 @@ jobs:
       - id: outdated
         uses: lesomnus/clade/outdated@feature/composite-action
 
-  build:
-    runs-on: ubuntu-22.04
-    needs: [outdated]
-    strategy:
-      fail-fast: false
-      matrix:
-        reference: ${{ fromJson(needs.outdated.outputs.references) }}
-    steps:
-      - name: Build
+      - name: Trigger
+        if: ${{ inputs.cascade }}
         run: |
-          echo build ${{ matrix.reference }}
+          echo ${{ steps.outdated.outputs.references }} | jq '.[]' | while read ref; do
+            gh workflow run clade-build.yaml \
+              --ref "${{ github.ref }}" \
+              --field "reference=${ref}" \
+              --field "cascade=true"
+          done
