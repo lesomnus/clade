@@ -7,7 +7,7 @@ runs:
     - uses: actions/checkout@v3
       with:
         repository: lesomnus/clade
-        ref: ${{ github.sha }}
+        ref: 82617b1ff96ca8ce6e1a3053fa211ae476401c65
         path: ./.clade-src
 
     - uses: actions/setup-go@v3
