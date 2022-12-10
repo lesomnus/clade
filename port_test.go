@@ -53,7 +53,8 @@ images:
 		require.ElementsMatch([]string{"a", "b", "c"}, tags)
 
 		require.Equal("hub.io/foo/bar:a", port.Images[0].From.String())
-		require.Empty(port.Images[0].Args)
+		require.Contains(port.Images[0].Args, "USERNAME")
+		require.Equal("hypnos", port.Images[0].Args["USERNAME"])
 		require.Empty(port.Images[0].Dockerfile)
 		require.Empty(port.Images[0].ContextPath)
 

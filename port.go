@@ -53,10 +53,26 @@ func (p *Port) UnmarshalYAML(n *yaml.Node) error {
 		p.Platform = expr
 	}
 
-	for _, img := range p.Images {
-		img.Named = named
-		if img.Platform == nil {
-			img.Platform = p.Platform
+	for _, image := range p.Images {
+		image.Named = named
+
+		if image.Skip == nil {
+			image.Skip = &p.Skip
+		}
+
+		if image.Platform == nil {
+			image.Platform = p.Platform
+		}
+
+		if image.Args == nil {
+			image.Args = make(map[string]string)
+		}
+		for k, v := range p.Args {
+			if _, ok := image.Args[k]; ok {
+				continue
+			}
+
+			image.Args[k] = v
 		}
 	}
 
@@ -155,21 +171,6 @@ func ReadPort(path string) (*Port, error) {
 			return nil, fmt.Errorf("failed to resolve path to context: %w", err)
 		} else {
 			image.ContextPath = p
-		}
-
-		if image.Skip == nil {
-			image.Skip = &port.Skip
-		}
-
-		if image.Args == nil {
-			image.Args = make(map[string]string)
-		}
-		for k, v := range port.Args {
-			if _, ok := image.Args[k]; ok {
-				continue
-			}
-
-			image.Args[k] = v
 		}
 	}
 

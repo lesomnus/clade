@@ -18,6 +18,13 @@ import (
 )
 
 func TestExpand(t *testing.T) {
+	new_image := func(named reference.Named) *clade.Image {
+		return &clade.Image{
+			Named: named,
+			Skip:  new(bool),
+		}
+	}
+
 	empty_manifest := registry.Manifest{
 		ContentType: "application/vnd.docker.distribution.manifest.list.v2+json",
 		Blob:        []byte{},
@@ -60,7 +67,7 @@ func TestExpand(t *testing.T) {
 	t.Run("from static tag", func(t *testing.T) {
 		require := require.New(t)
 
-		image := &clade.Image{Named: image_name}
+		image := new_image(image_name)
 		err = yaml.Unmarshal([]byte(fmt.Sprintf(`
 tags: [foo]
 from:
@@ -79,7 +86,7 @@ from:
 	t.Run("executes pipeline with remote tags", func(t *testing.T) {
 		require := require.New(t)
 
-		image := &clade.Image{Named: image_name}
+		image := new_image(image_name)
 		err = yaml.Unmarshal([]byte(fmt.Sprintf(`
 tags: [( printf "%%d" $.Major )]
 from:
@@ -102,7 +109,7 @@ from:
 		local_named, err := reference.ParseNamed("cr.io/repo/local")
 		require.NoError(err)
 
-		image := &clade.Image{Named: image_name}
+		image := new_image(image_name)
 		err = yaml.Unmarshal([]byte(fmt.Sprintf(`
 tags: [( printf "%%d" $.Patch )]
 from:
@@ -125,7 +132,7 @@ from:
 	t.Run("expands images as many as remote tags", func(t *testing.T) {
 		require := require.New(t)
 
-		image := &clade.Image{Named: image_name}
+		image := new_image(image_name)
 		err = yaml.Unmarshal([]byte(fmt.Sprintf(`
 tags: [( printf "%%d" $.Patch )]
 from:
@@ -226,7 +233,7 @@ from:
 			t.Run(tc.desc, func(t *testing.T) {
 				require := require.New(t)
 
-				image := &clade.Image{Named: image_name}
+				image := new_image(image_name)
 				err = yaml.Unmarshal([]byte(tc.port), image)
 				require.NoError(err)
 
