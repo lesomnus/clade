@@ -4,6 +4,6 @@ platform: amd64
 
 images:
   - tags: ["4.4.1", "4.4", "4"]
-    from: ghcr.io/lesomnus/dev-gcc:( tags | semverLatest )
+    from: ghcr.io/lesomnus/dev-gcc:11.1
     args:
       VCPKG_REF: "2022.08.15"

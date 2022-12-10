@@ -53,6 +53,8 @@ jobs:
 
       - name: Trigger
         if: ${{ inputs.cascade }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           echo '${{ steps.child.outputs.references }}' | jq '.[]' | while read ref; do
             gh workflow run clade-build.yaml \

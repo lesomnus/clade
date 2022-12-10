@@ -7,6 +7,7 @@ runs:
     - uses: actions/checkout@v3
       with:
         repository: lesomnus/clade
+        ref: ${{ github.action_ref }}
         path: ./.clade-src
 
     - uses: actions/setup-go@v3
