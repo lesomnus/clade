@@ -20,7 +20,7 @@ type TreeFlags struct {
 func CreateTreeCmd(flags *TreeFlags, svc Service) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tree [flags] [reference]",
-		Short: "List images",
+		Short: "List references",
 
 		DisableFlagsInUseLine: true,
 
