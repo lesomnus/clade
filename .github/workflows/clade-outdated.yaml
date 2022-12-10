@@ -21,7 +21,15 @@ jobs:
       - id: outdated
         uses: lesomnus/clade/outdated@feature/composite-action
 
-      - run: |
-          echo '${{ steps.outdated.outputs.references }}' | jq -r '.[]' | while read -r ref; do
-            echo build ${ref}
-          done
+  build:
+    runs-on: ubuntu-22.04
+    needs: [outdated]
+    strategy:
+      fail-fast: false
+      matrix:
+        reference: ${{ needs.outdated.outputs.references }}
+
+    steps:
+      - name: Build
+        run: |
+          echo build ${{ matrix.reference }}
