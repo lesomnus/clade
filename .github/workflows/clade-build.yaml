@@ -21,7 +21,7 @@ jobs:
       references: ${{ steps.child.outputs.references }}
     steps:
       - uses: actions/checkout@v3
-      - uses: lesomnus/clade/init@feature/composite-action
+      - uses: lesomnus/clade/init@main
 
       - uses: docker/setup-qemu-action@v2
       - uses: docker/setup-buildx-action@v2
@@ -35,18 +35,16 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and Push
-        run: echo ${{ inputs.reference }}
-
-        # run: |
-        #   clade build ${{ env.ACT && '--dry-run' }} \
-        #     --builder buildx \
-        #     ${{ inputs.reference }} \
-        #     -- \
-        #     --platform linux/amd64,linux/arm64 \
-        #     --push
+        run: |
+          clade build ${{ env.ACT && '--dry-run' }} \
+            --builder buildx \
+            ${{ inputs.reference }} \
+            -- \
+            --platform linux/amd64,linux/arm64 \
+            --push
 
       - id: child
-        uses: lesomnus/clade/child@feature/composite-action
+        uses: lesomnus/clade/child@main
         if: ${{ inputs.cascade }}
         with:
           reference: ${{ inputs.reference }}

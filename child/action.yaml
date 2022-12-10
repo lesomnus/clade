@@ -3,7 +3,7 @@ description: Lists child images
 
 inputs:
   reference:
-    description: Reference to print
+    description: Reference to list
     required: true
 
 outputs:
