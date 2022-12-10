@@ -1,13 +1,19 @@
 name: "CLade: Init"
 description: Set up CLade CLI
 
+inputs:
+  ref:
+    description: Git reference of the CLade to use
+    required: false
+    default: ${{ github.action_ref }}
+
 runs:
   using: composite
   steps:
     - uses: actions/checkout@v3
       with:
         repository: lesomnus/clade
-        ref: ${{ github.action_ref }}
+        ref: ${{ inputs.ref }}
         path: ./.clade-src
 
     - uses: actions/setup-go@v3
