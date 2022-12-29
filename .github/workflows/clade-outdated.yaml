@@ -24,7 +24,7 @@ jobs:
         uses: lesomnus/clade/outdated@main
 
       - name: Trigger
-        if: ${{ inputs.cascade }}
+        if: ${{ (github.event_name == 'schedule') || inputs.cascade }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
