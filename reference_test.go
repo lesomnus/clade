@@ -36,6 +36,32 @@ func TestParseRefNamedTagged(t *testing.T) {
 		require.Equal("foo/bar", reference.Path(pl_ref))
 	})
 
+	t.Run("domain with port", func(t *testing.T) {
+		require := require.New(t)
+
+		ref, err := clade.ParseRefNamedTagged(`cr.io:42/foo/bar:baz`)
+		require.NoError(err)
+		require.Equal("cr.io:42/foo/bar", ref.Name())
+		require.Equal("baz", ref.Tag())
+		require.Equal("cr.io:42/foo/bar:baz", ref.String())
+	})
+
+	t.Run("many colons", func(t *testing.T) {
+		require := require.New(t)
+
+		ref, err := clade.ParseRefNamedTagged(`cr.io:42/foo/bar:(tagsOf "cr.io:42/baz")`)
+		require.NoError(err)
+
+		pl_ref, ok := ref.(clade.RefNamedPipelineTagged)
+		require.True(ok)
+		require.Equal("cr.io:42/foo/bar", pl_ref.Name())
+		require.Equal(`(tagsOf "cr.io:42/baz")`, pl_ref.Tag())
+		require.Equal(`cr.io:42/foo/bar:(tagsOf "cr.io:42/baz")`, pl_ref.String())
+
+		require.Equal("cr.io:42", reference.Domain(pl_ref))
+		require.Equal("foo/bar", reference.Path(pl_ref))
+	})
+
 	t.Run("fails if", func(t *testing.T) {
 		tcs := []struct {
 			desc  string

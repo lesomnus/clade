@@ -187,6 +187,75 @@ func TestImageUnmarshalFromField(t *testing.T) {
 	})
 }
 
+func TestImageUnmarshalArgsField(t *testing.T) {
+	t.Run("parsed into pipeline", func(t *testing.T) {
+		require := require.New(t)
+
+		var img clade.Image
+		err := yaml.Unmarshal([]byte(`
+args:
+  FOO: foo
+  BAR: (pass "bar")`), &img)
+		require.NoError(err)
+		require.Len(img.Args, 2)
+		require.Contains(img.Args, "FOO")
+		require.Equal("foo", img.Args["FOO"].String())
+		require.Contains(img.Args, "BAR")
+		require.Equal(`(pass "bar")`, img.Args["BAR"].String())
+
+		executor := pl.NewExecutor()
+		{
+			rst, err := executor.Execute(img.Args["FOO"].Pipeline(), nil)
+			require.NoError(err)
+			require.Equal([]any{"foo"}, rst)
+		}
+
+		{
+			rst, err := executor.Execute(img.Args["BAR"].Pipeline(), nil)
+			require.NoError(err)
+			require.Equal([]any{"bar"}, rst)
+		}
+	})
+
+	t.Run("fails if", func(t *testing.T) {
+		tcs := []struct {
+			desc  string
+			input string
+			msgs  []string
+		}{
+			{
+				desc:  "not a map",
+				input: "foo",
+				msgs:  []string{"str"},
+			},
+			{
+				desc: "not a map of string",
+				input: `
+  key: !!binary |
+    $`,
+				msgs: []string{"binary"},
+			},
+			{
+				desc: "invalid pipeline expression",
+				input: `
+  key: (foo bar)`,
+				msgs: []string{"unexpected token", "bar"},
+			},
+		}
+		for _, tc := range tcs {
+			t.Run(tc.desc, func(t *testing.T) {
+				require := require.New(t)
+
+				var img clade.Image
+				err := yaml.Unmarshal([]byte(fmt.Sprintf("args: %s", tc.input)), &img)
+				for _, msg := range tc.msgs {
+					require.ErrorContains(err, msg)
+				}
+			})
+		}
+	})
+}
+
 func TestImageUnmarshalPlatformField(t *testing.T) {
 	tcs := []struct {
 		desc     string

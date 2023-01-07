@@ -54,7 +54,7 @@ type Image struct {
 	Skip *bool                  `yaml:"skip"`
 	Tags []Pipeliner            `yaml:"-"`
 	From RefNamedPipelineTagged `yaml:"-"`
-	Args map[string]string
+	Args map[string]Pipeliner   `yaml:"-"`
 
 	Dockerfile  string
 	ContextPath string   `yaml:"context"`
@@ -70,6 +70,7 @@ func (i *Image) UnmarshalYAML(n *yaml.Node) error {
 	type I struct {
 		Tags []*pipeliner
 		From *refNamedPipelineTagged
+		Args map[string]*pipeliner
 
 		Platform string
 	}
@@ -92,6 +93,11 @@ func (i *Image) UnmarshalYAML(n *yaml.Node) error {
 	}
 
 	i.From = tmp.From
+
+	i.Args = make(map[string]Pipeliner, len(tmp.Args))
+	for key, arg := range tmp.Args {
+		i.Args[key] = arg
+	}
 
 	return nil
 }
