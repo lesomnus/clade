@@ -54,7 +54,7 @@ images:
 
 		require.Equal("hub.io/foo/bar:a", port.Images[0].From.String())
 		require.Contains(port.Images[0].Args, "USERNAME")
-		require.Equal("hypnos", port.Images[0].Args["USERNAME"])
+		require.Equal("hypnos", port.Images[0].Args["USERNAME"].String())
 		require.Empty(port.Images[0].Dockerfile)
 		require.Empty(port.Images[0].ContextPath)
 
@@ -205,12 +205,12 @@ images:
 	require.Equal(filepath.Join(dir, "Dockerfile"), port.Images[0].Dockerfile, "default dockerfile is {path}/Dockerfile")
 	require.Equal(filepath.Join(dir, "."), port.Images[0].ContextPath, "default context is {path}")
 	require.Contains(port.Images[0].Args, "YEAR", "root args are inherited")
-	require.Equal(port.Images[0].Args["YEAR"], "2009", "root args are inherited")
+	require.Equal("2009", port.Images[0].Args["YEAR"].String(), "root args are inherited")
 
-	require.Equal(filepath.Join(dir, "35mm Nitrate Film"), port.Images[1].Dockerfile)
-	require.Equal(filepath.Join(dir, "Le Gamaar cinema"), port.Images[1].ContextPath)
+	require.Equal(port.Images[1].Dockerfile, filepath.Join(dir, "35mm Nitrate Film"))
+	require.Equal(port.Images[1].ContextPath, filepath.Join(dir, "Le Gamaar cinema"))
 	require.Contains(port.Images[1].Args, "YEAR")
-	require.Equal(port.Images[1].Args["YEAR"], "2009")
+	require.Equal("2009", port.Images[1].Args["YEAR"].String())
 	require.Contains(port.Images[1].Args, "VILLAIN")
-	require.Equal(port.Images[1].Args["VILLAIN"], "Hans Landa")
+	require.Equal("Hans Landa", port.Images[1].Args["VILLAIN"].String())
 }

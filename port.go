@@ -9,6 +9,7 @@ import (
 	"github.com/distribution/distribution/reference"
 	ba "github.com/lesomnus/boolal"
 	"github.com/lesomnus/clade/sv"
+	"github.com/lesomnus/pl"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 )
@@ -65,14 +66,18 @@ func (p *Port) UnmarshalYAML(n *yaml.Node) error {
 		}
 
 		if image.Args == nil {
-			image.Args = make(map[string]string)
+			image.Args = make(map[string]Pipeliner)
 		}
 		for k, v := range p.Args {
 			if _, ok := image.Args[k]; ok {
 				continue
 			}
 
-			image.Args[k] = v
+			fn, _ := pl.NewFn("pass", v)
+			image.Args[k] = &pipeliner{
+				expr: v,
+				pl:   pl.NewPl(fn),
+			}
 		}
 	}
 

@@ -80,31 +80,53 @@ func (e *Expander) Expand(ctx context.Context, image *clade.Image, bt *clade.Bui
 		}
 	}
 
+	invoke := func(pl *pl.Pl, data any) (string, error) {
+		tag_results, err := executor.Execute(pl, data)
+		if err != nil {
+			return "", fmt.Errorf("failed to execute pipeline: %w", err)
+		}
+		if len(tag_results) != 1 {
+			return "", fmt.Errorf("result of pipeline must be size 1 but was %d", len(tag_results))
+		}
+
+		v, ok := tag_results[0].(string)
+		if !ok {
+			return "", fmt.Errorf("result of pipeline must be string")
+		}
+
+		return v, nil
+	}
+
 	for i, result := range from_results {
 		tags := make([]string, len(image.Tags))
-		for i, tag := range image.Tags {
-			tag_results, err := executor.Execute(tag.Pipeline(), result)
+		for j, tag := range image.Tags {
+			v, err := invoke(tag.Pipeline(), result)
 			if err != nil {
-				return nil, fmt.Errorf("failed to execute pipeline: %w", err)
-			}
-			if len(tag_results) != 1 {
-				return nil, fmt.Errorf("result of pipeline for tags must be size 1 but was %d", len(tag_results))
+				return nil, fmt.Errorf("tags[%d] %s: %w", j, tag.String(), err)
 			}
 
-			v, ok := tag_results[0].(string)
-			if !ok {
-				return nil, fmt.Errorf("result of pipeline must be string")
-			}
-
-			tags[i] = v
+			tags[j] = v
 		}
 
 		resolved_images[i].Tags = tags
 	}
 
+	for i, result := range from_results {
+		args := make(map[string]string)
+		for key, arg := range image.Args {
+			v, err := invoke(arg.Pipeline(), result)
+			if err != nil {
+				return nil, fmt.Errorf("args[%s] %s: %w", key, arg.String(), err)
+			}
+
+			args[key] = v
+		}
+
+		resolved_images[i].Args = args
+	}
+
 	for i := range resolved_images {
 		resolved_images[i].Named = image.Named
-		resolved_images[i].Args = image.Args
 		resolved_images[i].Skip = *image.Skip
 		resolved_images[i].Dockerfile = image.Dockerfile
 		resolved_images[i].ContextPath = image.ContextPath

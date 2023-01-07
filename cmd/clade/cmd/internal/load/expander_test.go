@@ -91,7 +91,9 @@ from:
 tags: [( printf "%%d" $.Major )]
 from:
   name: %s/repo/single
-  tag: ( tags | semver )`, reg_url.Host)), image)
+  tag: ( tags | semver )
+args:
+  MAJOR: ( printf "%%d" $.Major )`, reg_url.Host)), image)
 		require.NoError(err)
 
 		ctx := context.Background()
@@ -101,6 +103,8 @@ from:
 		require.Len(images[0].Tags, 1)
 		require.Equal("1", images[0].Tags[0])
 		require.Equal("1.0.0", images[0].From.Tag())
+		require.Contains(images[0].Args, "MAJOR")
+		require.Equal("1", images[0].Args["MAJOR"])
 	})
 
 	t.Run("executes pipeline with local tags from build tree", func(t *testing.T) {
@@ -227,6 +231,39 @@ from:
   name: %s/repo/patched
   tag: ( tags | semver )`, reg_url.Host),
 				msgs: []string{"duplicated", "foo"},
+			},
+			{
+				desc: "arg pipeline with undefined functions",
+				port: fmt.Sprintf(`
+tags: [ foo ]
+from:
+  name: %s/repo/single
+  tag: "1.0.0"
+args:
+  FOO: ( awesome )`, reg_url.Host),
+				msgs: []string{"awesome", "defined"},
+			},
+			{
+				desc: "arg pipeline results multiple value",
+				port: fmt.Sprintf(`
+tags: [ foo ]
+from:
+  name: %s/repo/single
+  tag: "1.0.0"
+args:
+  FOO: ( log "foo" "bar" )`, reg_url.Host),
+				msgs: []string{"size 1", "2"},
+			},
+			{
+				desc: "arg pipeline results type not string",
+				port: fmt.Sprintf(`
+tags: [ foo ]
+from:
+  name: %s/repo/single
+  tag: "1.0.0"
+args:
+  FOO: ( pass 42 )`, reg_url.Host),
+				msgs: []string{"string"},
 			},
 		}
 		for _, tc := range tcs {
