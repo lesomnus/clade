@@ -80,8 +80,12 @@ func (r *refNamedPipelineTagged) UnmarshalYAML(n *yaml.Node) error {
 // ParseRefNamedTagged parses given string into named tagged reference.
 // If the tag is a pipeline expression, returned reference implements `RefNamedPipelineTagged`.
 func ParseRefNamedTagged(s string) (reference.NamedTagged, error) {
-	pos := strings.LastIndex(s, ":")
-	if pos < 0 {
+	pos := 0
+	if pos = strings.LastIndex(s, ":("); pos > 0 && s[len(s)-1] == ')' {
+		// with pipeline tag
+	} else if pos = strings.LastIndex(s, ":"); pos > 0 {
+		// with tag
+	} else {
 		return nil, errors.New("no tag")
 	}
 
