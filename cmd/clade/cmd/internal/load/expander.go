@@ -19,6 +19,20 @@ type Expander struct {
 	// Expand(ctx context.Context, image *clade.Image)
 }
 
+func (e *Expander) remoteTags(ctx context.Context, ref reference.Named) ([]string, error) {
+	repo, err := e.Registry.Repository(ref)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create client: %w", err)
+	}
+
+	tags, err := repo.Tags(ctx).All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tags: %w", err)
+	}
+
+	return tags, nil
+}
+
 func (e *Expander) Expand(ctx context.Context, image *clade.Image, bt *clade.BuildTree) ([]*clade.ResolvedImage, error) {
 	l := zerolog.Ctx(ctx)
 	l.Debug().Str("name", image.Name()).Msg("expand")
@@ -35,17 +49,19 @@ func (e *Expander) Expand(ctx context.Context, image *clade.Image, bt *clade.Bui
 			return tags, nil
 		}
 
-		repo, err := e.Registry.Repository(image.From)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create client: %w", err)
+		return e.remoteTags(ctx, image.From)
+	}
+	executor.Funcs["tagsOf"] = func(ref string) ([]string, error) {
+		if tags := bt.TagsByName[ref]; len(tags) > 0 {
+			return tags, nil
 		}
 
-		tags, err := repo.Tags(ctx).All(ctx)
+		named, err := reference.ParseNamed(ref)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get tags: %w", err)
+			return nil, fmt.Errorf("reference must be fully named: %w", err)
 		}
 
-		return tags, nil
+		return e.remoteTags(ctx, named)
 	}
 
 	from_results, err := executor.Execute(image.From.Pipeline(), nil)

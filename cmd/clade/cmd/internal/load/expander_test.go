@@ -38,6 +38,12 @@ func TestExpand(t *testing.T) {
 				"1.0.0": empty_manifest,
 			},
 		},
+		"repo/pi": {
+			Name: "repo/pi",
+			Manifests: map[string]registry.Manifest{
+				"3.1.4": empty_manifest,
+			},
+		},
 		"repo/patched": {
 			Name: "repo/patched",
 			Manifests: map[string]registry.Manifest{
@@ -119,6 +125,52 @@ tags: [( printf "%%d" $.Patch )]
 from:
   name: %s
   tag: ( tags | semver )`, local_named.String())), image)
+		require.NoError(err)
+
+		bt := clade.NewBuildTree()
+		bt.TagsByName[local_named.String()] = []string{"1.0.42"}
+
+		ctx := context.Background()
+		images, err := expander.Expand(ctx, image, bt)
+		require.NoError(err)
+		require.Len(images, 1)
+		require.Len(images[0].Tags, 1)
+		require.Equal("42", images[0].Tags[0])
+		require.Equal("1.0.42", images[0].From.Tag())
+	})
+
+	t.Run("get tags of specific remote repository", func(t *testing.T) {
+		require := require.New(t)
+
+		image := new_image(image_name)
+		err = yaml.Unmarshal([]byte(fmt.Sprintf(`
+tags: [( printf "%%d" $.Major )]
+from:
+  name: %s/repo/single
+  tag: ( tagsOf "%s/repo/pi" | semver )`, reg_url.Host, reg_url.Host)), image)
+		require.NoError(err)
+
+		ctx := context.Background()
+		images, err := expander.Expand(ctx, image, clade.NewBuildTree())
+		require.NoError(err)
+		require.Len(images, 1)
+		require.Len(images[0].Tags, 1)
+		require.Equal("3", images[0].Tags[0])
+		require.Equal("3.1.4", images[0].From.Tag())
+	})
+
+	t.Run("get tags of specific local repository", func(t *testing.T) {
+		require := require.New(t)
+
+		local_named, err := reference.ParseNamed("cr.io/repo/local")
+		require.NoError(err)
+
+		image := new_image(image_name)
+		err = yaml.Unmarshal([]byte(fmt.Sprintf(`
+tags: [( printf "%%d" $.Patch )]
+from:
+  name: %s/repo/single
+  tag: ( tagsOf "%s" | semver )`, reg_url.Host, local_named.String())), image)
 		require.NoError(err)
 
 		bt := clade.NewBuildTree()
