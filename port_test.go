@@ -173,7 +173,7 @@ func TestReadPort(t *testing.T) {
 	data := `
 name: cr.io/foo/bar
 args:
-  YEAR: 2009
+  YEAR: 1995
 
 images:
   - tags: [a, b, c]
@@ -182,6 +182,7 @@ images:
   - tags: [inglourious]
     from: hub.io/foo/bar:basterds
     args:
+      YEAR: 2009
       VILLAIN: Hans Landa
     dockerfile: 35mm Nitrate Film
     context: Le Gamaar cinema
@@ -205,7 +206,7 @@ images:
 	require.Equal(filepath.Join(dir, "Dockerfile"), port.Images[0].Dockerfile, "default dockerfile is {path}/Dockerfile")
 	require.Equal(filepath.Join(dir, "."), port.Images[0].ContextPath, "default context is {path}")
 	require.Contains(port.Images[0].Args, "YEAR", "root args are inherited")
-	require.Equal("2009", port.Images[0].Args["YEAR"].String(), "root args are inherited")
+	require.Equal("1995", port.Images[0].Args["YEAR"].String(), "root args are inherited")
 
 	require.Equal(port.Images[1].Dockerfile, filepath.Join(dir, "35mm Nitrate Film"))
 	require.Equal(port.Images[1].ContextPath, filepath.Join(dir, "Le Gamaar cinema"))

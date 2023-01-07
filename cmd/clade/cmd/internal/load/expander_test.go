@@ -222,6 +222,15 @@ from:
 				msgs: []string{"get", "tags"},
 			},
 			{
+				desc: "invalid repo format",
+				port: fmt.Sprintf(`
+tags: [foo]
+from:
+  name: %s/repo/single
+  tag: ( tagsOf "invalid repo"  | semver)`, reg_url.Host),
+				msgs: []string{"invalid", "format"},
+			},
+			{
 				desc: "from pipeline with undefined functions",
 				port: fmt.Sprintf(`
 tags: [foo]
