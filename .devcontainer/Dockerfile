@@ -1,8 +1,26 @@
-FROM ghcr.io/lesomnus/dev-golang:1.19
+FROM ghcr.io/lesomnus/dev-docker:20
 
-USER hypnos
+COPY --from=registry.hub.docker.com/library/golang:1.19 \
+	/usr/local/go \
+	/usr/local/go
 
 ENV GOPATH=/home/hypnos/go
+ENV PATH $GOPATH/bin:$PATH
+
+
+
+RUN apt-get update \
+	&& apt-get install --yes --no-install-recommends \
+		g++ \
+		gcc \
+		libc6-dev \
+		make \
+	&& apt-get clean --yes \
+	&& rm -rf /var/lib/apt/lists/*
+
+
+
+USER hypnos
 
 # Comment out the following lines if you don't want to use Zsh.
 RUN wget https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh -O - | zsh || true \
