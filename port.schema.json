@@ -1,0 +1,80 @@
+{
+	"title": "CLade Port",
+	"type": "object",
+	"properties": {
+		"name": {
+			"type": "string"
+		},
+		"args": {
+			"$ref": "#/$defs/args"
+		},
+		"dockerfile": {
+			"type": "string"
+		},
+		"context": {
+			"type": "string"
+		},
+		"images": {
+			"type": "array",
+			"properties": {
+				"tags": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				},
+				"from": {
+					"oneOf": [
+						{
+							"type": "string"
+						},
+						{
+							"type": "object",
+							"properties": {
+								"name": {
+									"type": "string"
+								},
+								"tag": {
+									"type": "string"
+								}
+							}
+						}
+					]
+				},
+				"args": {
+					"$ref": "#/$defs/args"
+				},
+				"dockerfile": {
+					"type": "string"
+				},
+				"context": {
+					"type": "string"
+				},
+				"platform": {
+					"type": "string"
+				}
+			}
+		}
+	},
+	"$defs": {
+		"args": {
+			"type": "object",
+			"additionalProperties": {
+				"oneOf": [
+					{
+						"type": "boolean"
+					},
+					{
+						"type": "integer"
+					},
+					{
+						"type": "number"
+					},
+					{
+						"type": "string"
+					}
+				]
+			}
+		}
+	}
+}
