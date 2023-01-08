@@ -27,6 +27,7 @@ RUN apt-get update \
 		less \
 		jq \
 		lsb-release \
+		software-properties-common \
 		apt-transport-https \
 		dialog \
 		libc6 \
@@ -83,7 +84,10 @@ RUN apt-get update \
 		doxygen \
 		graphviz \
 		gcovr \
-		clang-tidy \
+	&& apt-get clean --yes \
+	&& rm -rf /var/lib/apt/lists/*
+
+RUN curl -s https://apt.llvm.org/llvm.sh | bash -s all \
 	&& apt-get clean --yes \
 	&& rm -rf /var/lib/apt/lists/*
 
