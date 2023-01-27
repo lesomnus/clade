@@ -16,7 +16,6 @@ import (
 
 type Expander struct {
 	Registry client.Registry
-	// Expand(ctx context.Context, image *clade.Image)
 }
 
 func (e *Expander) remoteTags(ctx context.Context, ref reference.Named) ([]string, error) {

@@ -12,26 +12,41 @@ import (
 	"github.com/distribution/distribution/v3/registry/client/transport"
 )
 
+type BasicAuth struct {
+	Username string
+	Password string
+}
+
 type CredentialStore struct {
-	refresh_tokens map[string]string
+	BasicAuths    map[string]BasicAuth
+	RefreshTokens map[string]string
 }
 
 func NewCredentialStore() *CredentialStore {
 	return &CredentialStore{
-		refresh_tokens: make(map[string]string),
+		BasicAuths:    make(map[string]BasicAuth),
+		RefreshTokens: make(map[string]string),
 	}
 }
 
 func (s *CredentialStore) Basic(u *url.URL) (string, string) {
-	return "", ""
+	if u == nil {
+		return "", ""
+	}
+
+	if auth, ok := s.BasicAuths[u.Host]; ok {
+		return auth.Username, auth.Password
+	} else {
+		return "", ""
+	}
 }
 
 func (s *CredentialStore) RefreshToken(u *url.URL, service string) string {
-	return s.refresh_tokens[service]
+	return s.RefreshTokens[service]
 }
 
 func (s *CredentialStore) SetRefreshToken(u *url.URL, service string, token string) {
-	s.refresh_tokens[service] = token
+	s.RefreshTokens[service] = token
 }
 
 type AuthTransport struct {

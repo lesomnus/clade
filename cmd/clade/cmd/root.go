@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/lesomnus/clade"
+	"github.com/lesomnus/clade/cmd/clade/cmd/internal/client"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 )
@@ -73,6 +74,25 @@ func CreateRootCmd(flags *RootFlags) *cobra.Command {
 
 			l := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Timestamp().Logger().Level(level)
 			cmd.SetContext(l.WithContext(cmd.Context()))
+
+			credentials := client.NewCredentialStore()
+
+			docker_config_path := client.DefaultDockerConfigPath
+			if _, err := os.Stat(docker_config_path); err == nil {
+				l.Info().Str("path", docker_config_path).Msg("load credential from Docker config")
+				auths, err := client.LoadAuthFromDockerConfig(docker_config_path)
+				if err != nil {
+					l.Warn().Msg("failed to load credential from Docker config")
+				}
+
+				for svc, auth := range auths {
+					credentials.BasicAuths[svc] = auth
+				}
+			}
+
+			reg := client.NewDistRegistry()
+			reg.Credentials = credentials
+			DefaultCmdService.Loader.Expander.Registry = reg
 
 			return nil
 		},
