@@ -32,13 +32,13 @@ type distTagSvc struct {
 }
 
 func (s *distTagSvc) All(ctx context.Context) ([]string, error) {
-	if tags, ok := s.cache.GetTags(s.named); ok {
+	if tags, ok := s.cache.Tags.Get(s.named); ok {
 		return tags, nil
 	}
 
 	tags, err := s.TagService.All(ctx)
 	if err == nil {
-		s.cache.SetTags(s.named, tags)
+		s.cache.Tags.Set(s.named, tags)
 	}
 
 	return tags, err

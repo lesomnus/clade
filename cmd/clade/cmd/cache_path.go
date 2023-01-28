@@ -13,7 +13,7 @@ func CreateCachePathCmd(svc Service) *cobra.Command {
 		Short: "Print path cache directory",
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Fprintln(svc.Output(), cache.Cache.Name())
+			fmt.Fprintln(svc.Output(), cache.Cache.Tags.Name())
 			return nil
 		},
 	}

@@ -41,7 +41,7 @@ func TestRepositoryTags(t *testing.T) {
 
 	reg_client := client.NewRegistry()
 	reg_client.Transport = s.Client().Transport
-	reg_client.Cache = cache.NewMemCacheStore()
+	reg_client.Cache.Tags = cache.NewMemTagCache()
 
 	repo, err := reg_client.Repository(named)
 	require.NoError(t, err)
@@ -51,17 +51,17 @@ func TestRepositoryTags(t *testing.T) {
 	t.Run("tags are cached", func(t *testing.T) {
 		require := require.New(t)
 
-		defer reg_client.Cache.Clear()
+		defer reg_client.Cache.Tags.Clear()
 
 		tags, err := repo.Tags(ctx).All(ctx)
 		require.NoError(err)
 		require.ElementsMatch([]string{"foo"}, tags)
 
-		cached_tags, ok := reg_client.Cache.GetTags(named)
+		cached_tags, ok := reg_client.Cache.Tags.Get(named)
 		require.True(ok)
 		require.ElementsMatch([]string{"foo"}, cached_tags)
 
-		reg_client.Cache.SetTags(named, []string{"bar"})
+		reg_client.Cache.Tags.Set(named, []string{"bar"})
 		cached_tags, err = repo.Tags(ctx).All(ctx)
 		require.NoError(err)
 		require.ElementsMatch([]string{"bar"}, cached_tags)
