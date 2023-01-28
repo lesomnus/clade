@@ -46,9 +46,7 @@ func (s *manifestSvc) Get(ctx context.Context, dgst digest.Digest, options ...di
 		}
 
 		ref_tagged, err := reference.WithTag(s.repo.named, opt.Tag)
-		if err != nil {
-			tagged = nil
-		} else {
+		if err == nil {
 			tagged = ref_tagged
 		}
 	}
