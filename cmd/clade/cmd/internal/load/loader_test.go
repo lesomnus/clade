@@ -53,7 +53,7 @@ images:
 
 	reg_client := client.NewRegistry()
 	reg_client.Transport = s.Client().Transport
-	reg_client.Cache = &cache.NullCacheStore{}
+	reg_client.Cache.Tags = &cache.NullTagCache{}
 
 	expander := load.Expander{
 		Registry: reg_client,

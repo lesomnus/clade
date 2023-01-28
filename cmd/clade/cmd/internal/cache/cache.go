@@ -4,17 +4,13 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-
-	"github.com/distribution/distribution/reference"
 )
 
 var Cache CacheStore
 
-type CacheStore interface {
-	Name() string
-	Clear() error
-	GetTags(named reference.Named) ([]string, bool)
-	SetTags(named reference.Named, tags []string)
+type CacheStore struct {
+	Tags      TagCache
+	Manifests ManifestCache
 }
 
 func init() {
@@ -25,5 +21,6 @@ func init() {
 		dir = filepath.Join(os.TempDir(), "clade-cache-"+now)
 	}
 
-	Cache = &FsCacheStore{Dir: dir}
+	Cache.Manifests = NewMemManifestCache()
+	Cache.Tags = &FsTagCache{Dir: filepath.Join(dir, "tags")}
 }

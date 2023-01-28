@@ -22,5 +22,5 @@ func TestCachePathCmd(t *testing.T) {
 	c.SetOutput(io.Discard)
 	err := c.Execute()
 	require.NoError(err)
-	require.Equal(cache.Cache.Name(), strings.TrimSpace(buff.String()))
+	require.Equal(cache.Cache.Tags.Name(), strings.TrimSpace(buff.String()))
 }

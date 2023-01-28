@@ -41,27 +41,108 @@ func TestRepositoryTags(t *testing.T) {
 
 	reg_client := client.NewRegistry()
 	reg_client.Transport = s.Client().Transport
-	reg_client.Cache = cache.NewMemCacheStore()
+	reg_client.Cache.Manifests = cache.NewMemManifestCache()
+	reg_client.Cache.Tags = cache.NewMemTagCache()
 
 	repo, err := reg_client.Repository(named)
 	require.NoError(t, err)
 
 	ctx := context.Background()
 
+	t.Run("manifests are cached", func(t *testing.T) {
+		require := require.New(t)
+
+		defer reg_client.Cache.Manifests.Clear()
+
+		svc, err := repo.Manifests(ctx)
+		require.NoError(err)
+
+		t.Run("by digest", func(t *testing.T) {
+			dgst := digest.Digest("sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7")
+			manif_expected := reg.Repos[name].Manifests[string(dgst)]
+
+			{
+				manif, err := svc.Get(ctx, dgst)
+				require.NoError(err)
+
+				_, blob, _ := manif.Payload()
+				require.Equal(manif_expected.Blob, blob)
+			}
+
+			{
+				manif, ok := reg_client.Cache.Manifests.GetByDigest(dgst)
+				require.True(ok)
+
+				_, blob, _ := manif.Payload()
+				require.Equal(manif_expected.Blob, blob)
+			}
+
+			{
+				dgst := digest.Digest("pizza")
+				_, err := svc.Get(ctx, dgst)
+				require.Error(err)
+
+				reg_client.Cache.Manifests.SetByDigest(dgst, &manif_expected)
+				manif, err := svc.Get(ctx, dgst)
+				require.NoError(err)
+
+				_, blob, _ := manif.Payload()
+				require.Equal(manif_expected.Blob, blob)
+			}
+		})
+
+		t.Run("by reference", func(t *testing.T) {
+			manif_expected := reg.Repos[name].Manifests["foo"]
+			tagged, err := reference.WithTag(named, "foo")
+			require.NoError(err)
+
+			{
+				manif, err := svc.Get(ctx, digest.Digest(""), distribution.WithTag("foo"))
+				require.NoError(err)
+
+				_, blob, _ := manif.Payload()
+				require.Equal(manif_expected.Blob, blob)
+			}
+
+			{
+				manif, ok := reg_client.Cache.Manifests.GetByRef(tagged)
+				require.True(ok)
+
+				_, blob, _ := manif.Payload()
+				require.Equal(manif_expected.Blob, blob)
+			}
+
+			{
+				tagged, err := reference.WithTag(named, "bar")
+				require.NoError(err)
+
+				_, err = svc.Get(ctx, digest.Digest(""), distribution.WithTag("bar"))
+				require.Error(err)
+
+				reg_client.Cache.Manifests.SetByRef(tagged, &manif_expected)
+				manif, err := svc.Get(ctx, digest.Digest(""), distribution.WithTag("bar"))
+				require.NoError(err)
+
+				_, blob, _ := manif.Payload()
+				require.Equal(manif_expected.Blob, blob)
+			}
+		})
+	})
+
 	t.Run("tags are cached", func(t *testing.T) {
 		require := require.New(t)
 
-		defer reg_client.Cache.Clear()
+		defer reg_client.Cache.Tags.Clear()
 
 		tags, err := repo.Tags(ctx).All(ctx)
 		require.NoError(err)
 		require.ElementsMatch([]string{"foo"}, tags)
 
-		cached_tags, ok := reg_client.Cache.GetTags(named)
+		cached_tags, ok := reg_client.Cache.Tags.Get(named)
 		require.True(ok)
 		require.ElementsMatch([]string{"foo"}, cached_tags)
 
-		reg_client.Cache.SetTags(named, []string{"bar"})
+		reg_client.Cache.Tags.Set(named, []string{"bar"})
 		cached_tags, err = repo.Tags(ctx).All(ctx)
 		require.NoError(err)
 		require.ElementsMatch([]string{"bar"}, cached_tags)
