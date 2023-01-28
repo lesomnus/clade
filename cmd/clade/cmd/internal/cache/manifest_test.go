@@ -4,27 +4,17 @@ import (
 	"testing"
 
 	"github.com/distribution/distribution/reference"
-	"github.com/distribution/distribution/v3"
 	"github.com/lesomnus/clade/cmd/clade/cmd/internal/cache"
+	"github.com/lesomnus/clade/cmd/clade/cmd/internal/registry"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/require"
 )
 
-type typedManifest struct {
-	media_type string
-}
-
-func (m *typedManifest) References() []distribution.Descriptor {
-	return []distribution.Descriptor{}
-}
-
-func (m *typedManifest) Payload() (string, []byte, error) {
-	return m.media_type, []byte{}, nil
-}
-
 func testManifestCache(t *testing.T, get func() cache.ManifestCache) {
 	digest := digest.NewDigestFromEncoded(digest.Canonical, "something")
 	named, err := reference.ParseNamed("cr.io/repo/name")
+	require.NoError(t, err)
+	tagged, err := reference.WithTag(named, "tag")
 	require.NoError(t, err)
 
 	t.Run("by reference", func(t *testing.T) {
@@ -32,7 +22,7 @@ func testManifestCache(t *testing.T, get func() cache.ManifestCache) {
 			require := require.New(t)
 			c := get()
 
-			_, ok := c.GetByRef(named)
+			_, ok := c.GetByRef(tagged)
 			require.False(ok)
 		})
 
@@ -40,8 +30,8 @@ func testManifestCache(t *testing.T, get func() cache.ManifestCache) {
 			require := require.New(t)
 			c := get()
 
-			c.SetByRef(named, &typedManifest{media_type: "foo"})
-			manif, ok := c.GetByRef(named)
+			c.SetByRef(tagged, &registry.Manifest{ContentType: "foo"})
+			manif, ok := c.GetByRef(tagged)
 			require.True(ok)
 
 			media_type, _, _ := manif.Payload()
@@ -52,9 +42,9 @@ func testManifestCache(t *testing.T, get func() cache.ManifestCache) {
 			require := require.New(t)
 			c := get()
 
-			c.SetByRef(named, &typedManifest{media_type: "foo"})
-			c.SetByRef(named, &typedManifest{media_type: "bar"})
-			manif, ok := c.GetByRef(named)
+			c.SetByRef(tagged, &registry.Manifest{ContentType: "foo"})
+			c.SetByRef(tagged, &registry.Manifest{ContentType: "bar"})
+			manif, ok := c.GetByRef(tagged)
 			require.True(ok)
 
 			media_type, _, _ := manif.Payload()
@@ -65,9 +55,9 @@ func testManifestCache(t *testing.T, get func() cache.ManifestCache) {
 			require := require.New(t)
 			c := get()
 
-			c.SetByRef(named, &typedManifest{media_type: "foo"})
+			c.SetByRef(tagged, &registry.Manifest{ContentType: "foo"})
 			c.Clear()
-			_, ok := c.GetByRef(named)
+			_, ok := c.GetByRef(tagged)
 			require.False(ok)
 		})
 	})
@@ -85,7 +75,7 @@ func testManifestCache(t *testing.T, get func() cache.ManifestCache) {
 			require := require.New(t)
 			c := get()
 
-			c.SetByDigest(digest, &typedManifest{media_type: "foo"})
+			c.SetByDigest(digest, &registry.Manifest{ContentType: "foo"})
 			manif, ok := c.GetByDigest(digest)
 			require.True(ok)
 
@@ -97,8 +87,8 @@ func testManifestCache(t *testing.T, get func() cache.ManifestCache) {
 			require := require.New(t)
 			c := get()
 
-			c.SetByDigest(digest, &typedManifest{media_type: "foo"})
-			c.SetByDigest(digest, &typedManifest{media_type: "bar"})
+			c.SetByDigest(digest, &registry.Manifest{ContentType: "foo"})
+			c.SetByDigest(digest, &registry.Manifest{ContentType: "bar"})
 			manif, ok := c.GetByDigest(digest)
 			require.True(ok)
 
@@ -110,7 +100,7 @@ func testManifestCache(t *testing.T, get func() cache.ManifestCache) {
 			require := require.New(t)
 			c := get()
 
-			c.SetByDigest(digest, &typedManifest{media_type: "foo"})
+			c.SetByDigest(digest, &registry.Manifest{ContentType: "foo"})
 			c.Clear()
 			_, ok := c.GetByDigest(digest)
 			require.False(ok)

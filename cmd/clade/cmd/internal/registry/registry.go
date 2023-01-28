@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/distribution/distribution/v3"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
 )
@@ -19,6 +20,14 @@ import (
 type Manifest struct {
 	ContentType string
 	Blob        []byte
+}
+
+func (m *Manifest) References() []distribution.Descriptor {
+	return []distribution.Descriptor{}
+}
+
+func (m *Manifest) Payload() (string, []byte, error) {
+	return m.ContentType, m.Blob, nil
 }
 
 type Repository struct {

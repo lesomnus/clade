@@ -11,8 +11,8 @@ type ManifestCache interface {
 	Clear() error
 	GetByDigest(digest digest.Digest) (distribution.Manifest, bool)
 	SetByDigest(digest digest.Digest, manifest distribution.Manifest)
-	GetByRef(named reference.Named) (distribution.Manifest, bool)
-	SetByRef(named reference.Named, manifest distribution.Manifest)
+	GetByRef(named reference.NamedTagged) (distribution.Manifest, bool)
+	SetByRef(named reference.NamedTagged, manifest distribution.Manifest)
 }
 
 type NullManifestCache struct{}
@@ -67,11 +67,11 @@ func (c *MemManifestCache) SetByDigest(digest digest.Digest, manifest distributi
 	c.ByDigest[digest.String()] = manifest
 }
 
-func (c *MemManifestCache) GetByRef(named reference.Named) (distribution.Manifest, bool) {
+func (c *MemManifestCache) GetByRef(named reference.NamedTagged) (distribution.Manifest, bool) {
 	manif, ok := c.ByRef[named.String()]
 	return manif, ok
 }
 
-func (c *MemManifestCache) SetByRef(named reference.Named, manifest distribution.Manifest) {
+func (c *MemManifestCache) SetByRef(named reference.NamedTagged, manifest distribution.Manifest) {
 	c.ByRef[named.String()] = manifest
 }

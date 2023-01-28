@@ -5,6 +5,7 @@ import (
 
 	"github.com/distribution/distribution/reference"
 	"github.com/lesomnus/clade/cmd/clade/cmd/internal/cache"
+	"github.com/lesomnus/clade/cmd/clade/cmd/internal/registry"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/require"
 )
@@ -33,11 +34,11 @@ func TestNullManifestCache(t *testing.T) {
 	c := cache.NullManifestCache{}
 	require.Equal("@null", c.Name())
 
-	c.SetByDigest(digest, &typedManifest{})
+	c.SetByDigest(digest, &registry.Manifest{})
 	_, ok := c.GetByDigest(digest)
 	require.False(ok)
 
-	c.SetByRef(named, &typedManifest{})
+	c.SetByRef(named, &registry.Manifest{})
 	_, ok = c.GetByRef(named)
 	require.False(ok)
 }
