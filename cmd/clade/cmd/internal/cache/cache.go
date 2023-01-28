@@ -21,5 +21,6 @@ func init() {
 		dir = filepath.Join(os.TempDir(), "clade-cache-"+now)
 	}
 
+	Cache.Manifests = NewMemManifestCache()
 	Cache.Tags = &FsTagCache{Dir: filepath.Join(dir, "tags")}
 }
