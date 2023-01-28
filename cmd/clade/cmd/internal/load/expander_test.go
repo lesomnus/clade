@@ -56,7 +56,7 @@ func TestExpand(t *testing.T) {
 	s := httptest.NewTLSServer(reg.Handler())
 	defer s.Close()
 
-	reg_client := client.NewDistRegistry()
+	reg_client := client.NewRegistry()
 	reg_client.Transport = s.Client().Transport
 	reg_client.Cache = &cache.NullCacheStore{}
 

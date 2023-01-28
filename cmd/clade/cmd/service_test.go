@@ -69,7 +69,7 @@ func TestServiceGetLayers(t *testing.T) {
 		Manifests: registry.SampleManifests,
 	}
 
-	reg_client := client.NewDistRegistry()
+	reg_client := client.NewRegistry()
 	reg_client.Transport = s.Client().Transport
 
 	svc := cmd.NewCmdService()

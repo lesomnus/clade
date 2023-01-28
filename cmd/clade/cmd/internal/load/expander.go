@@ -15,7 +15,7 @@ import (
 )
 
 type Expander struct {
-	Registry client.Registry
+	Registry *client.Registry
 }
 
 func (e *Expander) remoteTags(ctx context.Context, ref reference.Named) ([]string, error) {

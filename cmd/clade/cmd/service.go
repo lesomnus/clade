@@ -50,7 +50,7 @@ func (o *CmdService) LoadBuildTreeFromFs(ctx context.Context, bt *clade.BuildTre
 	return o.Loader.Load(ctx, bt, ports)
 }
 
-func (s *CmdService) registry() client.Registry {
+func (s *CmdService) registry() *client.Registry {
 	return s.Loader.Expander.Registry
 }
 

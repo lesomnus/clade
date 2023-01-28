@@ -75,8 +75,6 @@ func CreateRootCmd(flags *RootFlags) *cobra.Command {
 			l := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Timestamp().Logger().Level(level)
 			cmd.SetContext(l.WithContext(cmd.Context()))
 
-			credentials := client.NewCredentialStore()
-
 			docker_config_path := client.DefaultDockerConfigPath
 			if _, err := os.Stat(docker_config_path); err == nil {
 				l.Info().Str("path", docker_config_path).Msg("load credential from Docker config")
@@ -86,13 +84,11 @@ func CreateRootCmd(flags *RootFlags) *cobra.Command {
 				}
 
 				for svc, auth := range auths {
-					credentials.BasicAuths[svc] = auth
+					// TODO: remove loader and expander; make them as a function.
+					// There is only one method to load and expand, why they needed?
+					DefaultCmdService.Loader.Expander.Registry.Credentials.BasicAuths[svc] = auth
 				}
 			}
-
-			reg := client.NewDistRegistry()
-			reg.Credentials = credentials
-			DefaultCmdService.Loader.Expander.Registry = reg
 
 			return nil
 		},
