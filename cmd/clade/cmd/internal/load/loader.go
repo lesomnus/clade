@@ -16,7 +16,7 @@ type Loader struct {
 func NewLoader() Loader {
 	return Loader{
 		Expander: Expander{
-			Registry: client.NewDistRegistry(),
+			Registry: client.NewRegistry(),
 		},
 	}
 }

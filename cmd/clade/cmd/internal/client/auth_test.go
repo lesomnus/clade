@@ -22,6 +22,15 @@ func TestCredentialStore(t *testing.T) {
 	require.Empty(username)
 	require.Empty(password)
 
+	u := url.URL{Host: "cr.io"}
+	s.BasicAuths[u.Host] = client.BasicAuth{
+		Username: "hypnos",
+		Password: "secure",
+	}
+	username, password = s.Basic(&u)
+	require.Equal("hypnos", username)
+	require.Equal("secure", password)
+
 	s.SetRefreshToken(nil, "cr.io", "token")
 	token := s.RefreshToken(nil, "cr.io")
 	require.Equal("token", token)

@@ -39,7 +39,7 @@ func TestRepositoryTags(t *testing.T) {
 		Manifests: registry.SampleManifests,
 	}
 
-	reg_client := client.NewDistRegistry()
+	reg_client := client.NewRegistry()
 	reg_client.Transport = s.Client().Transport
 	reg_client.Cache = cache.NewMemCacheStore()
 

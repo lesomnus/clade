@@ -51,7 +51,7 @@ images:
       tag: "1.0.0"`, reg_url.Host)), &port)
 	require.NoError(err)
 
-	reg_client := client.NewDistRegistry()
+	reg_client := client.NewRegistry()
 	reg_client.Transport = s.Client().Transport
 	reg_client.Cache = &cache.NullCacheStore{}
 
