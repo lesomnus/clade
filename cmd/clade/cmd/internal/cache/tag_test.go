@@ -68,24 +68,24 @@ func TestMemTagCache(t *testing.T) {
 func TestFsTagCache(t *testing.T) {
 	get := func() cache.TagCache {
 		tmp := t.TempDir()
-		return &cache.FsTagCache{Dir: tmp}
+		return cache.NewFsTagCache(tmp)
 	}
 
 	testTagCache(t, get)
 
 	t.Run("name is the path of where the cache stored", func(t *testing.T) {
-		c := cache.FsTagCache{Dir: "/path/to/cache"}
+		c := cache.NewFsTagCache("/path/to/cache")
 		require.Equal(t, c.Dir, c.Name())
 	})
 
-	t.Run("not fails if there is no directory", func(t *testing.T) {
+	named, err := reference.ParseNamed("cr.io/repo/name")
+	require.NoError(t, err)
+
+	t.Run("not fails even if there is no directory", func(t *testing.T) {
 		require := require.New(t)
 
-		c := cache.FsTagCache{Dir: "/not exists"}
-
-		named, err := reference.ParseNamed("cr.io/repo/name")
-		require.NoError(err)
-
+		c := cache.NewFsTagCache("")
+		c.Dir = "/not exists"
 		c.Set(named, []string{"foo", "bar", "baz"})
 		_, ok := c.Get(named)
 		require.False(ok)
@@ -94,14 +94,9 @@ func TestFsTagCache(t *testing.T) {
 	t.Run("not fails even if data is invalid", func(t *testing.T) {
 		require := require.New(t)
 
-		tmp := t.TempDir()
-		c := cache.FsTagCache{Dir: tmp}
-
-		named, err := reference.ParseNamed("cr.io/repo/name")
-		require.NoError(err)
-
+		c := get()
 		c.Set(named, []string{"foo", "bar", "baz"})
-		os.WriteFile(filepath.Join(tmp, "cr.io/repo/name"), []byte("foo"), 0644)
+		os.WriteFile(filepath.Join(c.Name(), "cr.io/repo/name"), []byte("foo"), 0644)
 
 		_, ok := c.Get(named)
 		require.False(ok)
@@ -110,16 +105,11 @@ func TestFsTagCache(t *testing.T) {
 	t.Run("clear only removes its content not the directory", func(t *testing.T) {
 		require := require.New(t)
 
-		tmp := t.TempDir()
-		c := cache.FsTagCache{Dir: tmp}
-
-		named, err := reference.ParseNamed("cr.io/repo/name")
-		require.NoError(err)
-
+		c := get()
 		c.Set(named, []string{"foo", "bar", "baz"})
 		c.Clear()
 
-		_, err = os.Stat(tmp)
+		_, err = os.Stat(c.Name())
 		require.NoError(err)
 	})
 }

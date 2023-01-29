@@ -9,8 +9,8 @@ import (
 var Cache CacheStore
 
 type CacheStore struct {
-	Tags      TagCache
 	Manifests ManifestCache
+	Tags      TagCache
 }
 
 func init() {
@@ -21,6 +21,6 @@ func init() {
 		dir = filepath.Join(os.TempDir(), "clade-cache-"+now)
 	}
 
-	Cache.Manifests = NewMemManifestCache()
-	Cache.Tags = &FsTagCache{Dir: filepath.Join(dir, "tags")}
+	Cache.Manifests = NewFsManifestCache(filepath.Join(dir, "manifests")) // TODO: cache monthly?
+	Cache.Tags = NewFsTagCache(filepath.Join(dir, "tags"))
 }

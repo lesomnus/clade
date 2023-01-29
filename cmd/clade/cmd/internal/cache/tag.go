@@ -2,7 +2,6 @@ package cache
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -62,23 +61,11 @@ func (c *MemTagCache) Set(named reference.Named, tags []string) {
 }
 
 type FsTagCache struct {
-	Dir string
+	fsCache
 }
 
-func (c *FsTagCache) Name() string {
-	return c.Dir
-}
-
-func (c *FsTagCache) Clear() error {
-	if err := os.RemoveAll(c.Dir); err != nil {
-		return fmt.Errorf("failed to remove: %w", err)
-	}
-
-	if err := os.Mkdir(c.Dir, 0777); err != nil {
-		return fmt.Errorf("failed to make new one: %w", err)
-	}
-
-	return nil
+func NewFsTagCache(dir string) *FsTagCache {
+	return &FsTagCache{fsCache: fsCache{Dir: dir}}
 }
 
 func (c *FsTagCache) Get(ref reference.Named) ([]string, bool) {
@@ -110,5 +97,5 @@ func (c *FsTagCache) Set(ref reference.Named, tags []string) {
 		return
 	}
 
-	os.WriteFile(tgt, data, 0655)
+	os.WriteFile(tgt, data, 0644)
 }
