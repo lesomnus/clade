@@ -13,8 +13,8 @@ import (
 
 func testManifestCache(t *testing.T, get func() cache.ManifestCache) {
 	digest := digest.NewDigestFromEncoded(digest.Canonical, "something")
-	manif_foo := &registry.Manifest{ContentType: "testing", Blob: []byte("foo")}
-	manif_bar := &registry.Manifest{ContentType: "testing", Blob: []byte("bar")}
+	manif_foo := &registry.Blob{ContentType: "testing", Data: []byte("foo")}
+	manif_bar := &registry.Blob{ContentType: "testing", Data: []byte("bar")}
 
 	named, err := reference.ParseNamed("cr.io/repo/name")
 	require.NoError(t, err)
@@ -129,7 +129,7 @@ func TestFsManifestCache(t *testing.T) {
 	testManifestCache(t, func() cache.ManifestCache { return get() })
 
 	dgst := digest.NewDigestFromEncoded(digest.Canonical, "something")
-	manif := &registry.Manifest{ContentType: "testing", Blob: []byte("foo")}
+	manif := &registry.Blob{ContentType: "testing", Data: []byte("foo")}
 
 	t.Run("name is the path of where the cache stored", func(t *testing.T) {
 		c := cache.NewFsTagCache("/path/to/cache")

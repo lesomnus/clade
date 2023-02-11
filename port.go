@@ -57,8 +57,8 @@ func (p *Port) UnmarshalYAML(n *yaml.Node) error {
 	for _, image := range p.Images {
 		image.Named = named
 
-		if image.Skip == nil {
-			image.Skip = &p.Skip
+		if p.Skip {
+			image.Skip = p.Skip
 		}
 
 		if image.Platform == nil {

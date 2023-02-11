@@ -34,11 +34,11 @@ func TestNullManifestCache(t *testing.T) {
 	c := cache.NullManifestCache{}
 	require.Equal("@null", c.Name())
 
-	c.SetByDigest(digest, &registry.Manifest{})
+	c.SetByDigest(digest, &registry.Blob{})
 	_, ok := c.GetByDigest(digest)
 	require.False(ok)
 
-	c.SetByRef(named, &registry.Manifest{})
+	c.SetByRef(named, &registry.Blob{})
 	_, ok = c.GetByRef(named)
 	require.False(ok)
 }

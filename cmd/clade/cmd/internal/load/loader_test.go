@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/distribution/distribution/v3/reference"
 	"github.com/lesomnus/clade"
 	"github.com/lesomnus/clade/cmd/clade/cmd/internal/cache"
 	"github.com/lesomnus/clade/cmd/clade/cmd/internal/client"
@@ -20,22 +21,17 @@ import (
 func TestLoad(t *testing.T) {
 	require := require.New(t)
 
-	empty_manifest := registry.Manifest{
-		ContentType: "application/vnd.docker.distribution.manifest.list.v2+json",
-		Blob:        []byte{},
-	}
+	ref_foo, err := reference.WithName("repo/foo")
+	require.NoError(err)
 
-	reg := registry.NewRegistry(t)
-	reg.Repos = map[string]*registry.Repository{
-		"repo/foo": {
-			Name: "repo/foo",
-			Manifests: map[string]registry.Manifest{
-				"1.0.0": empty_manifest,
-			},
-		},
-	}
+	repo_foo := registry.NewRepository(ref_foo)
+	repo_foo.PopulateImageWithTag("1.0.0")
 
-	s := httptest.NewTLSServer(reg.Handler())
+	reg := registry.NewRegistry()
+	reg.Repos[ref_foo.Name()] = repo_foo
+
+	srv := registry.NewServer(t, reg)
+	s := httptest.NewTLSServer(srv.Handler())
 	defer s.Close()
 
 	reg_url, err := url.Parse(s.URL)
@@ -47,7 +43,7 @@ name: cr.io/repo/foo
 images:
   - tags: ["1.0.0"]
     from:
-      name: %s/repo/single
+      name: %s/repo/foo
       tag: "1.0.0"`, reg_url.Host)), &port)
 	require.NoError(err)
 
@@ -74,5 +70,5 @@ images:
 		names = append(names, name)
 		return nil
 	})
-	require.Equal(names, []string{fmt.Sprintf("%s/repo/single:1.0.0", reg_url.Host), "cr.io/repo/foo:1.0.0"})
+	require.Equal([]string{fmt.Sprintf("%s/repo/foo:1.0.0", reg_url.Host), "cr.io/repo/foo:1.0.0"}, names)
 }

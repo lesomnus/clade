@@ -39,8 +39,10 @@ func TestCredentialStore(t *testing.T) {
 func TestAuthTransport(t *testing.T) {
 	require := require.New(t)
 
-	reg := registry.NewRegistry(t)
-	s := httptest.NewTLSServer(reg.Handler())
+	reg := registry.NewRegistry()
+	srv := registry.NewServer(t, reg)
+
+	s := httptest.NewTLSServer(srv.Handler())
 	defer s.Close()
 
 	reg_rul, err := url.Parse(s.URL)

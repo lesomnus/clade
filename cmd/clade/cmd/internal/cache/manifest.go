@@ -149,6 +149,6 @@ func (c *FsManifestCache) SetByDigest(dgst digest.Digest, manifest distribution.
 
 func init() {
 	distribution.RegisterManifestSchema("testing", func(data []byte) (distribution.Manifest, distribution.Descriptor, error) {
-		return &registry.Manifest{ContentType: "testing", Blob: data}, distribution.Descriptor{}, nil
+		return &registry.Blob{ContentType: "testing", Data: data}, distribution.Descriptor{}, nil
 	})
 }
