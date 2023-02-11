@@ -1,14 +1,15 @@
 package registry_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
 
+	"github.com/distribution/distribution/v3/reference"
 	"github.com/lesomnus/clade/cmd/clade/cmd/internal/registry"
 	"github.com/stretchr/testify/require"
 )
@@ -23,20 +24,24 @@ func (t *AuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return t.base.RoundTrip(req)
 }
 
-func TestRegistry(t *testing.T) {
-	reg := registry.NewRegistry(t)
-	reg.Repos["spider-man/tom"] = &registry.Repository{
-		Name: "spider-man/tom",
-		Manifests: map[string]registry.Manifest{
-			"no-way-home": {
-				ContentType: "movie",
-				Blob:        []byte("great power"),
-			},
-			"sha256:asdf": {},
-		},
-	}
+func TestServer(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.NewRegistry()
+	srv := registry.NewServer(t, reg)
 
-	s := httptest.NewServer(reg.Handler())
+	named, err := reference.WithName("cr.io/repo/name")
+	require.NoError(t, err)
+
+	name := reference.Path(named)
+	repo := registry.NewRepository(named)
+	repo.PopulateImage()
+
+	tagged, desc, _ := repo.PopulateImage()
+	tag := tagged.Tag()
+
+	reg.Repos[name] = repo
+
+	s := httptest.NewServer(srv.Handler())
 	defer s.Close()
 
 	t.Run("401 if no authenticate header", func(t *testing.T) {
@@ -53,7 +58,7 @@ func TestRegistry(t *testing.T) {
 	t.Run("/ returns token", func(t *testing.T) {
 		require := require.New(t)
 
-		res, err := s.Client().Get(s.URL + "?scope=lesomnus")
+		res, err := s.Client().Get(s.URL + "?scope=somewhere")
 		require.NoError(err)
 		require.Equal(http.StatusOK, res.StatusCode)
 
@@ -85,10 +90,10 @@ func TestRegistry(t *testing.T) {
 			"/not-exists",
 			"/v1",
 			"/v2/not-exists",
-			"/v2/resource/name/not-exists",
-			"/v2/spider-man/tom/unknown-service",
-			"/v2/spider-man/tom/manifests", // no required subpath
-			"/v2/spider-man/tom/manifests/not-exists",
+			"/v2/repo/not-exists",
+			"/v2/repo/name/unknown-service",
+			"/v2/repo/name/manifests", // no required subpath
+			"/v2/repo/name/manifests/not-exists",
 		}
 		for _, p := range paths {
 			res, err := s.Client().Get(s.URL + p)
@@ -100,7 +105,8 @@ func TestRegistry(t *testing.T) {
 	t.Run("/repo/name/tags/list returns all tags", func(t *testing.T) {
 		require := require.New(t)
 
-		name := "spider-man/tom"
+		tags, err := repo.Tags(ctx).All(ctx)
+		require.NoError(err)
 
 		res, err := s.Client().Get(s.URL + fmt.Sprintf("/v2/%s/tags/list", name))
 		require.NoError(err)
@@ -116,37 +122,60 @@ func TestRegistry(t *testing.T) {
 
 		err = json.Unmarshal(body, &data)
 		require.NoError(err)
-		require.Contains(data.Name, name)
-		require.ElementsMatch(data.Tags, reg.Repos[name].Tags())
+		require.Equal(named.Name(), data.Name)
+		require.ElementsMatch(tags, data.Tags)
 	})
 
-	t.Run("/repo/name/manifests/tag", func(t *testing.T) {
+	t.Run("/repo/name/manifests/ref", func(t *testing.T) {
 		t.Run("HEAD responses OK with empty body", func(t *testing.T) {
 			require := require.New(t)
-
-			name := "spider-man/tom"
-			tag := "no-way-home"
 
 			res, err := s.Client().Head(s.URL + fmt.Sprintf("/v2/%s/manifests/%s", name, tag))
 			require.NoError(err)
 			require.Equal(http.StatusOK, res.StatusCode)
+			require.Equal(desc.Digest.String(), res.Header.Get("Docker-Content-Digest"))
 
 			body, err := io.ReadAll(res.Body)
 			require.NoError(err)
 			require.Empty(body)
 		})
 
-		t.Run("GET returns manifest", func(t *testing.T) {
+		t.Run("GET by digest returns manifest", func(t *testing.T) {
 			require := require.New(t)
 
-			name := "spider-man/tom"
-			tag := "no-way-home"
+			res, err := s.Client().Get(s.URL + fmt.Sprintf("/v2/%s/manifests/%s", name, desc.Digest.String()))
+			require.NoError(err)
+			require.Equal(http.StatusOK, res.StatusCode)
+			require.Equal(desc.MediaType, res.Header.Get("Content-type"))
+			require.Equal(fmt.Sprint(desc.Size), res.Header.Get("Content-Length"))
+		})
+
+		t.Run("GET by tag returns manifest", func(t *testing.T) {
+			require := require.New(t)
 
 			res, err := s.Client().Get(s.URL + fmt.Sprintf("/v2/%s/manifests/%s", name, tag))
 			require.NoError(err)
 			require.Equal(http.StatusOK, res.StatusCode)
-			require.Equal(reg.Repos[name].Manifests[tag].ContentType, res.Header.Get("Content-type"))
-			require.Equal(strconv.Itoa(len(reg.Repos[name].Manifests[tag].Blob)), res.Header.Get("Content-Length"))
+			require.Equal(desc.MediaType, res.Header.Get("Content-type"))
+			require.Equal(fmt.Sprint(desc.Size), res.Header.Get("Content-Length"))
+		})
+
+		t.Run("fails if", func(t *testing.T) {
+			t.Run("GET by digest with unsupported algorithm returns 501", func(t *testing.T) {
+				require := require.New(t)
+
+				res, err := s.Client().Get(s.URL + fmt.Sprintf("/v2/%s/manifests/%s", name, "awesome21:cool"))
+				require.NoError(err)
+				require.Equal(http.StatusNotImplemented, res.StatusCode)
+			})
+
+			t.Run("GET by invalid digest returns 400", func(t *testing.T) {
+				require := require.New(t)
+
+				res, err := s.Client().Get(s.URL + fmt.Sprintf("/v2/%s/manifests/%s", name, "sha256:vEryAweSomE"))
+				require.NoError(err)
+				require.Equal(http.StatusBadRequest, res.StatusCode)
+			})
 		})
 	})
 }

@@ -51,7 +51,7 @@ func (p *pipeliner) UnmarshalYAML(n *yaml.Node) error {
 type Image struct {
 	reference.Named `yaml:"-"`
 
-	Skip *bool                  `yaml:"skip"`
+	Skip bool                   `yaml:"skip"`
 	Tags []Pipeliner            `yaml:"-"`
 	From RefNamedPipelineTagged `yaml:"-"`
 	Args map[string]Pipeliner   `yaml:"-"`

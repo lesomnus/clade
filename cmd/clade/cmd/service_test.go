@@ -51,23 +51,28 @@ func TestServiceLoadBuildTreeFromFs(t *testing.T) {
 }
 
 func TestServiceGetLayers(t *testing.T) {
-	reg := registry.NewRegistry(t)
+	ctx := context.Background()
 
-	s := httptest.NewTLSServer(reg.Handler())
+	ref_foo, err := reference.WithName("repo/foo")
+	require.NoError(t, err)
+
+	repo_foo := registry.NewRepository(ref_foo)
+	desc, manif := repo_foo.PopulateManifest()
+	err = repo_foo.Tags(ctx).Tag(ctx, "1.0.0", desc)
+	require.NoError(t, err)
+
+	reg := registry.NewRegistry()
+	reg.Repos[ref_foo.Name()] = repo_foo
+
+	srv := registry.NewServer(t, reg)
+	s := httptest.NewTLSServer(srv.Handler())
 	defer s.Close()
 
 	reg_rul, err := url.Parse(s.URL)
 	require.NoError(t, err)
 
-	named, err := reference.ParseNamed(reg_rul.Host + "/repo/name")
+	named, err := reference.ParseNamed(reg_rul.Host + "/repo/foo")
 	require.NoError(t, err)
-
-	name := reference.Path(named)
-
-	reg.Repos[name] = &registry.Repository{
-		Name:      name,
-		Manifests: registry.SampleManifests,
-	}
 
 	reg_client := client.NewRegistry()
 	reg_client.Transport = s.Client().Transport
@@ -78,12 +83,12 @@ func TestServiceGetLayers(t *testing.T) {
 	t.Run("gets layers of the given tag", func(t *testing.T) {
 		require := require.New(t)
 
-		tagged, err := reference.WithTag(named, "foo")
+		tagged, err := reference.WithTag(named, "1.0.0")
 		require.NoError(err)
 
 		ctx := context.Background()
 		layers, err := svc.GetLayer(ctx, tagged)
 		require.NoError(err)
-		require.Len(layers, 3)
+		require.Len(layers, len(manif.Layers))
 	})
 }
