@@ -126,7 +126,7 @@ func TestServer(t *testing.T) {
 		require.ElementsMatch(tags, data.Tags)
 	})
 
-	t.Run("/repo/name/manifests/tag", func(t *testing.T) {
+	t.Run("/repo/name/manifests/ref", func(t *testing.T) {
 		t.Run("HEAD responses OK with empty body", func(t *testing.T) {
 			require := require.New(t)
 
@@ -140,7 +140,17 @@ func TestServer(t *testing.T) {
 			require.Empty(body)
 		})
 
-		t.Run("GET returns manifest", func(t *testing.T) {
+		t.Run("GET by digest returns manifest", func(t *testing.T) {
+			require := require.New(t)
+
+			res, err := s.Client().Get(s.URL + fmt.Sprintf("/v2/%s/manifests/%s", name, desc.Digest.String()))
+			require.NoError(err)
+			require.Equal(http.StatusOK, res.StatusCode)
+			require.Equal(desc.MediaType, res.Header.Get("Content-type"))
+			require.Equal(fmt.Sprint(desc.Size), res.Header.Get("Content-Length"))
+		})
+
+		t.Run("GET by tag returns manifest", func(t *testing.T) {
 			require := require.New(t)
 
 			res, err := s.Client().Get(s.URL + fmt.Sprintf("/v2/%s/manifests/%s", name, tag))
@@ -148,6 +158,24 @@ func TestServer(t *testing.T) {
 			require.Equal(http.StatusOK, res.StatusCode)
 			require.Equal(desc.MediaType, res.Header.Get("Content-type"))
 			require.Equal(fmt.Sprint(desc.Size), res.Header.Get("Content-Length"))
+		})
+
+		t.Run("fails if", func(t *testing.T) {
+			t.Run("GET by digest with unsupported algorithm returns 501", func(t *testing.T) {
+				require := require.New(t)
+
+				res, err := s.Client().Get(s.URL + fmt.Sprintf("/v2/%s/manifests/%s", name, "awesome21:cool"))
+				require.NoError(err)
+				require.Equal(http.StatusNotImplemented, res.StatusCode)
+			})
+
+			t.Run("GET by invalid digest returns 400", func(t *testing.T) {
+				require := require.New(t)
+
+				res, err := s.Client().Get(s.URL + fmt.Sprintf("/v2/%s/manifests/%s", name, "sha256:vEryAweSomE"))
+				require.NoError(err)
+				require.Equal(http.StatusBadRequest, res.StatusCode)
+			})
 		})
 	})
 }

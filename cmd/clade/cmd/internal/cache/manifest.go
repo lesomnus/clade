@@ -7,7 +7,6 @@ import (
 
 	"github.com/distribution/distribution/reference"
 	"github.com/distribution/distribution/v3"
-	"github.com/lesomnus/clade/cmd/clade/cmd/internal/registry"
 	"github.com/opencontainers/go-digest"
 )
 
@@ -145,10 +144,4 @@ func (c *FsManifestCache) SetByDigest(dgst digest.Digest, manifest distribution.
 	f.WriteString(media_type)
 	f.WriteString("\n")
 	f.Write(data)
-}
-
-func init() {
-	distribution.RegisterManifestSchema("testing", func(data []byte) (distribution.Manifest, distribution.Descriptor, error) {
-		return &registry.Blob{ContentType: "testing", Data: data}, distribution.Descriptor{}, nil
-	})
 }

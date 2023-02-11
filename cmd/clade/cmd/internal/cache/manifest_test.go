@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/distribution/distribution/reference"
+	"github.com/distribution/distribution/v3"
 	"github.com/lesomnus/clade/cmd/clade/cmd/internal/cache"
 	"github.com/lesomnus/clade/cmd/clade/cmd/internal/registry"
 	"github.com/opencontainers/go-digest"
@@ -166,5 +167,11 @@ func TestFsManifestCache(t *testing.T) {
 
 		_, err := os.Stat(c.Name())
 		require.NoError(err)
+	})
+}
+
+func init() {
+	distribution.RegisterManifestSchema("testing", func(data []byte) (distribution.Manifest, distribution.Descriptor, error) {
+		return &registry.Blob{ContentType: "testing", Data: data}, distribution.Descriptor{}, nil
 	})
 }

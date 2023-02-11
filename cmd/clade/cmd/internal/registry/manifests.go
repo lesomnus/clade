@@ -41,7 +41,7 @@ func (s *ManifestService) Get(ctx context.Context, dgst digest.Digest, options .
 func (s *ManifestService) Put(ctx context.Context, manifest distribution.Manifest, options ...distribution.ManifestServiceOption) (digest.Digest, error) {
 	_, data, err := manifest.Payload()
 	if err != nil {
-		return "", fmt.Errorf("failed to get payload: %w", err)
+		return "", fmt.Errorf("get payload: %w", err)
 	}
 
 	return digest.FromBytes(data), nil

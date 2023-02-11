@@ -145,19 +145,7 @@ func (s *Server) handleManifests(res http.ResponseWriter, req *http.Request, rep
 	}
 
 	dgst := digest.Digest("")
-	if !strings.Contains(ref, ":") {
-		desc, err := repo.Tags(ctx).Get(ctx, ref)
-		if err == nil {
-			dgst = desc.Digest
-		} else {
-			if errors.Is(err, ErrNotExists) {
-				res.WriteHeader(http.StatusNotFound)
-				return false, NewErrorCodes(ErrCodeManifestUnknown)
-			}
-
-			return false, err
-		}
-	} else {
+	if strings.Contains(ref, ":") {
 		dgst, err = digest.Parse(ref)
 		if err != nil {
 			if errors.Is(err, digest.ErrDigestUnsupported) {
@@ -168,6 +156,20 @@ func (s *Server) handleManifests(res http.ResponseWriter, req *http.Request, rep
 				res.WriteHeader(http.StatusBadRequest)
 				return true, nil
 			}
+
+			return false, err
+		}
+	} else {
+		desc, err := repo.Tags(ctx).Get(ctx, ref)
+		if err == nil {
+			dgst = desc.Digest
+		} else {
+			if errors.Is(err, ErrNotExists) {
+				res.WriteHeader(http.StatusNotFound)
+				return false, NewErrorCodes(ErrCodeManifestUnknown)
+			}
+
+			return false, err
 		}
 	}
 
