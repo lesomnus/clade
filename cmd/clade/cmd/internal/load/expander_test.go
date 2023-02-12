@@ -24,14 +24,10 @@ func TestExpand(t *testing.T) {
 	ref_baz, err := reference.WithName("repo/baz")
 	require.NoError(t, err)
 
-	repo_foo := registry.NewRepository(ref_foo)
-	repo_bar := registry.NewRepository(ref_bar)
-	repo_baz := registry.NewRepository(ref_baz)
-
 	reg := registry.NewRegistry()
-	reg.Repos[ref_foo.Name()] = repo_foo
-	reg.Repos[ref_bar.Name()] = repo_bar
-	reg.Repos[ref_baz.Name()] = repo_baz
+	repo_foo := reg.NewRepository(ref_foo)
+	repo_bar := reg.NewRepository(ref_bar)
+	repo_baz := reg.NewRepository(ref_baz)
 
 	repo_foo.PopulateImageWithTag("1.2.3")
 	repo_bar.PopulateImageWithTag("2.3.4")

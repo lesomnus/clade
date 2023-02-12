@@ -56,13 +56,11 @@ func TestServiceGetLayers(t *testing.T) {
 	ref_foo, err := reference.WithName("repo/foo")
 	require.NoError(t, err)
 
-	repo_foo := registry.NewRepository(ref_foo)
+	reg := registry.NewRegistry()
+	repo_foo := reg.NewRepository(ref_foo)
 	desc, manif := repo_foo.PopulateManifest()
 	err = repo_foo.Tags(ctx).Tag(ctx, "1.0.0", desc)
 	require.NoError(t, err)
-
-	reg := registry.NewRegistry()
-	reg.Repos[ref_foo.Name()] = repo_foo
 
 	srv := registry.NewServer(t, reg)
 	s := httptest.NewTLSServer(srv.Handler())
