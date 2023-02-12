@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/lesomnus/clade/cmd/clade/cmd/internal/cache"
 	"github.com/spf13/cobra"
 )
 
@@ -13,7 +12,7 @@ func CreateCachePathCmd(svc Service) *cobra.Command {
 		Short: "Print path cache directory",
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Fprintln(svc.Output(), cache.Cache.Tags.Name())
+			fmt.Fprintln(svc.Output(), RegistryCache.Root)
 			return nil
 		},
 	}

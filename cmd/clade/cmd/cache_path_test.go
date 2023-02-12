@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/lesomnus/clade/cmd/clade/cmd"
-	"github.com/lesomnus/clade/cmd/clade/cmd/internal/cache"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,5 +21,5 @@ func TestCachePathCmd(t *testing.T) {
 	c.SetOutput(io.Discard)
 	err := c.Execute()
 	require.NoError(err)
-	require.Equal(cache.Cache.Tags.Name(), strings.TrimSpace(buff.String()))
+	require.Equal(cmd.RegistryCache.Root, strings.TrimSpace(buff.String()))
 }

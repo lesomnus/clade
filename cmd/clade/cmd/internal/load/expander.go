@@ -5,17 +5,21 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/distribution/distribution/v3"
 	"github.com/distribution/distribution/v3/reference"
 	"github.com/lesomnus/clade"
-	"github.com/lesomnus/clade/cmd/clade/cmd/internal/client"
 	"github.com/lesomnus/clade/plf"
 	"github.com/lesomnus/pl"
 	"github.com/rs/zerolog"
 	"golang.org/x/exp/maps"
 )
 
+type Namespace interface {
+	Repository(named reference.Named) (distribution.Repository, error)
+}
+
 type Expander struct {
-	Registry *client.Registry
+	Registry Namespace
 }
 
 func (e *Expander) remoteTags(ctx context.Context, ref reference.Named) ([]string, error) {
