@@ -1,177 +1,125 @@
 package cache_test
 
 import (
+	"context"
 	"os"
 	"testing"
 
-	"github.com/distribution/distribution/reference"
 	"github.com/distribution/distribution/v3"
+	"github.com/distribution/distribution/v3/manifest/schema2"
+	"github.com/distribution/distribution/v3/reference"
 	"github.com/lesomnus/clade/cmd/clade/cmd/internal/cache"
-	"github.com/lesomnus/clade/cmd/clade/cmd/internal/registry"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/require"
 )
 
-func testManifestCache(t *testing.T, get func() cache.ManifestCache) {
-	digest := digest.NewDigestFromEncoded(digest.Canonical, "something")
-	manif_foo := &registry.Blob{ContentType: "testing", Data: []byte("foo")}
-	manif_bar := &registry.Blob{ContentType: "testing", Data: []byte("bar")}
+func TestManifests(t *testing.T) {
+	ctx := context.Background()
 
 	named, err := reference.ParseNamed("cr.io/repo/name")
 	require.NoError(t, err)
-	tagged, err := reference.WithTag(named, "tag")
-	require.NoError(t, err)
 
-	t.Run("by reference", func(t *testing.T) {
-		t.Run("get fail if not exists", func(t *testing.T) {
+	withSvc := func(tester func(t *testing.T, manifests *cache.ManifestService)) func(*testing.T) {
+		return func(t *testing.T) {
 			require := require.New(t)
-			c := get()
 
-			_, ok := c.GetByRef(tagged)
-			require.False(ok)
-		})
+			tmp := t.TempDir()
+			reg := cache.NewRegistry(tmp)
 
-		t.Run("retrieve", func(t *testing.T) {
-			require := require.New(t)
-			c := get()
+			repo, err := reg.Repository(named)
+			require.NoError(err)
 
-			c.SetByRef(tagged, manif_foo)
-			manif, ok := c.GetByRef(tagged)
+			svc, err := repo.Manifests(ctx)
+			require.NoError(err)
+
+			manifests, ok := svc.(*cache.ManifestService)
 			require.True(ok)
 
-			_, data, _ := manif.Payload()
-			require.Equal([]byte("foo"), data)
-		})
-
-		t.Run("overwrite", func(t *testing.T) {
-			require := require.New(t)
-			c := get()
-
-			c.SetByRef(tagged, manif_foo)
-			c.SetByRef(tagged, manif_bar)
-			manif, ok := c.GetByRef(tagged)
-			require.True(ok)
-
-			_, data, _ := manif.Payload()
-			require.Equal([]byte("bar"), data)
-		})
-
-		t.Run("clear", func(t *testing.T) {
-			require := require.New(t)
-			c := get()
-
-			c.SetByRef(tagged, manif_foo)
-			c.Clear()
-			_, ok := c.GetByRef(tagged)
-			require.False(ok)
-		})
-	})
-
-	t.Run("by digest", func(t *testing.T) {
-		t.Run("get fail if not exists", func(t *testing.T) {
-			require := require.New(t)
-			c := get()
-
-			_, ok := c.GetByDigest("plain:not_exists")
-			require.False(ok)
-		})
-
-		t.Run("retrieve", func(t *testing.T) {
-			require := require.New(t)
-			c := get()
-
-			c.SetByDigest(digest, manif_foo)
-			manif, ok := c.GetByDigest(digest)
-			require.True(ok)
-
-			_, data, _ := manif.Payload()
-			require.Equal([]byte("foo"), data)
-		})
-
-		t.Run("overwrite", func(t *testing.T) {
-			require := require.New(t)
-			c := get()
-
-			c.SetByDigest(digest, manif_foo)
-			c.SetByDigest(digest, manif_bar)
-			manif, ok := c.GetByDigest(digest)
-			require.True(ok)
-
-			_, data, _ := manif.Payload()
-			require.Equal([]byte("bar"), data)
-		})
-
-		t.Run("clear", func(t *testing.T) {
-			require := require.New(t)
-			c := get()
-
-			c.SetByDigest(digest, manif_foo)
-			c.Clear()
-			_, ok := c.GetByDigest(digest)
-			require.False(ok)
-		})
-	})
-}
-
-func TestMemManifestCache(t *testing.T) {
-	require.Equal(t, "@mem", cache.NewMemManifestCache().Name())
-
-	testManifestCache(t, func() cache.ManifestCache {
-		return cache.NewMemManifestCache()
-	})
-}
-
-func TestFsManifestCache(t *testing.T) {
-	get := func() *cache.FsManifestCache {
-		tmp := t.TempDir()
-		return cache.NewFsManifestCache(tmp)
+			tester(t, manifests)
+		}
 	}
 
-	testManifestCache(t, func() cache.ManifestCache { return get() })
-
-	dgst := digest.NewDigestFromEncoded(digest.Canonical, "something")
-	manif := &registry.Blob{ContentType: "testing", Data: []byte("foo")}
-
-	t.Run("name is the path of where the cache stored", func(t *testing.T) {
-		c := cache.NewFsTagCache("/path/to/cache")
-		require.Equal(t, c.Dir, c.Name())
+	dgst := digest.FromString("something")
+	manif, err := schema2.FromStruct(schema2.Manifest{
+		Versioned: schema2.SchemaVersion,
+		Layers:    []distribution.Descriptor{{Size: 42}},
 	})
+	require.NoError(t, err)
 
-	t.Run("not fails even if there is no directory", func(t *testing.T) {
+	t.Run("Set", withSvc(func(t *testing.T, manifests *cache.ManifestService) {
 		require := require.New(t)
 
-		c := cache.NewFsManifestCache("")
-		c.Dir = "/not exists"
-		c.SetByDigest(dgst, manif)
-		_, ok := c.GetByDigest(dgst)
-		require.False(ok)
-	})
-
-	t.Run("not fails even if data is invalid", func(t *testing.T) {
-		require := require.New(t)
-
-		c := get()
-		c.SetByDigest(dgst, manif)
-		os.WriteFile(c.ToPath(dgst), []byte("not registered type\nsome data"), 0644)
-
-		_, ok := c.GetByDigest(dgst)
-		require.False(ok)
-	})
-
-	t.Run("clear only removes its content not the directory", func(t *testing.T) {
-		require := require.New(t)
-
-		c := get()
-		c.SetByDigest(dgst, manif)
-		c.Clear()
-
-		_, err := os.Stat(c.Name())
+		ok, err := manifests.Exists(ctx, dgst)
 		require.NoError(err)
-	})
-}
+		require.False(ok)
 
-func init() {
-	distribution.RegisterManifestSchema("testing", func(data []byte) (distribution.Manifest, distribution.Descriptor, error) {
-		return &registry.Blob{ContentType: "testing", Data: data}, distribution.Descriptor{}, nil
-	})
+		_, err = manifests.Get(ctx, dgst)
+		require.ErrorIs(err, os.ErrNotExist)
+
+		err = manifests.Set(ctx, dgst, manif)
+		require.NoError(err)
+
+		ok, err = manifests.Exists(ctx, dgst)
+		require.NoError(err)
+		require.True(ok)
+
+		manif_loaded, err := manifests.Get(ctx, dgst)
+		require.NoError(err)
+		require.Equal(manif, manif_loaded)
+	}))
+
+	t.Run("Delete", withSvc(func(t *testing.T, manifests *cache.ManifestService) {
+		require := require.New(t)
+
+		err := manifests.Set(ctx, dgst, manif)
+		require.NoError(err)
+
+		err = manifests.Delete(ctx, dgst)
+		require.NoError(err)
+
+		ok, err := manifests.Exists(ctx, dgst)
+		require.NoError(err)
+		require.False(ok)
+
+		_, err = manifests.Get(ctx, dgst)
+		require.ErrorIs(err, os.ErrNotExist)
+	}))
+
+	t.Run("Get from fallback", withSvc(func(t *testing.T, fallback *cache.ManifestService) {
+		require := require.New(t)
+
+		err := fallback.Set(ctx, dgst, manif)
+		require.NoError(err)
+
+		withSvc(func(t *testing.T, manifests *cache.ManifestService) {
+			manifests.Repository.Registry.Fallback = fallback.Repository.Registry
+
+			manif_loaded, err := manifests.Get(ctx, dgst)
+			require.NoError(err)
+			require.Equal(manif, manif_loaded)
+
+			manifests.Repository.Registry.Fallback = nil
+			manif_loaded, err = manifests.Get(ctx, dgst)
+			require.NoError(err)
+			require.Equal(manif, manif_loaded)
+		})(t)
+	}))
+
+	t.Run("invalid cache data is removed", withSvc(func(t *testing.T, manifests *cache.ManifestService) {
+		require := require.New(t)
+
+		err := manifests.Set(ctx, dgst, manif)
+		require.NoError(err)
+
+		manif_path := manifests.PathTo(dgst)
+
+		err = os.WriteFile(manif_path, []byte("invalid data"), 0644)
+		require.NoError(err)
+
+		_, err = manifests.Get(ctx, dgst)
+		require.Error(err)
+
+		_, err = os.Stat(manif_path)
+		require.Error(err, os.ErrNotExist)
+	}))
 }
