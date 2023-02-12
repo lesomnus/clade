@@ -4,9 +4,11 @@ import (
 	"io"
 	"testing"
 
+	"github.com/distribution/distribution/v3/reference"
 	"github.com/lesomnus/clade"
 	"github.com/lesomnus/clade/builder"
 	"github.com/lesomnus/clade/cmd/clade/cmd"
+	"github.com/lesomnus/clade/cmd/clade/cmd/internal/registry"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,8 +27,16 @@ func TestBuildCmd(t *testing.T) {
 	t.Run("registered builder is invoked with arguments", func(t *testing.T) {
 		require := require.New(t)
 
+		named, err := reference.ParseNamed("ghcr.io/lesomnus/gcc")
+		require.NoError(err)
+
+		reg := registry.NewRegistry()
+		repo := reg.NewRepository(named)
+		repo.PopulateImageWithTag("12.2")
+
 		svc := cmd.NewCmdService()
 		svc.Sink = io.Discard
+		svc.RegistryClient = reg
 		flags := cmd.BuildFlags{
 			RootFlags: &cmd.RootFlags{
 				PortsPath: ports,
@@ -44,7 +54,7 @@ func TestBuildCmd(t *testing.T) {
 
 		c := cmd.CreateBuildCmd(&flags, svc)
 		c.SetArgs([]string{"--builder", name, "--dry-run", "ghcr.io/lesomnus/pcl:1.11", "--", "--some-arg"})
-		err := c.Execute()
+		err = c.Execute()
 		require.NoError(err)
 		require.True(build_config.DryRun)
 		require.Equal([]string{"--some-arg"}, build_config.Args)

@@ -29,8 +29,6 @@ func (b *dockerBuilder) newCmd(image *clade.ResolvedImage) *exec.Cmd {
 		args = append(args, "--tag", fmt.Sprintf("%s:%s", image.Name(), tag))
 	}
 
-	args = append(args, "--build-arg", fmt.Sprintf("BASE=%s", image.From.Name()))
-	args = append(args, "--build-arg", fmt.Sprintf("TAG=%s", image.From.Tag()))
 	for k, v := range image.Args {
 		args = append(args, "--build-arg", fmt.Sprintf("%s=%s", k, v))
 	}

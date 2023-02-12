@@ -29,17 +29,14 @@ func TestServer(t *testing.T) {
 	reg := registry.NewRegistry()
 	srv := registry.NewServer(t, reg)
 
-	named, err := reference.WithName("cr.io/repo/name")
+	named, err := reference.WithName("repo/name")
 	require.NoError(t, err)
 
-	name := reference.Path(named)
-	repo := registry.NewRepository(named)
+	repo := reg.NewRepository(named)
 	repo.PopulateImage()
 
 	tagged, desc, _ := repo.PopulateImage()
 	tag := tagged.Tag()
-
-	reg.Repos[name] = repo
 
 	s := httptest.NewServer(srv.Handler())
 	defer s.Close()
@@ -108,7 +105,7 @@ func TestServer(t *testing.T) {
 		tags, err := repo.Tags(ctx).All(ctx)
 		require.NoError(err)
 
-		res, err := s.Client().Get(s.URL + fmt.Sprintf("/v2/%s/tags/list", name))
+		res, err := s.Client().Get(s.URL + fmt.Sprintf("/v2/%s/tags/list", named.Name()))
 		require.NoError(err)
 		require.Equal(http.StatusOK, res.StatusCode)
 
@@ -130,7 +127,7 @@ func TestServer(t *testing.T) {
 		t.Run("HEAD responses OK with empty body", func(t *testing.T) {
 			require := require.New(t)
 
-			res, err := s.Client().Head(s.URL + fmt.Sprintf("/v2/%s/manifests/%s", name, tag))
+			res, err := s.Client().Head(s.URL + fmt.Sprintf("/v2/%s/manifests/%s", named.Name(), tag))
 			require.NoError(err)
 			require.Equal(http.StatusOK, res.StatusCode)
 			require.Equal(desc.Digest.String(), res.Header.Get("Docker-Content-Digest"))
@@ -143,7 +140,7 @@ func TestServer(t *testing.T) {
 		t.Run("GET by digest returns manifest", func(t *testing.T) {
 			require := require.New(t)
 
-			res, err := s.Client().Get(s.URL + fmt.Sprintf("/v2/%s/manifests/%s", name, desc.Digest.String()))
+			res, err := s.Client().Get(s.URL + fmt.Sprintf("/v2/%s/manifests/%s", named.Name(), desc.Digest.String()))
 			require.NoError(err)
 			require.Equal(http.StatusOK, res.StatusCode)
 			require.Equal(desc.MediaType, res.Header.Get("Content-type"))
@@ -153,7 +150,7 @@ func TestServer(t *testing.T) {
 		t.Run("GET by tag returns manifest", func(t *testing.T) {
 			require := require.New(t)
 
-			res, err := s.Client().Get(s.URL + fmt.Sprintf("/v2/%s/manifests/%s", name, tag))
+			res, err := s.Client().Get(s.URL + fmt.Sprintf("/v2/%s/manifests/%s", named.Name(), tag))
 			require.NoError(err)
 			require.Equal(http.StatusOK, res.StatusCode)
 			require.Equal(desc.MediaType, res.Header.Get("Content-type"))
@@ -164,7 +161,7 @@ func TestServer(t *testing.T) {
 			t.Run("GET by digest with unsupported algorithm returns 501", func(t *testing.T) {
 				require := require.New(t)
 
-				res, err := s.Client().Get(s.URL + fmt.Sprintf("/v2/%s/manifests/%s", name, "awesome21:cool"))
+				res, err := s.Client().Get(s.URL + fmt.Sprintf("/v2/%s/manifests/%s", named.Name(), "awesome21:cool"))
 				require.NoError(err)
 				require.Equal(http.StatusNotImplemented, res.StatusCode)
 			})
@@ -172,7 +169,7 @@ func TestServer(t *testing.T) {
 			t.Run("GET by invalid digest returns 400", func(t *testing.T) {
 				require := require.New(t)
 
-				res, err := s.Client().Get(s.URL + fmt.Sprintf("/v2/%s/manifests/%s", name, "sha256:vEryAweSomE"))
+				res, err := s.Client().Get(s.URL + fmt.Sprintf("/v2/%s/manifests/%s", named.Name(), "sha256:vEryAweSomE"))
 				require.NoError(err)
 				require.Equal(http.StatusBadRequest, res.StatusCode)
 			})

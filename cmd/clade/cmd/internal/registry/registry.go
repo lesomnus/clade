@@ -31,10 +31,17 @@ func NewRegistry() *Registry {
 }
 
 func (r *Registry) Repository(named reference.Named) (distribution.Repository, error) {
-	repo, ok := r.Repos[named.String()]
+	repo, ok := r.Repos[named.Name()]
 	if !ok {
 		return nil, os.ErrNotExist
 	}
 
 	return repo, nil
+}
+
+func (r *Registry) NewRepository(named reference.Named) *Repository {
+	repo := NewRepository(named)
+	r.Repos[named.Name()] = repo
+
+	return repo
 }

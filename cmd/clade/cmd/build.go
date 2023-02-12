@@ -59,6 +59,19 @@ func CreateBuildCmd(flags *BuildFlags, svc Service) *cobra.Command {
 			}
 
 			target_image := target_node.Value
+			base_image := target_image.From
+
+			repo, err := svc.Registry().Repository(base_image)
+			if err != nil {
+				return fmt.Errorf("create repository: %w", err)
+			}
+
+			desc, err := repo.Tags(cmd.Context()).Get(cmd.Context(), base_image.Tag())
+			if err != nil {
+				return fmt.Errorf(`get description of "%s": %w`, base_image.String(), err)
+			}
+
+			target_image.Args["BASE"] = fmt.Sprintf("%s@%s", base_image.Name(), desc.Digest.String())
 			return b.Build(target_image)
 		},
 	}
