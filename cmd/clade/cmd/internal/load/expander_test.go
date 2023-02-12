@@ -9,7 +9,6 @@ import (
 
 	"github.com/distribution/distribution/v3/reference"
 	"github.com/lesomnus/clade"
-	"github.com/lesomnus/clade/cmd/clade/cmd/internal/cache"
 	"github.com/lesomnus/clade/cmd/clade/cmd/internal/client"
 	"github.com/lesomnus/clade/cmd/clade/cmd/internal/load"
 	"github.com/lesomnus/clade/cmd/clade/cmd/internal/registry"
@@ -43,9 +42,8 @@ func TestExpand(t *testing.T) {
 	s := httptest.NewTLSServer(srv.Handler())
 	defer s.Close()
 
-	reg_client := client.NewRegistry()
+	reg_client := client.NewClient()
 	reg_client.Transport = s.Client().Transport
-	reg_client.Cache.Tags = &cache.NullTagCache{}
 
 	expander := load.Expander{
 		Registry: reg_client,

@@ -74,11 +74,11 @@ func TestServiceGetLayers(t *testing.T) {
 	named, err := reference.ParseNamed(reg_rul.Host + "/repo/foo")
 	require.NoError(t, err)
 
-	reg_client := client.NewRegistry()
+	reg_client := client.NewClient()
 	reg_client.Transport = s.Client().Transport
 
 	svc := cmd.NewCmdService()
-	svc.Loader.Expander.Registry = reg_client
+	svc.RegistryClient = reg_client
 
 	t.Run("gets layers of the given tag", func(t *testing.T) {
 		require := require.New(t)

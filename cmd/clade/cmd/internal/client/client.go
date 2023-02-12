@@ -7,30 +7,23 @@ import (
 	"github.com/distribution/distribution/v3/reference"
 	"github.com/distribution/distribution/v3/registry/client"
 	"github.com/distribution/distribution/v3/registry/client/auth/challenge"
-	"github.com/lesomnus/clade/cmd/clade/cmd/internal/cache"
 )
 
-// type Registry interface {
-// 	Repository(ref reference.Named) (distribution.Repository, error)
-// }
-
-type Registry struct {
+type Client struct {
 	Transport        http.RoundTripper
 	ChallengeManager challenge.Manager
 	Credentials      *CredentialStore
-	Cache            cache.CacheStore
 }
 
-func NewRegistry() *Registry {
-	return &Registry{
+func NewClient() *Client {
+	return &Client{
 		Transport:        http.DefaultTransport,
 		ChallengeManager: challenge.NewSimpleManager(),
 		Credentials:      NewCredentialStore(),
-		Cache:            cache.Cache,
 	}
 }
 
-func (c *Registry) Repository(named reference.Named) (distribution.Repository, error) {
+func (c *Client) Repository(named reference.Named) (distribution.Repository, error) {
 	repo_domain := reference.Domain(named)
 	repo_path := reference.Path(named)
 
@@ -46,14 +39,5 @@ func (c *Registry) Repository(named reference.Named) (distribution.Repository, e
 		return nil, err
 	}
 
-	repo, err := client.NewRepository(name_only, "https://"+repo_domain, tr)
-	if err != nil {
-		return nil, err
-	}
-
-	return &distRepository{
-		Repository: repo,
-		named:      named,
-		cache:      c.Cache,
-	}, nil
+	return client.NewRepository(name_only, "https://"+repo_domain, tr)
 }

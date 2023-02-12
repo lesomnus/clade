@@ -12,33 +12,53 @@ import (
 	"github.com/distribution/distribution/v3/manifest/schema2"
 	"github.com/distribution/distribution/v3/reference"
 	"github.com/lesomnus/clade"
+	"github.com/lesomnus/clade/cmd/clade/cmd/internal/cache"
 	"github.com/lesomnus/clade/cmd/clade/cmd/internal/client"
 	"github.com/lesomnus/clade/cmd/clade/cmd/internal/load"
 	"github.com/opencontainers/go-digest"
 )
 
+var RegistryClient = client.NewClient()
 var DefaultCmdService = NewCmdService()
+
+type Namespace interface {
+	Repository(named reference.Named) (distribution.Repository, error)
+}
 
 type Service interface {
 	Output() io.Writer
+	Registry() Namespace
+
 	LoadBuildTreeFromFs(ctx context.Context, bt *clade.BuildTree, path string) error
 	GetLayer(ctx context.Context, named_tagged reference.NamedTagged) ([]distribution.Descriptor, error)
 }
 
 type CmdService struct {
-	Sink   io.Writer
-	Loader load.Loader
+	Sink           io.Writer
+	RegistryClient Namespace
 }
 
 func NewCmdService() *CmdService {
 	return &CmdService{
-		Sink:   os.Stdout,
-		Loader: load.NewLoader(),
+		Sink:           os.Stdout,
+		RegistryClient: cache.WithRemote(RegistryCache, RegistryClient),
 	}
 }
 
 func (o *CmdService) Output() io.Writer {
 	return o.Sink
+}
+
+func (o *CmdService) Registry() Namespace {
+	return o.RegistryClient
+}
+
+func (o *CmdService) Loader() *load.Loader {
+	return &load.Loader{
+		Expander: load.Expander{
+			Registry: o.Registry(),
+		},
+	}
 }
 
 func (o *CmdService) LoadBuildTreeFromFs(ctx context.Context, bt *clade.BuildTree, path string) error {
@@ -47,15 +67,11 @@ func (o *CmdService) LoadBuildTreeFromFs(ctx context.Context, bt *clade.BuildTre
 		return fmt.Errorf("failed to read ports: %w", err)
 	}
 
-	return o.Loader.Load(ctx, bt, ports)
-}
-
-func (s *CmdService) registry() *client.Registry {
-	return s.Loader.Expander.Registry
+	return o.Loader().Load(ctx, bt, ports)
 }
 
 func (s *CmdService) GetLayer(ctx context.Context, named_tagged reference.NamedTagged) ([]distribution.Descriptor, error) {
-	repo, err := s.registry().Repository(named_tagged)
+	repo, err := s.Registry().Repository(named_tagged)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create repository service: %w", err)
 	}

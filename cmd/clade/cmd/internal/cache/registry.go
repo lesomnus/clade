@@ -64,5 +64,10 @@ func (r *Registry) repository(named reference.Named) *Repository {
 }
 
 func (r *Registry) Repository(named reference.Named) (distribution.Repository, error) {
-	return r.repository(named), nil
+	name_only, err := reference.WithName(named.Name())
+	if err != nil {
+		return nil, err
+	}
+
+	return r.repository(name_only), nil
 }

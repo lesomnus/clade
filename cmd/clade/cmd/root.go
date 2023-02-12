@@ -83,9 +83,7 @@ func CreateRootCmd(flags *RootFlags) *cobra.Command {
 					l.Warn().Msg("failed to load credential from Docker config")
 				} else {
 					for svc, auth := range auths {
-						// TODO: remove loader and expander; make them as a function.
-						// There is only one method to load and expand, why they needed?
-						DefaultCmdService.Loader.Expander.Registry.Credentials.BasicAuths[svc] = auth
+						RegistryClient.Credentials.BasicAuths[svc] = auth
 					}
 				}
 			}
