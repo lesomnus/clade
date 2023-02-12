@@ -18,10 +18,10 @@ type TagService struct {
 
 func (s *TagService) data() map[string]distribution.Descriptor {
 	stores := s.Repository.Registry.Tags
-	store, ok := stores[s.Repository.Namespace.String()]
+	store, ok := stores[s.Repository.Namespace.Name()]
 	if !ok {
 		store = make(map[string]distribution.Descriptor)
-		stores[s.Repository.Namespace.String()] = store
+		stores[s.Repository.Namespace.Name()] = store
 	}
 
 	return store

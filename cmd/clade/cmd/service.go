@@ -41,7 +41,7 @@ type CmdService struct {
 func NewCmdService() *CmdService {
 	return &CmdService{
 		Sink:           os.Stdout,
-		RegistryClient: cache.WithRemote(RegistryCache, RegistryClient),
+		RegistryClient: cache.WithRemote(resolveRegistryCache(), RegistryClient),
 	}
 }
 

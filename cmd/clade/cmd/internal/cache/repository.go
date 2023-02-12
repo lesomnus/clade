@@ -25,7 +25,7 @@ func (r *Repository) Fallback() (*Repository, bool) {
 }
 
 func (r *Repository) Path() string {
-	return filepath.Join(r.Registry.Root, r.Namespace.String())
+	return filepath.Join(r.Registry.Root, r.Namespace.Name())
 }
 
 func (r *Repository) Named() reference.Named {

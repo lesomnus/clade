@@ -57,17 +57,17 @@ func ResolveRegistry(base string, at time.Time) (*Registry, error) {
 }
 
 func (r *Registry) repository(named reference.Named) *Repository {
+	name_only, err := reference.WithName(named.Name())
+	if err != nil {
+		panic(err)
+	}
+
 	return &Repository{
 		Registry:  r,
-		Namespace: named,
+		Namespace: name_only,
 	}
 }
 
 func (r *Registry) Repository(named reference.Named) (distribution.Repository, error) {
-	name_only, err := reference.WithName(named.Name())
-	if err != nil {
-		return nil, err
-	}
-
-	return r.repository(name_only), nil
+	return r.repository(named), nil
 }

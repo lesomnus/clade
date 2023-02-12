@@ -11,12 +11,11 @@ import (
 
 var RegistryCache *cache.Registry
 
-var cache_cmd = &cobra.Command{
-	Use:   "cache",
-	Short: "Manage caches",
-}
+func resolveRegistryCache() *cache.Registry {
+	if RegistryCache != nil {
+		return RegistryCache
+	}
 
-func init() {
 	now := time.Now()
 
 	dir, ok := os.LookupEnv("CLADE_CACHE_DIR")
@@ -30,6 +29,17 @@ func init() {
 	} else {
 		RegistryCache = reg
 	}
+
+	return RegistryCache
+}
+
+var cache_cmd = &cobra.Command{
+	Use:   "cache",
+	Short: "Manage caches",
+}
+
+func init() {
+	resolveRegistryCache()
 
 	root_cmd.AddCommand(cache_cmd)
 }
