@@ -1,6 +1,12 @@
 name: "CLade: Outdated"
 description: Lists outdated images
 
+inputs:
+  log-level:
+    description: Log level
+    required: true
+    default: info
+
 outputs:
   references:
     description: Outdated images
@@ -12,6 +18,6 @@ runs:
     - id: outdated
       shell: bash
       run: |
-        REFERENCES=$(clade outdated | jq --raw-input . | jq --slurp --compact-output 'map(select(length > 0))')
+        REFERENCES=$(clade --log-level ${{ inputs.log-level }} outdated | jq --raw-input . | jq --slurp --compact-output 'map(select(length > 0))')
         echo ${REFERENCES}
         echo "references=${REFERENCES}" >> $GITHUB_OUTPUT

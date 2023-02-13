@@ -9,6 +9,7 @@ import (
 
 	"github.com/distribution/distribution/v3"
 	"github.com/distribution/distribution/v3/manifest/manifestlist"
+	"github.com/distribution/distribution/v3/manifest/ocischema"
 	"github.com/distribution/distribution/v3/manifest/schema2"
 	"github.com/distribution/distribution/v3/reference"
 	"github.com/lesomnus/clade"
@@ -100,6 +101,8 @@ func (s *CmdService) GetLayer(ctx context.Context, named_tagged reference.NamedT
 
 func (o *CmdService) getLayer(ctx context.Context, manif_svc distribution.ManifestService, manifest distribution.Manifest) ([]distribution.Descriptor, error) {
 	switch m := manifest.(type) {
+	case *ocischema.DeserializedManifest:
+		return m.Layers, nil
 	case *schema2.DeserializedManifest:
 		return m.Layers, nil
 	case *manifestlist.DeserializedManifestList:
