@@ -30,7 +30,7 @@ jobs:
       references: ${{ steps.outdated.outputs.references }}
     steps:
       - uses: actions/checkout@v3
-      - uses: lesomnus/clade/init@ci/test-new-cache
+      - uses: lesomnus/clade/init@main
 
       - name: Login GHCR
         uses: docker/login-action@v2
@@ -40,7 +40,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - id: outdated
-        uses: lesomnus/clade/outdated@ci/test-new-cache
+        uses: lesomnus/clade/outdated@main
         with:
           log-level: ${{ inputs.log-level }}
 
