@@ -8,6 +8,18 @@ on:
         required: false
         default: false
         type: boolean
+      log-level:
+        description: Log level
+        required: true
+        default: info
+        type: choice
+        options:
+          - fatal
+          - error
+          - warn
+          - info
+          - debug
+
   schedule:
     - cron: "0 0 * * *"
 

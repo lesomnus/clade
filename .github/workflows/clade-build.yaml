@@ -13,6 +13,17 @@ on:
         required: false
         default: false
         type: boolean
+      logLevel:
+        description: Log level
+        required: true
+        default: info
+        type: choice
+        options:
+          - fatal
+          - error
+          - warn
+          - info
+          - debug
 
 jobs:
   build:
