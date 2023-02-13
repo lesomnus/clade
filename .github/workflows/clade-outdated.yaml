@@ -41,6 +41,8 @@ jobs:
 
       - id: outdated
         uses: lesomnus/clade/outdated@ci/test-new-cache
+        with:
+          log-level: ${{ inputs.log-level }}
 
       - name: Trigger
         if: ${{ (github.event_name == 'schedule') || inputs.cascade }}
