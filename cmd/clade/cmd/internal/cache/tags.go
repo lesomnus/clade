@@ -50,7 +50,6 @@ func (s *TagService) Get(ctx context.Context, tag string) (distribution.Descript
 func (s *TagService) Tag(ctx context.Context, tag string, desc distribution.Descriptor) error {
 	tags := s.data()
 	tags[tag] = desc
-	fmt.Printf("tags: %v\n", tags)
 
 	return nil
 }

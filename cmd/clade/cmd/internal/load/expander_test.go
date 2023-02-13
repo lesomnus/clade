@@ -17,14 +17,21 @@ import (
 )
 
 func TestExpand(t *testing.T) {
-	ref_foo, err := reference.WithName("repo/foo")
-	require.NoError(t, err)
-	ref_bar, err := reference.WithName("repo/bar")
-	require.NoError(t, err)
-	ref_baz, err := reference.WithName("repo/baz")
+	reg := registry.NewRegistry()
+	srv := registry.NewServer(t, reg)
+	s := httptest.NewTLSServer(srv.Handler())
+	defer s.Close()
+
+	reg_url, err := url.Parse(s.URL)
 	require.NoError(t, err)
 
-	reg := registry.NewRegistry()
+	ref_foo, err := reference.ParseNamed(reg_url.Host + "/repo/foo")
+	require.NoError(t, err)
+	ref_bar, err := reference.ParseNamed(reg_url.Host + "/repo/bar")
+	require.NoError(t, err)
+	ref_baz, err := reference.ParseNamed(reg_url.Host + "/repo/baz")
+	require.NoError(t, err)
+
 	repo_foo := reg.NewRepository(ref_foo)
 	repo_bar := reg.NewRepository(ref_bar)
 	repo_baz := reg.NewRepository(ref_baz)
@@ -34,19 +41,12 @@ func TestExpand(t *testing.T) {
 	repo_baz.PopulateImageWithTag("2.3.4")
 	repo_baz.PopulateImageWithTag("2.3.5")
 
-	srv := registry.NewServer(t, reg)
-	s := httptest.NewTLSServer(srv.Handler())
-	defer s.Close()
-
 	reg_client := client.NewClient()
 	reg_client.Transport = s.Client().Transport
 
 	expander := load.Expander{
 		Registry: reg_client,
 	}
-
-	reg_url, err := url.Parse(s.URL)
-	require.NoError(t, err)
 
 	t.Run("from static tag", func(t *testing.T) {
 		require := require.New(t)

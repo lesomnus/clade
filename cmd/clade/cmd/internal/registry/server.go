@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/distribution/distribution/v3/reference"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/require"
 )
@@ -76,16 +77,21 @@ func (s *Server) handleRoot(res http.ResponseWriter, req *http.Request) {
 	name := strings.Join(parts[0:2], "/")
 	parts = append(parts[2:], "")
 
-	repo, ok := s.Repos[name]
+	named, err := reference.ParseNamed(fmt.Sprint(req.Host, "/", name))
+	if err != nil {
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write([]byte(err.Error()))
+		return
+	}
+
+	repo, ok := s.Repos[named.Name()]
 	if !ok {
 		res.WriteHeader(http.StatusNotFound)
 		return
 	}
 
 	var (
-		done bool
-		err  error
-
+		done        bool
 		unsupported bool
 	)
 	switch parts[0] {

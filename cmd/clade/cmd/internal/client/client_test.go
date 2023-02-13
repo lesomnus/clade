@@ -30,7 +30,7 @@ func TestClient(t *testing.T) {
 	remote_url, err := url.Parse(s.URL)
 	require.NoError(err)
 
-	named, err := reference.WithName(remote_url.Host + "/repo/name")
+	named, err := reference.ParseNamed(remote_url.Host + "/repo/name")
 	require.NoError(err)
 
 	repo := reg.NewRepository(named)
