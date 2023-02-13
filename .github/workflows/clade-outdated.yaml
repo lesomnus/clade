@@ -18,10 +18,10 @@ jobs:
       references: ${{ steps.outdated.outputs.references }}
     steps:
       - uses: actions/checkout@v3
-      - uses: lesomnus/clade/init@test-new-cache
+      - uses: lesomnus/clade/init@ci/test-new-cache
 
       - id: outdated
-        uses: lesomnus/clade/outdated@test-new-cache
+        uses: lesomnus/clade/outdated@ci/test-new-cache
 
       - name: Trigger
         if: ${{ (github.event_name == 'schedule') || inputs.cascade }}

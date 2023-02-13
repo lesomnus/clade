@@ -21,7 +21,7 @@ jobs:
       references: ${{ steps.child.outputs.references }}
     steps:
       - uses: actions/checkout@v3
-      - uses: lesomnus/clade/init@test-new-cache
+      - uses: lesomnus/clade/init@ci/test-new-cache
 
       - uses: docker/setup-qemu-action@v2
       - uses: docker/setup-buildx-action@v2
@@ -44,7 +44,7 @@ jobs:
             --push
 
       - id: child
-        uses: lesomnus/clade/child@test-new-cache
+        uses: lesomnus/clade/child@ci/test-new-cache
         if: ${{ inputs.cascade }}
         with:
           reference: ${{ inputs.reference }}
