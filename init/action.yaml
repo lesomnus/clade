@@ -32,12 +32,25 @@ runs:
     - name: Env
       shell: bash
       run: |
+        _DATE_FALLBACK=$(date '+%Y-%m-%d' -d 'yesterday')
         _DATE=$(date '+%Y-%m-%d')
-        CLADE_CACHE_DIR="/tmp/clade-cache-${_DATE}"
+
+        CLADE_CACHE_DIR_FALLBACK="/tmp/clade-cache/${_DATE_FALLBACK}"
+        CLADE_CACHE_DIR="/tmp/clade-cache/${_DATE}"
+
+        echo ${CLADE_CACHE_DIR_FALLBACK}
         echo ${CLADE_CACHE_DIR}
 
+        echo "CLADE_CACHE_DIR_FALLBACK=${CLADE_CACHE_DIR_FALLBACK}" >> $GITHUB_ENV
         echo "CLADE_CACHE_DIR=${CLADE_CACHE_DIR}" >> $GITHUB_ENV
+
+        echo "CLADE_CI_DATE_FALLBACK=${_DATE_FALLBACK}" >> $GITHUB_ENV
         echo "CLADE_CI_DATE=${_DATE}" >> $GITHUB_ENV
+
+    - uses: actions/cache@v3
+      with:
+        path: ${{ env.CLADE_CACHE_DIR_FALLBACK }}
+        key: clade-cache-${{ env.CLADE_CI_DATE_FALLBACK }}
 
     - uses: actions/cache@v3
       with:

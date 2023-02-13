@@ -17,30 +17,29 @@ import (
 )
 
 func TestExpand(t *testing.T) {
-	ref_foo, err := reference.WithName("repo/foo")
-	require.NoError(t, err)
-	ref_bar, err := reference.WithName("repo/bar")
-	require.NoError(t, err)
-	ref_baz, err := reference.WithName("repo/baz")
-	require.NoError(t, err)
-
-	repo_foo := registry.NewRepository(ref_foo)
-	repo_bar := registry.NewRepository(ref_bar)
-	repo_baz := registry.NewRepository(ref_baz)
-
 	reg := registry.NewRegistry()
-	reg.Repos[ref_foo.Name()] = repo_foo
-	reg.Repos[ref_bar.Name()] = repo_bar
-	reg.Repos[ref_baz.Name()] = repo_baz
+	srv := registry.NewServer(t, reg)
+	s := httptest.NewTLSServer(srv.Handler())
+	defer s.Close()
+
+	reg_url, err := url.Parse(s.URL)
+	require.NoError(t, err)
+
+	ref_foo, err := reference.ParseNamed(reg_url.Host + "/repo/foo")
+	require.NoError(t, err)
+	ref_bar, err := reference.ParseNamed(reg_url.Host + "/repo/bar")
+	require.NoError(t, err)
+	ref_baz, err := reference.ParseNamed(reg_url.Host + "/repo/baz")
+	require.NoError(t, err)
+
+	repo_foo := reg.NewRepository(ref_foo)
+	repo_bar := reg.NewRepository(ref_bar)
+	repo_baz := reg.NewRepository(ref_baz)
 
 	repo_foo.PopulateImageWithTag("1.2.3")
 	repo_bar.PopulateImageWithTag("2.3.4")
 	repo_baz.PopulateImageWithTag("2.3.4")
 	repo_baz.PopulateImageWithTag("2.3.5")
-
-	srv := registry.NewServer(t, reg)
-	s := httptest.NewTLSServer(srv.Handler())
-	defer s.Close()
 
 	reg_client := client.NewClient()
 	reg_client.Transport = s.Client().Transport
@@ -48,9 +47,6 @@ func TestExpand(t *testing.T) {
 	expander := load.Expander{
 		Registry: reg_client,
 	}
-
-	reg_url, err := url.Parse(s.URL)
-	require.NoError(t, err)
 
 	t.Run("from static tag", func(t *testing.T) {
 		require := require.New(t)

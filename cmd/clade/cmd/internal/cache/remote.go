@@ -98,12 +98,9 @@ func (s *remoteManifestService) Get(ctx context.Context, dgst digest.Digest, opt
 
 	if tagged != nil {
 		dgst = digest.Digest("")
-		desc, err := s.cache.Repository.tags().Get(ctx, tagged.Tag())
+		desc, err := s.remote.Tags(ctx).Get(ctx, tagged.Tag())
 		if err != nil {
-			desc, err = s.remote.Tags(ctx).Get(ctx, tagged.Tag())
-			if err != nil {
-				return nil, fmt.Errorf(`resolve digest for tag"%s" from remote: %w`, tagged.Tag(), err)
-			}
+			return nil, fmt.Errorf(`resolve digest for tag"%s" from remote: %w`, tagged.Tag(), err)
 		}
 
 		dgst = desc.Digest

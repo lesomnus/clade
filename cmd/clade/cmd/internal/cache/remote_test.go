@@ -28,8 +28,7 @@ func TestRemoteManifests(t *testing.T) {
 			require.NoError(err)
 
 			remote := registry.NewRegistry()
-			remote_repo := registry.NewRepository(named)
-			remote.Repos[named.String()] = remote_repo
+			remote_repo := remote.NewRepository(named)
 
 			reg := cache.WithRemote(local, remote)
 			repo, err := reg.Repository(named)
@@ -95,8 +94,7 @@ func TestRemoteTags(t *testing.T) {
 			require.NoError(err)
 
 			remote := registry.NewRegistry()
-			remote_repo := registry.NewRepository(named)
-			remote.Repos[named.String()] = remote_repo
+			remote_repo := remote.NewRepository(named)
 
 			reg := cache.WithRemote(local, remote)
 			repo, err := reg.Repository(named)

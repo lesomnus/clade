@@ -52,26 +52,21 @@ func TestServiceLoadBuildTreeFromFs(t *testing.T) {
 
 func TestServiceGetLayers(t *testing.T) {
 	ctx := context.Background()
-
-	ref_foo, err := reference.WithName("repo/foo")
-	require.NoError(t, err)
-
-	repo_foo := registry.NewRepository(ref_foo)
-	desc, manif := repo_foo.PopulateManifest()
-	err = repo_foo.Tags(ctx).Tag(ctx, "1.0.0", desc)
-	require.NoError(t, err)
-
 	reg := registry.NewRegistry()
-	reg.Repos[ref_foo.Name()] = repo_foo
-
 	srv := registry.NewServer(t, reg)
+
 	s := httptest.NewTLSServer(srv.Handler())
 	defer s.Close()
 
-	reg_rul, err := url.Parse(s.URL)
+	reg_url, err := url.Parse(s.URL)
 	require.NoError(t, err)
 
-	named, err := reference.ParseNamed(reg_rul.Host + "/repo/foo")
+	named, err := reference.ParseNamed(reg_url.Host + "/repo/foo")
+	require.NoError(t, err)
+
+	repo_foo := reg.NewRepository(named)
+	desc, manif := repo_foo.PopulateManifest()
+	err = repo_foo.Tags(ctx).Tag(ctx, "1.0.0", desc)
 	require.NoError(t, err)
 
 	reg_client := client.NewClient()

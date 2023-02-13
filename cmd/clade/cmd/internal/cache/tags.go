@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/distribution/distribution/v3"
+	"github.com/distribution/distribution/v3/reference"
 	"github.com/rs/zerolog/log"
 )
 
@@ -28,12 +29,21 @@ func (s *TagService) data() map[string]distribution.Descriptor {
 }
 
 func (s *TagService) Get(ctx context.Context, tag string) (distribution.Descriptor, error) {
+	tagged, err := reference.WithTag(s.Repository.Named(), tag)
+	if err != nil {
+		return distribution.Descriptor{}, err
+	}
+
+	log := log.Ctx(ctx).With().Str("ref", tagged.String()).Str("op", "tags/get").Logger()
+
 	tags := s.data()
 	desc, ok := tags[tag]
 	if !ok {
+		log.Debug().Msg("cache miss")
 		return distribution.Descriptor{}, os.ErrNotExist
 	}
 
+	log.Debug().Msg("cache hit")
 	return desc, nil
 }
 

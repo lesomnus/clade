@@ -97,9 +97,8 @@ code ports/my-gcc/Dockerfile
 
 ```Dockerfile
 # ports/my-gcc/Dockerfile
-ARG TAG
 ARG BASE
-FROM ${BASE}:${TAG}
+FROM ${BASE}
 
 ARG USERNAME=my_name
 ARG USER_UID=${UID:-1000}
@@ -116,12 +115,12 @@ WORKDIR /home/${USERNAME}
 USER ${USERNAME}
 ```
 
-Note that arguments `TAG` and `BASE` are upstream container image name and tag.
+Note that argument `BASE` is remote container image reference.
 The command for the default option, `clade build` simply spawns `docker` command with proper arguments.
 Let's see what *CLade* runs:
 ```sh
 $ clade build --dry-run ghcr.io/my_name/my-gcc:12
-[/usr/bin/docker build --file /path/to/ports/my-gcc/port.yaml/Dockerfile --tag ghcr.io/my_name/my-gcc:12.2 --tag ghcr.io/my_name/my-gcc:12 --build-arg BASE=registry.hub.docker.com/library/gcc --build-arg TAG=12.2 /path/to/ports/my-gcc]
+[/usr/bin/docker build --file /path/to/ports/my-gcc/port.yaml/Dockerfile --tag ghcr.io/my_name/my-gcc:12.2 --tag ghcr.io/my_name/my-gcc:12 --build-arg BASE=registry.hub.docker.com/library/gcc@sha256:9c9194913f48efd4c74ad2cd669b843bdea6325df71f6a32ac04fdd343bec0e0 /path/to/ports/my-gcc]
 ```
 
 ## Materials

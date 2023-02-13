@@ -23,11 +23,9 @@ func TestLoad(t *testing.T) {
 	ref_foo, err := reference.WithName("repo/foo")
 	require.NoError(err)
 
-	repo_foo := registry.NewRepository(ref_foo)
-	repo_foo.PopulateImageWithTag("1.0.0")
-
 	reg := registry.NewRegistry()
-	reg.Repos[ref_foo.Name()] = repo_foo
+	repo_foo := reg.NewRepository(ref_foo)
+	repo_foo.PopulateImageWithTag("1.0.0")
 
 	srv := registry.NewServer(t, reg)
 	s := httptest.NewTLSServer(srv.Handler())

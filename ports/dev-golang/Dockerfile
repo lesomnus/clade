@@ -1,6 +1,5 @@
-ARG TAG
 ARG BASE
-FROM ${BASE}:${TAG}
+FROM ${BASE}
 
 RUN apt-get update \
 	&& apt-get install --yes --no-install-recommends \
