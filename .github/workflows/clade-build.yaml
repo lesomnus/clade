@@ -13,7 +13,7 @@ on:
         required: false
         default: false
         type: boolean
-      logLevel:
+      log-level:
         description: Log level
         required: true
         default: info
@@ -47,7 +47,7 @@ jobs:
 
       - name: Build and Push
         run: |
-          clade build ${{ env.ACT && '--dry-run' }} \
+          clade --log-level ${{ inputs.log-level }} build ${{ env.ACT && '--dry-run' }} \
             --builder buildx \
             ${{ inputs.reference }} \
             -- \
@@ -59,6 +59,7 @@ jobs:
         if: ${{ inputs.cascade }}
         with:
           reference: ${{ inputs.reference }}
+          log-level: ${{ inputs.log-level }}
 
       - name: Trigger
         if: ${{ inputs.cascade }}

@@ -5,6 +5,10 @@ inputs:
   reference:
     description: Reference to list
     required: true
+  log-level:
+    description: Log level
+    required: true
+    default: info
 
 outputs:
   references:
