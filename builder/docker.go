@@ -23,6 +23,7 @@ func (b *dockerBuilder) newCmd(image *clade.ResolvedImage) *exec.Cmd {
 	}
 
 	args := []string{b.binary, "build"}
+	args = append(args, "--label", "clade=test")
 	args = append(args, "--file", image.Dockerfile)
 
 	for _, tag := range image.Tags {
