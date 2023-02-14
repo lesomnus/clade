@@ -42,7 +42,7 @@ jobs:
       - id: outdated
         uses: lesomnus/clade/outdated@main
         with:
-          log-level: ${{ inputs.log-level }}
+          log-level: ${{ inputs.log-level || 'info' }}
 
       - name: Trigger
         if: ${{ (github.event_name == 'schedule') || inputs.cascade }}
