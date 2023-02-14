@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -34,17 +35,27 @@ func ResolveRegistry(base string, at time.Time) (*Registry, error) {
 
 	reg := NewRegistry(src)
 
+	fallback_name := src + ".fallback"
+	if info, err := os.Stat(fallback_name); err == nil {
+		if info.IsDir() {
+			reg.Fallback = NewRegistry(fallback_name)
+			return reg, nil
+		} else {
+			return nil, fmt.Errorf("fallback must be a directory: %s", fallback_name)
+		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf(`stat "%s": %w`, fallback_name, err)
+	}
+
+	// Creates symlink
+	// from ./2023-02-11
+	// to   /path/to/cache/2023-02-12.fallback
 	for i := 1; i < 8; i++ {
 		past := at.AddDate(0, 0, -i).Format(format)
 		history := filepath.Join(base, past)
 		if _, err := os.Stat(history); err != nil {
 			continue
 		}
-
-		// Creates symlink
-		// from ./2023-02-11
-		// to   /path/to/cache/2023-02-12.fallback
-		fallback_name := src + ".fallback"
 		if err := os.Symlink(past, fallback_name); err != nil {
 			return nil, fmt.Errorf(`symlink from "%s" to "%s": %w`, past, fallback_name, err)
 		}
