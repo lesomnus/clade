@@ -1,6 +1,7 @@
 package clade
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -10,6 +11,8 @@ import (
 	"github.com/lesomnus/pl"
 	"gopkg.in/yaml.v3"
 )
+
+const AnnotationDerefId = "clade.deref.id"
 
 type Pipeliner interface {
 	String() string
@@ -126,4 +129,22 @@ func (i *ResolvedImage) Tagged() (reference.NamedTagged, error) {
 	}
 
 	return tagged, nil
+}
+
+func CalcDerefId(dgsts ...[]byte) string {
+	max_len := 0
+	for _, dgst := range dgsts {
+		if max_len < len(dgst) {
+			max_len = len(dgst)
+		}
+	}
+
+	rst := make([]byte, max_len)
+	for _, dgst := range dgsts {
+		for i, v := range dgst {
+			rst[i] = rst[i] ^ v
+		}
+	}
+
+	return hex.EncodeToString(rst)
 }
