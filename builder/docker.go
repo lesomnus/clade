@@ -10,88 +10,16 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-type DockerCmdBuilder struct {
-	Config BuilderConfig
-	binary string
-
-	Platforms []PlatformSpecifier
-}
-
 type PlatformSpecifier struct {
 	Os   string
 	Arch string
 }
 
-func (s *PlatformSpecifier) String() string {
-	return fmt.Sprintf("%s/%s", s.Os, s.Arch)
-}
+type DockerCmdBuilder struct {
+	Config BuilderConfig
+	binary string
 
-func (b *DockerCmdBuilder) Build(image *clade.ResolvedImage, option BuildOption) error {
-	cmd := &exec.Cmd{
-		Path:   b.binary,
-		Dir:    image.ContextPath,
-		Stdout: option.Stdout,
-		Stderr: option.Stderr,
-	}
-
-	platforms := make([]string, 0, len(b.Platforms))
-	for _, platform := range b.Platforms {
-		if !image.Platform.Eval(map[string]bool{
-			"t":           true,
-			platform.Os:   true,
-			platform.Arch: true,
-		}) {
-			continue
-		}
-
-		platforms = append(platforms, platform.String())
-	}
-
-	args := []string{b.binary, "buildx", "build"}
-	args = append(args, "--file", image.Dockerfile)
-
-	if len(platforms) > 0 {
-		args = append(args, "--platform", strings.Join(platforms, ","))
-	}
-
-	if option.DerefId != "" {
-		if len(platforms) > 1 {
-			args = append(args, "--output", fmt.Sprintf("type=image,annotation-index.%s=%s", clade.AnnotationDerefId, option.DerefId))
-		} else {
-			args = append(args, "--output", fmt.Sprintf("type=image,annotation.%s=%s", clade.AnnotationDerefId, option.DerefId))
-		}
-	}
-
-	for _, tag := range image.Tags {
-		args = append(args, "--tag", fmt.Sprintf("%s:%s", image.Name(), tag))
-	}
-
-	for k, v := range image.Args {
-		args = append(args, "--build-arg", fmt.Sprintf("%s=%s", k, v))
-	}
-
-	args = append(args, image.ContextPath)
-	cmd.Args = args
-
-	if b.Config.DryRun {
-		fmt.Fprintln(option.Stdout, cmd.Args)
-		return nil
-	}
-
-	return cmd.Run()
-}
-
-func findDockerBinary() (string, error) {
-	bin, err := exec.LookPath("docker")
-	if err != nil {
-		if errors.Is(err, exec.ErrNotFound) {
-			return "", errors.New("docker binary not found")
-		} else {
-			return "", fmt.Errorf("failed to find docker: %w", err)
-		}
-	}
-
-	return bin, nil
+	Platforms []PlatformSpecifier
 }
 
 func NewDockerCmdBuilder(conf BuilderConfig) (*DockerCmdBuilder, error) {
@@ -137,4 +65,77 @@ func NewDockerCmdBuilder(conf BuilderConfig) (*DockerCmdBuilder, error) {
 		binary:    bin,
 		Platforms: platforms,
 	}, nil
+}
+
+func (s *PlatformSpecifier) String() string {
+	return fmt.Sprintf("%s/%s", s.Os, s.Arch)
+}
+
+func (b *DockerCmdBuilder) Build(image *clade.ResolvedImage, option BuildOption) error {
+	cmd := &exec.Cmd{
+		Path:   b.binary,
+		Dir:    image.ContextPath,
+		Stdout: option.Stdout,
+		Stderr: option.Stderr,
+	}
+
+	platforms := make([]string, 0, len(b.Platforms))
+	for _, platform := range b.Platforms {
+		if !image.Platform.Eval(map[string]bool{
+			"t":           true,
+			platform.Os:   true,
+			platform.Arch: true,
+		}) {
+			continue
+		}
+
+		platforms = append(platforms, platform.String())
+	}
+
+	args := []string{b.binary, "buildx", "build"}
+	args = append(args, b.Config.Args...)
+	args = append(args, "--file", image.Dockerfile)
+
+	if len(platforms) > 0 {
+		args = append(args, "--platform", strings.Join(platforms, ","))
+	}
+
+	if option.DerefId != "" {
+		if len(platforms) > 1 {
+			args = append(args, "--output", fmt.Sprintf("type=image,annotation-index.%s=%s", clade.AnnotationDerefId, option.DerefId))
+		} else {
+			args = append(args, "--output", fmt.Sprintf("type=image,annotation.%s=%s", clade.AnnotationDerefId, option.DerefId))
+		}
+	}
+
+	for _, tag := range image.Tags {
+		args = append(args, "--tag", fmt.Sprintf("%s:%s", image.Name(), tag))
+	}
+
+	for k, v := range image.Args {
+		args = append(args, "--build-arg", fmt.Sprintf("%s=%s", k, v))
+	}
+
+	args = append(args, image.ContextPath)
+	cmd.Args = args
+
+	if b.Config.DryRun {
+		fmt.Fprintln(option.Stdout, cmd.Args)
+		return nil
+	}
+
+	return cmd.Run()
+}
+
+func findDockerBinary() (string, error) {
+	bin, err := exec.LookPath("docker")
+	if err != nil {
+		if errors.Is(err, exec.ErrNotFound) {
+			return "", errors.New("docker binary not found")
+		} else {
+			return "", fmt.Errorf("failed to find docker: %w", err)
+		}
+	}
+
+	return bin, nil
 }
