@@ -331,3 +331,26 @@ func TestResolvedImageTagged(t *testing.T) {
 		require.ErrorContains(err, "not tagged")
 	})
 }
+
+func TestCalcDerefId(t *testing.T) {
+	require := require.New(t)
+
+	a := []byte{0x42, 0x08, 0xD2}
+	b := []byte{0x30, 0x9A, 0xAD, 0x51}
+	c := []byte{0xE0, 0x9C, 0xA8, 0x07, 0xB6}
+
+	all := []string{
+		clade.CalcDerefId(a, b, c),
+		clade.CalcDerefId(a, c, b),
+		clade.CalcDerefId(b, a, c),
+		clade.CalcDerefId(b, c, a),
+		clade.CalcDerefId(c, a, b),
+		clade.CalcDerefId(c, b, a),
+	}
+
+	for _, lhs := range all {
+		for _, rhs := range all {
+			require.Equal(lhs, rhs)
+		}
+	}
+}

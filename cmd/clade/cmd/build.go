@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 
@@ -71,8 +72,18 @@ func CreateBuildCmd(flags *BuildFlags, svc Service) *cobra.Command {
 				return fmt.Errorf(`get description of "%s": %w`, base_image.String(), err)
 			}
 
+			dgst_bytes, err := hex.DecodeString(desc.Digest.Encoded())
+			if err != nil {
+				return fmt.Errorf(`invalid digest "%s": %w`, desc.Digest.String(), err)
+			}
+
 			target_image.Args["BASE"] = fmt.Sprintf("%s@%s", base_image.Name(), desc.Digest.String())
-			return b.Build(target_image)
+			return b.Build(target_image, builder.BuildOption{
+				DerefId: clade.CalcDerefId(dgst_bytes),
+
+				Stdout: svc.Output(),
+				Stderr: svc.Output(),
+			})
 		},
 	}
 

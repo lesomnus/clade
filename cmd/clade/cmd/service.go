@@ -27,7 +27,7 @@ type Namespace interface {
 }
 
 type Service interface {
-	Output() io.Writer
+	Output() io.Writer // TODO: Rename to Stdout and add Stderr
 	Registry() Namespace
 
 	LoadBuildTreeFromFs(ctx context.Context, bt *clade.BuildTree, path string) error

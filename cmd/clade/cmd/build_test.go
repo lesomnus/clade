@@ -16,7 +16,7 @@ type MockBuilder struct {
 	Image *clade.ResolvedImage
 }
 
-func (b *MockBuilder) Build(image *clade.ResolvedImage) error {
+func (b *MockBuilder) Build(image *clade.ResolvedImage, conf builder.BuildOption) error {
 	b.Image = image
 	return nil
 }
