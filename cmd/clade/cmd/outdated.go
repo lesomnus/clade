@@ -51,12 +51,14 @@ func CreateOutdatedCmd(flags *OutdatedFlags, svc Service) *cobra.Command {
 						}
 
 						for _, err := range errs {
-							// How to distinguish between no existence and permission denied?
-							if errors.Is(err, v2.ErrorCodeManifestUnknown) || errors.Is(err, errcode.ErrorCodeDenied) {
+							// TODO: how to handle errors using only with the code?
+							ec := errcode.Error{}
+							if (errors.As(err, &ec) && ec.Code == v2.ErrorCodeManifestUnknown) ||
+								errors.Is(err, v2.ErrorCodeManifestUnknown) ||
+								errors.Is(err, errcode.ErrorCodeDenied) {
 								outdated_images = append(outdated_images, child_name.String())
 								return tree.WalkContinue
 							}
-
 						}
 					}
 
