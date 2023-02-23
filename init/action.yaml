@@ -27,7 +27,7 @@ runs:
       run: |
         cd ./.clade-src
         go build -o ./clade ./cmd/clade
-        cp ./clade /usr/local/bin/.
+        cp ./clade $(go env GOPATH)/bin/.
 
     - name: Env
       shell: bash
