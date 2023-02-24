@@ -48,7 +48,6 @@ jobs:
       - name: Build and Push
         run: |
           clade --log-level ${{ inputs.log-level }} build ${{ env.ACT && '--dry-run' }} \
-            --builder buildx \
             ${{ inputs.reference }} \
             -- \
             --platform linux/amd64,linux/arm64 \
