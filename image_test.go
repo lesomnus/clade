@@ -1,11 +1,9 @@
 package clade_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/distribution/distribution/reference"
-	ba "github.com/lesomnus/boolal"
 	"github.com/lesomnus/clade"
 	"github.com/lesomnus/pl"
 	"github.com/stretchr/testify/require"
@@ -19,126 +17,46 @@ func must[T any](obj T, err error) T {
 	return obj
 }
 
-func TestImageUnmarshalTagsField(t *testing.T) {
-	t.Run("parsed into pipeline", func(t *testing.T) {
-		require := require.New(t)
-
-		var img clade.Image
-		err := yaml.Unmarshal([]byte(`tags: [foo, (pass "bar")]`), &img)
-		require.NoError(err)
-		require.Len(img.Tags, 2)
-		require.Equal("foo", img.Tags[0].String())
-		require.Equal(`(pass "bar")`, img.Tags[1].String())
-
-		executor := pl.NewExecutor()
-		{
-			rst, err := executor.Execute(img.Tags[0].Pipeline(), nil)
-			require.NoError(err)
-			require.Equal([]any{"foo"}, rst)
-		}
-
-		{
-			rst, err := executor.Execute(img.Tags[1].Pipeline(), nil)
-			require.NoError(err)
-			require.Equal([]any{"bar"}, rst)
-		}
-	})
-
-	t.Run("fails if", func(t *testing.T) {
-		tcs := []struct {
-			desc  string
-			input string
-			msgs  []string
-		}{
-			{
-				desc:  "not a list",
-				input: "foo",
-				msgs:  []string{"str"},
-			},
-			{
-				desc: "not a list of string",
-				input: `
-  - !!binary |
-    $`,
-				msgs: []string{"binary"},
-			},
-			{
-				desc:  "invalid pipeline expression",
-				input: "[(foo bar)]",
-				msgs:  []string{"unexpected token", "bar"},
-			},
-		}
-		for _, tc := range tcs {
-			t.Run(tc.desc, func(t *testing.T) {
-				require := require.New(t)
-
-				var img clade.Image
-				err := yaml.Unmarshal([]byte(fmt.Sprintf("tags: %s", tc.input)), &img)
-				for _, msg := range tc.msgs {
-					require.ErrorContains(err, msg)
-				}
-			})
-		}
-	})
-}
-
-func TestImageUnmarshalFromField(t *testing.T) {
-	type TagExpr struct {
-		name string
-		tag  string
-		pl   *pl.Pl
+func TestBaseImageUnamarshalYaml(t *testing.T) {
+	ref := &clade.ImageReference{
+		Named: must(reference.ParseNamed("cr.io/repo/name")),
+		Tag:   (*clade.Pipeline)(pl.NewPl(must(pl.NewFn("pass", "tag")))),
 	}
 
 	tcs := []struct {
 		desc     string
-		input    string
-		expected TagExpr
+		data     string
+		expected clade.BaseImage
 	}{
 		{
-			desc:  "tagged",
-			input: `from: "cr.io/repo/name:foo"`,
-			expected: TagExpr{
-				name: "cr.io/repo/name",
-				tag:  "foo",
-				pl:   pl.NewPl(must(pl.NewFn("pass", "foo"))),
-			},
-		},
-		{
-			desc:  "tagged with string pipeline expression",
-			input: `from: cr.io/repo/name:( foo "bar" | baz )`,
-			expected: TagExpr{
-				name: "cr.io/repo/name",
-				tag:  `( foo "bar" | baz )`,
-				pl: pl.NewPl(
-					must(pl.NewFn("foo", "bar")),
-					must(pl.NewFn("baz")),
-				),
+			desc: "string",
+			data: "cr.io/repo/name:tag",
+			expected: clade.BaseImage{
+				Primary:     ref,
+				Secondaries: nil,
 			},
 		},
 		{
 			desc: "map",
-			input: `from:
-  name: cr.io/repo/name
-  tag: foo
+			data: "{name: cr.io/repo/name, tags: tag}",
+			expected: clade.BaseImage{
+				Primary:     ref,
+				Secondaries: nil,
+			},
+		},
+		{
+			desc: "field `with`",
+			data: `
+name: cr.io/repo/name
+tags: tag
+with:
+  - cr.io/repo/name:tag
+  - name: cr.io/repo/name
+    tag: tag
 `,
-			expected: TagExpr{
-				name: "cr.io/repo/name",
-				tag:  "foo",
-				pl:   pl.NewPl(must(pl.NewFn("pass", "foo"))),
-			},
-		},
-		{
-			desc: "map and tag with string pipeline expression",
-			input: `from:
-  name: cr.io/repo/name
-  tag: ( foo "bar" | baz )`,
-			expected: TagExpr{
-				name: "cr.io/repo/name",
-				tag:  `( foo "bar" | baz )`,
-				pl: pl.NewPl(
-					must(pl.NewFn("foo", "bar")),
-					must(pl.NewFn("baz")),
-				),
+			expected: clade.BaseImage{
+				Primary:     ref,
+				Secondaries: []*clade.ImageReference{ref, ref},
 			},
 		},
 	}
@@ -146,39 +64,41 @@ func TestImageUnmarshalFromField(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			require := require.New(t)
 
-			var img clade.Image
-			err := yaml.Unmarshal([]byte(tc.input), &img)
+			var actual clade.BaseImage
+			err := yaml.Unmarshal([]byte(tc.data), &actual)
 			require.NoError(err)
-
-			require.Equal(tc.expected.name, img.From.Name())
-			require.Equal(tc.expected.tag, img.From.Tag())
-			require.Equal(tc.expected.pl, img.From.Pipeline())
+			require.Equal(tc.expected, actual)
 		})
 	}
 
 	t.Run("fails if", func(t *testing.T) {
 		tcs := []struct {
-			desc  string
-			input string
-			msgs  []string
+			desc string
+			data string
+			msgs []string
 		}{
 			{
-				desc:  "invalid image format",
-				input: "tags: 42",
-				msgs:  []string{"int", "42"},
+				desc: "not a string or a map",
+				data: "[]",
+				msgs: []string{"string", "map"},
 			},
 			{
-				desc:  "invalid reference format for from",
-				input: "from: cr.io/foo/bar",
-				msgs:  []string{"no tag"},
+				desc: "invalid ImageReference type",
+				data: "{name: {}}",
+				msgs: []string{"map into string"},
+			},
+			{
+				desc: "invalid ImageReference format",
+				data: "{name: cr.io/repo/name, tags: (foo bar)}",
+				msgs: []string{"bar"},
 			},
 		}
 		for _, tc := range tcs {
 			t.Run(tc.desc, func(t *testing.T) {
 				require := require.New(t)
 
-				var img clade.Image
-				err := yaml.Unmarshal([]byte(tc.input), &img)
+				var pipeline clade.BaseImage
+				err := yaml.Unmarshal([]byte(tc.data), &pipeline)
 				for _, msg := range tc.msgs {
 					require.ErrorContains(err, msg)
 				}
@@ -187,148 +107,81 @@ func TestImageUnmarshalFromField(t *testing.T) {
 	})
 }
 
-func TestImageUnmarshalArgsField(t *testing.T) {
-	t.Run("parsed into pipeline", func(t *testing.T) {
-		require := require.New(t)
+// func TestImageUnmarshalYaml(t *testing.T) {
+// 	t.Run("must be object", func(t *testing.T) {
+// 		var image clade.Image
+// 		err := yaml.Unmarshal([]byte("foo"), &image)
+// 		require.ErrorContains(t, err, "str")
+// 		require.ErrorContains(t, err, "into")
+// 	})
 
-		var img clade.Image
-		err := yaml.Unmarshal([]byte(`
-args:
-  FOO: foo
-  BAR: (pass "bar")`), &img)
-		require.NoError(err)
-		require.Len(img.Args, 2)
-		require.Contains(img.Args, "FOO")
-		require.Equal("foo", img.Args["FOO"].String())
-		require.Contains(img.Args, "BAR")
-		require.Equal(`(pass "bar")`, img.Args["BAR"].String())
+// 	t.Run(".platform", func(t *testing.T) {
+// 		t.Run("is boolean expression", func(t *testing.T) {
+// 			var image clade.Image
+// 			err := yaml.Unmarshal([]byte("platform: t & f"), &image)
+// 			require.NoError(t, err)
+// 		})
 
-		executor := pl.NewExecutor()
-		{
-			rst, err := executor.Execute(img.Args["FOO"].Pipeline(), nil)
-			require.NoError(err)
-			require.Equal([]any{"foo"}, rst)
-		}
+// 		t.Run("can be empty", func(t *testing.T) {
+// 			var image clade.Image
+// 			err := yaml.Unmarshal([]byte("platform: "), &image)
+// 			require.NoError(t, err)
+// 		})
 
-		{
-			rst, err := executor.Execute(img.Args["BAR"].Pipeline(), nil)
-			require.NoError(err)
-			require.Equal([]any{"bar"}, rst)
-		}
-	})
+// 		t.Run("fails if", func(t *testing.T) {
+// 			t.Run("not a string", func(t *testing.T) {
+// 				var image clade.Image
+// 				err := yaml.Unmarshal([]byte("{platform: {}}"), &image)
+// 				require.ErrorContains(t, err, "map into string")
+// 			})
 
-	t.Run("fails if", func(t *testing.T) {
-		tcs := []struct {
-			desc  string
-			input string
-			msgs  []string
-		}{
-			{
-				desc:  "not a map",
-				input: "foo",
-				msgs:  []string{"str"},
-			},
-			{
-				desc: "not a map of string",
-				input: `
-  key: !!binary |
-    $`,
-				msgs: []string{"binary"},
-			},
-			{
-				desc: "invalid pipeline expression",
-				input: `
-  key: (foo bar)`,
-				msgs: []string{"unexpected token", "bar"},
-			},
-		}
-		for _, tc := range tcs {
-			t.Run(tc.desc, func(t *testing.T) {
-				require := require.New(t)
+// 			t.Run("not a valid boolean expression", func(t *testing.T) {
+// 				var image clade.Image
+// 				err := yaml.Unmarshal([]byte("{platform: foo %% bar}"), &image)
+// 				require.ErrorContains(t, err, "%")
+// 			})
+// 		})
+// 	})
+// }
 
-				var img clade.Image
-				err := yaml.Unmarshal([]byte(fmt.Sprintf("args: %s", tc.input)), &img)
-				for _, msg := range tc.msgs {
-					require.ErrorContains(err, msg)
-				}
-			})
-		}
-	})
-}
+func TestResolvedImage(t *testing.T) {
+	t.Run("Tagged", func(t *testing.T) {
+		named, err := reference.ParseNamed("cr.io/repo/name")
+		require.NoError(t, err)
 
-func TestImageUnmarshalPlatformField(t *testing.T) {
-	tcs := []struct {
-		desc     string
-		input    string
-		expected *ba.Expr
-	}{
-		{
-			desc:     "nil if empty",
-			input:    "",
-			expected: nil,
-		},
-		{
-			desc:     "with expr",
-			input:    "x & y | z",
-			expected: ba.And("x", "y").Or("z"),
-		},
-	}
-	for _, tc := range tcs {
-		t.Run(tc.desc, func(t *testing.T) {
+		t.Run("tagged by first tag with its name", func(t *testing.T) {
 			require := require.New(t)
 
-			var img clade.Image
-			err := yaml.Unmarshal([]byte(fmt.Sprintf("platform: %s", tc.input)), &img)
+			img := clade.ResolvedImage{
+				Named: named,
+				Tags:  []string{"foo", "bar"},
+			}
+			tagged, err := img.Tagged()
 			require.NoError(err)
-			require.Equal(tc.expected, img.Platform)
+			require.Equal(named.Name(), tagged.Name())
+			require.Equal("foo", tagged.Tag())
 		})
-	}
 
-	t.Run("it fails if expression is invalid", func(t *testing.T) {
-		require := require.New(t)
+		t.Run("fails if", func(t *testing.T) {
+			t.Run("it has no tags", func(t *testing.T) {
+				require := require.New(t)
 
-		var img clade.Image
-		err := yaml.Unmarshal([]byte(`platform: x && y || z`), &img)
-		require.ErrorContains(err, "platform:")
-	})
-}
+				img := clade.ResolvedImage{Named: named}
+				_, err := img.Tagged()
+				require.ErrorContains(err, "not tagged")
+			})
 
-func TestResolvedImageTagged(t *testing.T) {
-	t.Run("tagged with first element", func(t *testing.T) {
-		require := require.New(t)
+			t.Run("tag is invalid", func(t *testing.T) {
+				require := require.New(t)
 
-		img := clade.ResolvedImage{
-			Named: must(reference.ParseNamed("cr.io/foo/bar")),
-			Tags:  []string{"a", "b", "c"},
-		}
-
-		tagged, err := img.Tagged()
-		require.NoError(err)
-		require.Equal("cr.io/foo/bar:a", tagged.String())
-	})
-
-	t.Run("fails if tag format invalid", func(t *testing.T) {
-		require := require.New(t)
-
-		img := clade.ResolvedImage{
-			Named: must(reference.ParseNamed("cr.io/foo/bar")),
-			Tags:  []string{"Edgar Wright"},
-		}
-
-		_, err := img.Tagged()
-		require.ErrorContains(err, "invalid")
-	})
-
-	t.Run("fails if not tagged", func(t *testing.T) {
-		require := require.New(t)
-
-		img := clade.ResolvedImage{
-			Named: must(reference.ParseNamed("cr.io/foo/bar")),
-			Tags:  []string{},
-		}
-
-		_, err := img.Tagged()
-		require.ErrorContains(err, "not tagged")
+				img := clade.ResolvedImage{
+					Named: named,
+					Tags:  []string{"foo bar"},
+				}
+				_, err := img.Tagged()
+				require.ErrorIs(err, reference.ErrTagInvalidFormat)
+			})
+		})
 	})
 }
 

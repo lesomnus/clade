@@ -22,5 +22,5 @@ func (t *DependencyTree) Insert(image *Image) {
 		images = []*Image{image}
 	}
 
-	t.Tree.Insert(image.From.Name(), image.Name(), images)
+	t.Tree.Insert(image.From.Primary.Name(), image.Name(), images)
 }

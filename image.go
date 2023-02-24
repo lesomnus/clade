@@ -3,106 +3,70 @@ package clade
 import (
 	"encoding/hex"
 	"errors"
-	"fmt"
-	"strings"
 
 	"github.com/distribution/distribution/reference"
-	ba "github.com/lesomnus/boolal"
-	"github.com/lesomnus/pl"
 	"gopkg.in/yaml.v3"
 )
 
 const AnnotationDerefId = "clade.deref.id"
 
-type Pipeliner interface {
-	String() string
-	Pipeline() *pl.Pl
+type BaseImage struct {
+	Primary     *ImageReference
+	Secondaries []*ImageReference
 }
 
-type pipeliner struct {
-	expr string
-	pl   *pl.Pl
+func (i *BaseImage) unmarshalYamlScalar(node *yaml.Node) error {
+	i.Secondaries = nil
+	return node.Decode(&i.Primary)
 }
 
-func (p *pipeliner) String() string {
-	return p.expr
-}
-
-func (p *pipeliner) Pipeline() *pl.Pl {
-	return p.pl
-}
-
-func (p *pipeliner) UnmarshalYAML(n *yaml.Node) error {
-	if err := n.Decode(&p.expr); err != nil {
+func (i *BaseImage) unmarshalYamlMap(node *yaml.Node) error {
+	var ref struct {
+		Name string
+		Tags string
+		With []*ImageReference
+	}
+	if err := node.Decode(&ref); err != nil {
 		return err
 	}
 
-	if strings.HasPrefix(p.expr, "(") && strings.HasSuffix(p.expr, ")") {
-		pl, err := pl.ParseString(p.expr)
-		if err != nil {
-			return fmt.Errorf("invalid pipeline expression: %w", err)
-		}
-		p.pl = pl
-	} else {
-		fn, _ := pl.NewFn("pass", p.expr)
-		p.pl = pl.NewPl(fn)
+	i.Secondaries = ref.With
+	i.Primary = &ImageReference{}
+	if err := i.Primary.FromNameTag(ref.Name, ref.Tags); err != nil {
+		return err
 	}
 
 	return nil
+}
+
+func (i *BaseImage) UnmarshalYAML(node *yaml.Node) error {
+	switch node.Kind {
+	case yaml.ScalarNode:
+		return i.unmarshalYamlScalar(node)
+
+	case yaml.MappingNode:
+		return i.unmarshalYamlMap(node)
+	}
+
+	return &yaml.TypeError{Errors: []string{"must be string or map"}}
 }
 
 type Image struct {
 	reference.Named `yaml:"-"`
 
-	Skip bool                   `yaml:"skip"`
-	Tags []Pipeliner            `yaml:"-"`
-	From RefNamedPipelineTagged `yaml:"-"`
-	Args map[string]Pipeliner   `yaml:"-"`
+	Skip bool                `yaml:"skip"`
+	Tags []Pipeline          `yaml:"tags"`
+	From BaseImage           `yaml:"from"`
+	Args map[string]Pipeline `yaml:"args"`
 
-	Dockerfile  string
-	ContextPath string   `yaml:"context"`
-	Platform    *ba.Expr `yaml:"-"`
+	Dockerfile  string       `yaml:"dockerfile"`
+	ContextPath string       `yaml:"context"`
+	Platform    *BoolAlgebra `yaml:"platform"`
 }
 
-func (i *Image) UnmarshalYAML(n *yaml.Node) error {
-	type Image_ Image
-	if err := n.Decode((*Image_)(i)); err != nil {
-		return err
-	}
-
-	type I struct {
-		Tags []*pipeliner
-		From *refNamedPipelineTagged
-		Args map[string]*pipeliner
-
-		Platform string
-	}
-	var tmp I
-	if err := n.Decode(&tmp); err != nil {
-		return err
-	}
-
-	if tmp.Platform == "" {
-		i.Platform = nil
-	} else if expr, err := ba.ParseString(tmp.Platform); err != nil {
-		return fmt.Errorf("platform: %w", err)
-	} else {
-		i.Platform = expr
-	}
-
-	i.Tags = make([]Pipeliner, len(tmp.Tags))
-	for j, tag := range tmp.Tags {
-		i.Tags[j] = tag
-	}
-
-	i.From = tmp.From
-
-	i.Args = make(map[string]Pipeliner, len(tmp.Args))
-	for key, arg := range tmp.Args {
-		i.Args[key] = arg
-	}
-
-	return nil
+type ResolvedBaseImage struct {
+	Primary     reference.NamedTagged
+	Secondaries []reference.NamedTagged
 }
 
 type ResolvedImage struct {
@@ -110,12 +74,12 @@ type ResolvedImage struct {
 
 	Skip bool
 	Tags []string
-	From reference.NamedTagged
+	From *ResolvedBaseImage
 	Args map[string]string
 
 	Dockerfile  string
 	ContextPath string
-	Platform    *ba.Expr
+	Platform    *BoolAlgebra
 }
 
 func (i *ResolvedImage) Tagged() (reference.NamedTagged, error) {

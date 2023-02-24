@@ -48,9 +48,21 @@ func TestDependencyTree(t *testing.T) {
 
 	dt := clade.NewDependencyTree()
 	for _, img := range imgs {
+		named, err := reference.ParseNamed(img.from)
+		require.NoError(err)
+
+		tagged, ok := named.(reference.NamedTagged)
+		require.True(ok)
+
+		primary := &clade.ImageReference{}
+		err = primary.FromNameTag(tagged.Name(), tagged.Tag())
+		require.NoError(err)
+
 		dt.Insert(&clade.Image{
 			Named: must(reference.ParseNamed(img.name)),
-			From:  clade.AsRefNamedPipelineTagged(must(clade.ParseRefNamedTagged(img.from))),
+			From: clade.BaseImage{
+				Primary: primary,
+			},
 		})
 	}
 

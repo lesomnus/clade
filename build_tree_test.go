@@ -11,14 +11,11 @@ import (
 )
 
 func TestBuildTree(t *testing.T) {
-
-	type Img struct {
+	imgs := []struct {
 		name string
 		tags []string
 		from string
-	}
-
-	imgs := []Img{
+	}{
 		// Parent-first insertion.
 		{
 			name: "local.io/foo/a",
@@ -66,9 +63,18 @@ func TestBuildTree(t *testing.T) {
 
 	bt := clade.NewBuildTree()
 	for _, img := range imgs {
+		named, err := reference.ParseNamed(img.name)
+		require.NoError(t, err)
+
+		from_named, err := reference.ParseNamed(img.from)
+		require.NoError(t, err)
+
+		from_tagged, ok := from_named.(reference.NamedTagged)
+		require.True(t, ok)
+
 		bt.Insert(&clade.ResolvedImage{
-			Named: must(reference.ParseNamed(img.name)),
-			From:  must(clade.ParseRefNamedTagged(img.from)),
+			Named: named,
+			From:  &clade.ResolvedBaseImage{Primary: from_tagged},
 			Tags:  img.tags,
 		})
 	}
@@ -117,12 +123,20 @@ func TestBuildTree(t *testing.T) {
 	t.Run("Insert fails if insert image with invalid tag", func(t *testing.T) {
 		require := require.New(t)
 
-		err := bt.Insert(&clade.ResolvedImage{
-			Named: must(reference.ParseNamed("cr.io/foo/bar")),
-			Tags:  []string{"John Wick"},
-			From:  must(clade.ParseRefNamedTagged("hub.io/foo/bar:baz")),
-		})
+		named, err := reference.ParseNamed("cr.io/foo/bar")
+		require.NoError(err)
 
+		from_named, err := reference.ParseNamed("hub.io/foo/baz:tag")
+		require.NoError(err)
+
+		from_tagged, ok := from_named.(reference.NamedTagged)
+		require.True(ok)
+
+		err = bt.Insert(&clade.ResolvedImage{
+			Named: named,
+			Tags:  []string{"John Wick"},
+			From:  &clade.ResolvedBaseImage{Primary: from_tagged},
+		})
 		require.ErrorContains(err, "invalid")
 	})
 

@@ -23,7 +23,7 @@ func (t *BuildTree) Insert(image *ResolvedImage) error {
 	name := image.Name()
 	t.TagsByName[name] = append(t.TagsByName[name], image.Tags...)
 
-	from := image.From.String()
+	from := image.From.Primary.String()
 
 	for _, tag := range image.Tags {
 		ref, err := reference.WithTag(image.Named, tag)
@@ -33,8 +33,8 @@ func (t *BuildTree) Insert(image *ResolvedImage) error {
 
 		if parent := t.Tree.Insert(from, ref.String(), image).Parent; parent.Value == nil {
 			parent.Value = &ResolvedImage{
-				Named: image.From,
-				Tags:  []string{image.From.Tag()},
+				Named: image.From.Primary,
+				Tags:  []string{image.From.Primary.Tag()},
 			}
 		}
 	}
