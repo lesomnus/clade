@@ -48,11 +48,11 @@ func (e *Expander) Expand(ctx context.Context, image *clade.Image, bt *clade.Bui
 		return vs
 	}
 	executor.Funcs["tags"] = func() ([]string, error) {
-		if tags := bt.TagsByName[image.From.Name()]; len(tags) > 0 {
+		if tags := bt.TagsByName[image.From.Primary.Name()]; len(tags) > 0 {
 			return tags, nil
 		}
 
-		return e.remoteTags(ctx, image.From)
+		return e.remoteTags(ctx, image.From.Primary)
 	}
 	executor.Funcs["tagsOf"] = func(ref string) ([]string, error) {
 		if tags := bt.TagsByName[ref]; len(tags) > 0 {
@@ -67,7 +67,7 @@ func (e *Expander) Expand(ctx context.Context, image *clade.Image, bt *clade.Bui
 		return e.remoteTags(ctx, named)
 	}
 
-	from_results, err := executor.Execute(image.From.Pipeline(), nil)
+	from_results, err := executor.Execute((*pl.Pl)(image.From.Primary.Tag), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute pipeline: %w", err)
 	}
@@ -88,13 +88,13 @@ func (e *Expander) Expand(ctx context.Context, image *clade.Image, bt *clade.Bui
 			return nil, fmt.Errorf("failed convert to string from result of base image's tag: %v", v)
 		}
 
-		tagged, err := reference.WithTag(image.From, tag)
+		tagged, err := reference.WithTag(image.From.Primary.Named, tag)
 		if err != nil {
 			return nil, fmt.Errorf("invalid tag of base image: %w", err)
 		}
 
 		resolved_images[i] = &clade.ResolvedImage{
-			From: tagged,
+			From: &clade.ResolvedBaseImage{Primary: tagged},
 			Skip: false,
 		}
 	}
@@ -119,9 +119,9 @@ func (e *Expander) Expand(ctx context.Context, image *clade.Image, bt *clade.Bui
 	for i, result := range from_results {
 		tags := make([]string, len(image.Tags))
 		for j, tag := range image.Tags {
-			v, err := invoke(tag.Pipeline(), result)
+			v, err := invoke((*pl.Pl)(&tag), result)
 			if err != nil {
-				return nil, fmt.Errorf("tags[%d] %s: %w", j, tag.String(), err)
+				return nil, fmt.Errorf("tags[%d]: %w", j, err)
 			}
 
 			tags[j] = v
@@ -133,9 +133,9 @@ func (e *Expander) Expand(ctx context.Context, image *clade.Image, bt *clade.Bui
 	for i, result := range from_results {
 		args := make(map[string]string)
 		for key, arg := range image.Args {
-			v, err := invoke(arg.Pipeline(), result)
+			v, err := invoke((*pl.Pl)(&arg), result)
 			if err != nil {
-				return nil, fmt.Errorf("args[%s] %s: %w", key, arg.String(), err)
+				return nil, fmt.Errorf("args[%s]: %w", key, err)
 			}
 
 			args[key] = v
@@ -165,7 +165,7 @@ func (e *Expander) Expand(ctx context.Context, image *clade.Image, bt *clade.Bui
 			for _, lhs := range resolved_images[i].Tags {
 				for _, rhs := range resolved_images[j].Tags {
 					if lhs == rhs {
-						return nil, fmt.Errorf("%s: tag is duplicated: %s", image.From.String(), lhs)
+						return nil, fmt.Errorf("%s: tag is duplicated: %s", image.From.Primary.String(), lhs)
 					}
 				}
 			}

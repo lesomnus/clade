@@ -39,6 +39,10 @@ func (p *Pipeline) UnmarshalYAML(node *yaml.Node) error {
 
 type BoolAlgebra boolal.Expr
 
+func (a *BoolAlgebra) Expr() *boolal.Expr {
+	return (*boolal.Expr)(a)
+}
+
 func (a *BoolAlgebra) UnmarshalYAML(node *yaml.Node) error {
 	expr := ""
 	if err := node.Decode(&expr); err != nil {

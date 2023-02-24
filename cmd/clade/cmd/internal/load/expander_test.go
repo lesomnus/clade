@@ -56,7 +56,7 @@ func TestExpand(t *testing.T) {
 tags: [first]
 from:
   name: %s/repo/foo
-  tag: "1.2.3"`, reg_url.Host)), &image)
+  tags: "1.2.3"`, reg_url.Host)), &image)
 		require.NoError(err)
 
 		ctx := context.Background()
@@ -64,7 +64,7 @@ from:
 		require.NoError(err)
 		require.Len(images[0].Tags, 1)
 		require.Equal("first", images[0].Tags[0])
-		require.Equal("1.2.3", images[0].From.Tag())
+		require.Equal("1.2.3", images[0].From.Primary.Tag())
 	})
 
 	t.Run("executes pipeline with remote tags", func(t *testing.T) {
@@ -75,7 +75,7 @@ from:
 tags: [( printf "%%d" $.Major )]
 from:
   name: %s/repo/foo
-  tag: ( tags | semver )
+  tags: ( tags | semver )
 args:
   MAJOR: ( printf "%%d" $.Major )`, reg_url.Host)), &image)
 		require.NoError(err)
@@ -86,7 +86,7 @@ args:
 		require.Len(images, 1)
 		require.Len(images[0].Tags, 1)
 		require.Equal("1", images[0].Tags[0])
-		require.Equal("1.2.3", images[0].From.Tag())
+		require.Equal("1.2.3", images[0].From.Primary.Tag())
 		require.Contains(images[0].Args, "MAJOR")
 		require.Equal("1", images[0].Args["MAJOR"])
 	})
@@ -102,7 +102,7 @@ args:
 tags: [( printf "%%d" $.Patch )]
 from:
   name: %s
-  tag: ( tags | semver )`, local_named.String())), &image)
+  tags: ( tags | semver )`, local_named.String())), &image)
 		require.NoError(err)
 
 		bt := clade.NewBuildTree()
@@ -114,7 +114,7 @@ from:
 		require.Len(images, 1)
 		require.Len(images[0].Tags, 1)
 		require.Equal("42", images[0].Tags[0])
-		require.Equal("1.2.42", images[0].From.Tag())
+		require.Equal("1.2.42", images[0].From.Primary.Tag())
 	})
 
 	t.Run("get tags of specific remote repository", func(t *testing.T) {
@@ -125,7 +125,7 @@ from:
 tags: [( printf "%%d" $.Major )]
 from:
   name: %s/repo/foo
-  tag: ( tagsOf "%s/repo/bar" | semver )`, reg_url.Host, reg_url.Host)), &image)
+  tags: ( tagsOf "%s/repo/bar" | semver )`, reg_url.Host, reg_url.Host)), &image)
 		require.NoError(err)
 
 		ctx := context.Background()
@@ -134,7 +134,7 @@ from:
 		require.Len(images, 1)
 		require.Len(images[0].Tags, 1)
 		require.Equal("2", images[0].Tags[0])
-		require.Equal("2.3.4", images[0].From.Tag())
+		require.Equal("2.3.4", images[0].From.Primary.Tag())
 	})
 
 	t.Run("get tags of specific local repository", func(t *testing.T) {
@@ -148,7 +148,7 @@ from:
 tags: [( printf "%%d" $.Patch )]
 from:
   name: %s/repo/foo
-  tag: ( tagsOf "%s" | semver )`, reg_url.Host, local_named.String())), &image)
+  tags: ( tagsOf "%s" | semver )`, reg_url.Host, local_named.String())), &image)
 		require.NoError(err)
 
 		bt := clade.NewBuildTree()
@@ -160,7 +160,7 @@ from:
 		require.Len(images, 1)
 		require.Len(images[0].Tags, 1)
 		require.Equal("42", images[0].Tags[0])
-		require.Equal("1.2.42", images[0].From.Tag())
+		require.Equal("1.2.42", images[0].From.Primary.Tag())
 	})
 
 	t.Run("expands images as many as remote tags", func(t *testing.T) {
@@ -171,7 +171,7 @@ from:
 tags: [( printf "%%d" $.Patch )]
 from:
   name: %s/repo/baz
-  tag: ( tags | semver )`, reg_url.Host)), &image)
+  tags: ( tags | semver )`, reg_url.Host)), &image)
 		require.NoError(err)
 
 		ctx := context.Background()
@@ -180,7 +180,7 @@ from:
 		require.Len(images, 2)
 		require.ElementsMatch(
 			[]string{"2.3.4", "2.3.5"},
-			[]string{images[0].From.Tag(), images[1].From.Tag()},
+			[]string{images[0].From.Primary.Tag(), images[1].From.Primary.Tag()},
 		)
 	})
 
@@ -196,7 +196,7 @@ from:
 tags: [foo]
 from:
   name: %s/repo/not-exists
-  tag: ( tags | semver)`, reg_url.Host),
+  tags: ( tags | semver)`, reg_url.Host),
 				msgs: []string{"get", "tags"},
 			},
 			{
@@ -205,7 +205,7 @@ from:
 tags: [foo]
 from:
   name: %s/repo/foo
-  tag: ( tagsOf "invalid repo"  | semver)`, reg_url.Host),
+  tags: ( tagsOf "invalid repo"  | semver)`, reg_url.Host),
 				msgs: []string{"invalid", "format"},
 			},
 			{
@@ -214,7 +214,7 @@ from:
 tags: [foo]
 from:
   name: %s/repo/foo
-  tag: ( awesome )`, reg_url.Host),
+  tags: ( awesome )`, reg_url.Host),
 				msgs: []string{"awesome", "defined"},
 			},
 			{
@@ -223,7 +223,7 @@ from:
 tags: [foo]
 from:
   name: %s/repo/foo
-  tag: ( pass 42 )`, reg_url.Host),
+  tags: ( pass 42 )`, reg_url.Host),
 				msgs: []string{"convert", "string"},
 			},
 			{
@@ -232,7 +232,7 @@ from:
 tags: [foo]
 from:
   name: %s/repo/foo
-  tag: ( log "invalid tag" )`, reg_url.Host),
+  tags: ( log "invalid tag" )`, reg_url.Host),
 				msgs: []string{"invalid", "tag"},
 			},
 			{
@@ -241,7 +241,7 @@ from:
 tags: [( awesome )]
 from:
   name: %s/repo/foo
-  tag: "1.0.0"`, reg_url.Host),
+  tags: "1.0.0"`, reg_url.Host),
 				msgs: []string{"awesome", "defined"},
 			},
 			{
@@ -250,7 +250,7 @@ from:
 tags: [( log "foo" "bar" )]
 from:
   name: %s/repo/foo
-  tag: "1.0.0"`, reg_url.Host),
+  tags: "1.0.0"`, reg_url.Host),
 				msgs: []string{"size 1", "2"},
 			},
 			{
@@ -259,7 +259,7 @@ from:
 tags: [( pass 42 )]
 from:
   name: %s/repo/foo
-  tag: "1.0.0"`, reg_url.Host),
+  tags: "1.0.0"`, reg_url.Host),
 				msgs: []string{"string"},
 			},
 			{
@@ -268,7 +268,7 @@ from:
 tags: [ foo ]
 from:
   name: %s/repo/baz
-  tag: ( tags | semver )`, reg_url.Host),
+  tags: ( tags | semver )`, reg_url.Host),
 				msgs: []string{"duplicated", "foo"},
 			},
 			{
@@ -277,7 +277,7 @@ from:
 tags: [ foo ]
 from:
   name: %s/repo/foo
-  tag: "1.0.0"
+  tags: "1.0.0"
 args:
   FOO: ( awesome )`, reg_url.Host),
 				msgs: []string{"awesome", "defined"},
@@ -288,7 +288,7 @@ args:
 tags: [ foo ]
 from:
   name: %s/repo/foo
-  tag: "1.0.0"
+  tags: "1.0.0"
 args:
   FOO: ( log "foo" "bar" )`, reg_url.Host),
 				msgs: []string{"size 1", "2"},
@@ -299,7 +299,7 @@ args:
 tags: [ foo ]
 from:
   name: %s/repo/foo
-  tag: "1.0.0"
+  tags: "1.0.0"
 args:
   FOO: ( pass 42 )`, reg_url.Host),
 				msgs: []string{"string"},

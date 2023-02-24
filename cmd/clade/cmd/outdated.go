@@ -63,9 +63,9 @@ func CreateOutdatedCmd(flags *OutdatedFlags, svc Service) *cobra.Command {
 					return fmt.Errorf("failed to get layers of %s: %w", child_name.String(), err)
 				}
 
-				parent_layers, err := svc.GetLayer(cmd.Context(), node.Value.From)
+				parent_layers, err := svc.GetLayer(cmd.Context(), node.Value.From.Primary)
 				if err != nil {
-					return fmt.Errorf("failed to get layers of %s: %w", node.Value.From.String(), err)
+					return fmt.Errorf("failed to get layers of %s: %w", node.Value.From.Primary.String(), err)
 				}
 
 				if len(parent_layers) == 0 {

@@ -60,7 +60,7 @@ func CreateBuildCmd(flags *BuildFlags, svc Service) *cobra.Command {
 			}
 
 			target_image := target_node.Value
-			base_image := target_image.From
+			base_image := target_image.From.Primary
 
 			repo, err := svc.Registry().Repository(base_image)
 			if err != nil {

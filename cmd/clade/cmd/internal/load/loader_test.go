@@ -41,7 +41,7 @@ images:
   - tags: ["1.0.0"]
     from:
       name: %s/repo/foo
-      tag: "1.0.0"`, reg_url.Host)), &port)
+      tags: "1.0.0"`, reg_url.Host)), &port)
 	require.NoError(err)
 
 	reg_client := client.NewClient()

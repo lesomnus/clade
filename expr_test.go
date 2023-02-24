@@ -3,6 +3,7 @@ package clade_test
 import (
 	"testing"
 
+	"github.com/lesomnus/boolal"
 	"github.com/lesomnus/clade"
 	"github.com/lesomnus/pl"
 	"github.com/stretchr/testify/require"
@@ -76,6 +77,7 @@ func TestBoolAlgebraUnmarshalYAML(t *testing.T) {
 		var actual clade.BoolAlgebra
 		err := yaml.Unmarshal([]byte("x & y"), &actual)
 		require.NoError(err)
+		require.Equal(boolal.And("x", "y"), actual.Expr())
 	})
 
 	t.Run("fails if", func(t *testing.T) {
