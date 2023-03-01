@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/distribution/distribution/reference"
+	"github.com/distribution/distribution/v3/reference"
 	"github.com/opencontainers/go-digest"
 	"gopkg.in/yaml.v3"
 )

@@ -3,7 +3,7 @@ package clade_test
 import (
 	"testing"
 
-	"github.com/distribution/distribution/reference"
+	"github.com/distribution/distribution/v3/reference"
 	"github.com/lesomnus/clade"
 	"github.com/lesomnus/pl"
 	"github.com/stretchr/testify/require"

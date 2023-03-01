@@ -7,6 +7,9 @@ images:
       - ( printf "%d"    $.Major         )
     from:
       name: registry.hub.docker.com/library/docker
-      tag: ( tags | semverFinalized | semverN 2 2 0 )
+      tags: ( tags | semverFinalized | semverN 2 2 0 )
+      with:
+        - name: registry.hub.docker.com/library/debian
+          tag: ( tags | semver | semverLatest )
     args:
       DEBIAN_TAG: ( tagsOf "registry.hub.docker.com/library/debian" | semver | semverLatest | printf "%s" )

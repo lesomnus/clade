@@ -31,6 +31,7 @@ type Service interface {
 	Registry() Namespace
 
 	LoadBuildTreeFromFs(ctx context.Context, bt *clade.BuildTree, path string) error
+	LoadBuildGraphFromFs(ctx context.Context, bg *clade.BuildGraph, path string) error
 	GetLayer(ctx context.Context, named_tagged reference.NamedTagged) ([]distribution.Descriptor, error)
 }
 
@@ -69,6 +70,16 @@ func (o *CmdService) LoadBuildTreeFromFs(ctx context.Context, bt *clade.BuildTre
 	}
 
 	return o.Loader().Load(ctx, bt, ports)
+}
+
+func (o *CmdService) LoadBuildGraphFromFs(ctx context.Context, bg *clade.BuildGraph, path string) error {
+	ports, err := load.ReadFromFs(ctx, path)
+	if err != nil {
+		return fmt.Errorf("failed to read ports: %w", err)
+	}
+
+	expand := load.Expand{Registry: o.Registry()}
+	return expand.Load(ctx, bg, ports)
 }
 
 func (s *CmdService) GetLayer(ctx context.Context, named_tagged reference.NamedTagged) ([]distribution.Descriptor, error) {

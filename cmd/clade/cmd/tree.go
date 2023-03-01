@@ -1,12 +1,11 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/lesomnus/clade"
-	"github.com/lesomnus/clade/tree"
+	"github.com/lesomnus/clade/graph"
 	"github.com/spf13/cobra"
 )
 
@@ -27,72 +26,80 @@ func CreateTreeCmd(flags *TreeFlags, svc Service) *cobra.Command {
 
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			bt := clade.NewBuildTree()
-			if err := svc.LoadBuildTreeFromFs(cmd.Context(), bt, flags.PortsPath); err != nil {
-				return fmt.Errorf("failed to load ports: %w", err)
+			bg := clade.NewBuildGraph()
+			if err := svc.LoadBuildGraphFromFs(cmd.Context(), bg, flags.PortsPath); err != nil {
+				return fmt.Errorf("load ports: %w", err)
 			}
 
-			var root_node *tree.Node[*clade.ResolvedImage]
-
-			if len(args) == 0 {
-				root_node = bt.AsNode()
-			} else {
-				root_name := args[0]
-
-				node, ok := bt.Tree[root_name]
+			root_nodes := bg.Roots()
+			if len(args) > 0 {
+				node, ok := bg.Get(args[0])
 				if !ok {
-					return errors.New(root_name + " not found")
+					return fmt.Errorf(`"%s" not found`, args[0])
 				}
 
-				major_name, err := node.Value.Tagged()
-				if err != nil {
-					panic(fmt.Errorf("broken image def: %s: .tags empty?", root_name))
-				}
-
-				node, ok = bt.Tree[major_name.String()]
-				if !ok {
-					panic(fmt.Errorf("broken build tree: %s: same image with different tag not found", major_name.String()))
-				}
-
-				root_node = &tree.Node[*clade.ResolvedImage]{
-					Parent:   nil,
-					Children: map[string]*tree.Node[*clade.ResolvedImage]{root_name: node},
-				}
-			}
-
-			visited := make(map[*clade.ResolvedImage]struct{})
-			root_node.Walk(func(level int, name string, node *tree.Node[*clade.ResolvedImage]) error {
-				if level != 0 && !flags.All && node.Value.Skip {
-					return tree.WalkContinue
-				}
-
-				if level < flags.Strip {
-					return nil
-				}
-
-				lv := level - flags.Strip
-
-				if flags.Depth != 0 && lv >= flags.Depth {
-					return tree.WalkContinue
-				}
-
-				if _, ok := visited[node.Value]; !ok {
-					visited[node.Value] = struct{}{}
+				if len(node.Prev) == 0 {
+					root_nodes = []*graph.Node[*clade.ResolvedImage]{node}
 				} else {
-					return nil
-				}
+					root_nodes = make([]*graph.Node[*clade.ResolvedImage], 0, len(node.Value.Tags))
+					prev, ok := bg.Get(node.Value.From.Primary.String())
+					if !ok {
+						panic(`prev not exists`)
+					}
 
-				image := node.Value
-				for _, tag := range image.Tags {
-					fmt.Fprint(svc.Output(), strings.Repeat("\t", lv), image.Name(), ":", tag, "\n")
-
-					if flags.Fold {
-						break
+					for _, sibling := range prev.Next {
+						if sibling.Value == node.Value {
+							root_nodes = append(root_nodes, sibling)
+						}
 					}
 				}
+			}
 
-				return nil
-			})
+			var visit func(int, *graph.Node[*clade.ResolvedImage])
+			visit = func(level int, node *graph.Node[*clade.ResolvedImage]) {
+				effective_next := make([]*graph.Node[*clade.ResolvedImage], 0, len(node.Next))
+				for _, next := range node.Next {
+					if node.Key() != next.Value.From.Primary.String() {
+						continue
+					}
+
+					if !flags.All && next.Value.Skip {
+						continue
+					}
+
+					effective_next = append(effective_next, next)
+				}
+
+				if len(node.Next) != 0 && len(effective_next) == 0 {
+					return
+				}
+
+				if flags.Depth != 0 && level >= flags.Depth {
+					return
+				}
+
+				if level >= 0 {
+					fmt.Fprint(svc.Output(), strings.Repeat("\t", level), node.Key(), "\n")
+				}
+
+				for _, next := range effective_next {
+					if flags.Fold {
+						tagged, err := next.Value.Tagged()
+						if err != nil {
+							panic("image must have valid tag")
+						}
+						if next.Key() != tagged.String() {
+							continue
+						}
+					}
+
+					visit(level+1, next)
+				}
+			}
+
+			for _, node := range root_nodes {
+				visit(0-flags.Strip, node)
+			}
 
 			return nil
 		},
@@ -102,7 +109,7 @@ func CreateTreeCmd(flags *TreeFlags, svc Service) *cobra.Command {
 	cmd_flags.BoolVar(&flags.All, "all", false, "Print all images including skipped images")
 	cmd_flags.IntVarP(&flags.Strip, "strip", "s", 0, "Skip first n levels")
 	cmd_flags.IntVarP(&flags.Depth, "depth", "d", 0, "Max levels to print")
-	cmd_flags.BoolVar(&flags.Fold, "fold", false, "Print only primary tags for same images")
+	cmd_flags.BoolVar(&flags.Fold, "fold", false, "Print only primary tag for the same images")
 
 	return cmd
 }

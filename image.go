@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 
-	"github.com/distribution/distribution/reference"
+	"github.com/distribution/distribution/v3/reference"
 	"gopkg.in/yaml.v3"
 )
 

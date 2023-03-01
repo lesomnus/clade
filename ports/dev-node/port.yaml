@@ -6,4 +6,4 @@ images:
       - ( printf "%d"    $.Major         )
     from:
       name: registry.hub.docker.com/library/node
-      tag: ( tags | semverFinalized | semverN 2 2 1 )
+      tags: ( tags | semverFinalized | semverN 2 2 1 )
