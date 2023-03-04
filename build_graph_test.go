@@ -25,16 +25,16 @@ func TestBuildGraph(t *testing.T) {
 		Named: must(reference.ParseNamed("cr.io/repo/foo")),
 		Tags:  []string{"a", "b"},
 		From: &clade.ResolvedBaseImage{
-			Primary: origin_foo,
+			Primary: clade.ResolvedImageReference{NamedTagged: origin_foo},
 		},
 	}
 	bar := &clade.ResolvedImage{
 		Named: must(reference.ParseNamed("cr.io/repo/bar")),
 		Tags:  []string{"c", "d"},
 		From: &clade.ResolvedBaseImage{
-			Primary: origin_bar,
-			Secondaries: []reference.NamedTagged{
-				must(reference.Parse("cr.io/repo/foo:a")).(reference.NamedTagged),
+			Primary: clade.ResolvedImageReference{NamedTagged: origin_bar},
+			Secondaries: []clade.ResolvedImageReference{
+				{NamedTagged: must(reference.Parse("cr.io/repo/foo:a")).(reference.NamedTagged)},
 			},
 		},
 	}
@@ -42,10 +42,10 @@ func TestBuildGraph(t *testing.T) {
 		Named: must(reference.ParseNamed("cr.io/repo/baz")),
 		Tags:  []string{"e"},
 		From: &clade.ResolvedBaseImage{
-			Primary: origin_baz,
-			Secondaries: []reference.NamedTagged{
-				must(reference.Parse("cr.io/repo/foo:b")).(reference.NamedTagged),
-				must(reference.Parse("cr.io/repo/bar:d")).(reference.NamedTagged),
+			Primary: clade.ResolvedImageReference{NamedTagged: origin_baz},
+			Secondaries: []clade.ResolvedImageReference{
+				{NamedTagged: must(reference.Parse("cr.io/repo/foo:b")).(reference.NamedTagged)},
+				{NamedTagged: must(reference.Parse("cr.io/repo/bar:d")).(reference.NamedTagged)},
 			},
 		},
 	}
@@ -172,7 +172,7 @@ func TestBuildGraph(t *testing.T) {
 			_, err := graph.Put(&clade.ResolvedImage{
 				Named: must(reference.ParseNamed("cr.io/repo/foo")),
 				From: &clade.ResolvedBaseImage{
-					Primary: origin_foo,
+					Primary: clade.ResolvedImageReference{NamedTagged: origin_foo},
 				},
 			})
 			require.ErrorContains(err, "no tags")
@@ -186,7 +186,7 @@ func TestBuildGraph(t *testing.T) {
 				Named: must(reference.ParseNamed("cr.io/repo/foo")),
 				Tags:  []string{"a b"},
 				From: &clade.ResolvedBaseImage{
-					Primary: origin_foo,
+					Primary: clade.ResolvedImageReference{NamedTagged: origin_foo},
 				},
 			})
 			require.ErrorContains(err, "a b")
@@ -200,7 +200,7 @@ func TestBuildGraph(t *testing.T) {
 				Named: must(reference.ParseNamed("cr.io/repo/foo")),
 				Tags:  []string{"a"},
 				From: &clade.ResolvedBaseImage{
-					Primary: origin_foo,
+					Primary: clade.ResolvedImageReference{NamedTagged: origin_foo},
 				},
 			}
 
@@ -215,7 +215,7 @@ func TestBuildGraph(t *testing.T) {
 				Named: must(reference.ParseNamed("cr.io/repo/foo")),
 				Tags:  []string{"a"},
 				From: &clade.ResolvedBaseImage{
-					Primary: origin_foo,
+					Primary: clade.ResolvedImageReference{NamedTagged: origin_foo},
 				},
 			})
 			require.ErrorContains(err, "duplicate")

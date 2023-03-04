@@ -256,7 +256,7 @@ func isOutdated(ctx context.Context, reg Namespace, node *graph.Node[*clade.Reso
 	}
 
 	dgsts := make([][]byte, 0, 1+len(node.Value.From.Secondaries))
-	for _, ref := range append([]reference.NamedTagged{node.Value.From.Primary}, node.Value.From.Secondaries...) {
+	for _, ref := range node.Value.From.All() {
 		repo, err := reg.Repository(ref)
 		if err != nil {
 			return false, fmt.Errorf(`get repository of "%s": %w`, ref.String(), err)

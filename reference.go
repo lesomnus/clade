@@ -11,7 +11,8 @@ import (
 
 type ImageReference struct {
 	reference.Named
-	Tag *Pipeline
+	Tag   *Pipeline
+	Alias string
 }
 
 func (r *ImageReference) FromNameTag(name string, tag string) error {
@@ -44,7 +45,7 @@ func (r *ImageReference) FromNameTag(name string, tag string) error {
 func (r *ImageReference) unmarshalYamlScalar(node *yaml.Node) error {
 	ref := ""
 	if err := node.Decode(&ref); err != nil {
-		panic(err)
+		return err
 	}
 
 	pos := strings.LastIndex(ref, "/") + 1
@@ -63,13 +64,16 @@ func (r *ImageReference) unmarshalYamlMap(node *yaml.Node) error {
 	var ref struct {
 		Name string
 		Tag  string
+		As   string
 	}
 	if err := node.Decode(&ref); err != nil {
-		panic(err)
+		return err
 	}
 	if err := r.FromNameTag(ref.Name, ref.Tag); err != nil {
 		return err
 	}
+
+	r.Alias = ref.As
 
 	return nil
 }
@@ -84,4 +88,9 @@ func (r *ImageReference) UnmarshalYAML(node *yaml.Node) error {
 	}
 
 	return &yaml.TypeError{Errors: []string{"must be string or map"}}
+}
+
+type ResolvedImageReference struct {
+	reference.NamedTagged
+	Alias string
 }

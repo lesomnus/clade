@@ -94,7 +94,11 @@ func (e *Expander) Expand(ctx context.Context, image *clade.Image, bt *clade.Bui
 		}
 
 		resolved_images[i] = &clade.ResolvedImage{
-			From: &clade.ResolvedBaseImage{Primary: tagged},
+			From: &clade.ResolvedBaseImage{
+				Primary: clade.ResolvedImageReference{
+					NamedTagged: tagged,
+				},
+			},
 			Skip: false,
 		}
 	}

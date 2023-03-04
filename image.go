@@ -65,8 +65,12 @@ type Image struct {
 }
 
 type ResolvedBaseImage struct {
-	Primary     reference.NamedTagged
-	Secondaries []reference.NamedTagged
+	Primary     ResolvedImageReference
+	Secondaries []ResolvedImageReference
+}
+
+func (i *ResolvedBaseImage) All() []ResolvedImageReference {
+	return append([]ResolvedImageReference{i.Primary}, i.Secondaries...)
 }
 
 type ResolvedImage struct {

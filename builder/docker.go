@@ -81,8 +81,7 @@ func (b *DockerCmdBuilder) Build(image *clade.ResolvedImage, option BuildOption)
 
 	platforms := make([]string, 0, len(b.Platforms))
 	for _, platform := range b.Platforms {
-		if !image.Platform.Expr().Eval(map[string]bool{
-			"t":           true,
+		if expr := image.Platform.Expr(); expr != nil && !expr.Eval(map[string]bool{
 			platform.Os:   true,
 			platform.Arch: true,
 		}) {

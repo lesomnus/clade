@@ -11,5 +11,3 @@ images:
       with:
         - name: registry.hub.docker.com/library/debian
           tag: ( tags | semver | semverLatest )
-    args:
-      DEBIAN_TAG: ( tagsOf "registry.hub.docker.com/library/debian" | semver | semverLatest | printf "%s" )

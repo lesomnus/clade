@@ -113,7 +113,9 @@ from:
 			Named: local_named,
 			Tags:  []string{"1.2.42"},
 			From: &clade.ResolvedBaseImage{
-				Primary: origin_named.(reference.NamedTagged),
+				Primary: clade.ResolvedImageReference{
+					NamedTagged: origin_named.(reference.NamedTagged),
+				},
 			},
 		})
 
@@ -168,7 +170,9 @@ from:
 			Named: local_named,
 			Tags:  []string{"1.2.42"},
 			From: &clade.ResolvedBaseImage{
-				Primary: origin_named.(reference.NamedTagged),
+				Primary: clade.ResolvedImageReference{
+					NamedTagged: origin_named.(reference.NamedTagged),
+				},
 			},
 		})
 

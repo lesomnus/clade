@@ -61,6 +61,16 @@ func (e *Expand) remoteTags(ctx context.Context, ref reference.Named) ([]string,
 	return tags, nil
 }
 
+func (e *Expand) newTagsFunc(ctx context.Context, ref *clade.ImageReference, bg *clade.BuildGraph) func() ([]string, error) {
+	return func() ([]string, error) {
+		if tags, ok := bg.TagsByName(ref.Named); ok {
+			return tags, nil
+		}
+
+		return e.remoteTags(ctx, ref)
+	}
+}
+
 func (e *Expand) newExecutor(ctx context.Context, image *clade.Image, bg *clade.BuildGraph) *pl.Executor {
 	l := zerolog.Ctx(ctx)
 
@@ -71,13 +81,7 @@ func (e *Expand) newExecutor(ctx context.Context, image *clade.Image, bg *clade.
 		l.Info().Str("name", image.Name()).Msg(strings.Join(vs, ", "))
 		return vs
 	}
-	executor.Funcs["tags"] = func() ([]string, error) {
-		if tags, ok := bg.TagsByName(image.From.Primary.Named); ok {
-			return tags, nil
-		}
-
-		return e.remoteTags(ctx, image.From.Primary)
-	}
+	executor.Funcs["tags"] = e.newTagsFunc(ctx, image.From.Primary, bg)
 	executor.Funcs["tagsOf"] = func(ref string) ([]string, error) {
 		named, err := reference.ParseNamed(ref)
 		if err != nil {
@@ -150,13 +154,23 @@ func (e *Expand) Expand(ctx context.Context, image *clade.Image, bg *clade.Build
 			return nil, fmt.Errorf("from.tags: result must be string or stringer: %v", result)
 		}
 
-		tagged, err := reference.WithTag(image.From.Primary.Named, tag)
+		primary_image := image.From.Primary
+		tagged, err := reference.WithTag(primary_image.Named, tag)
 		if err != nil {
 			return nil, fmt.Errorf(`invalid tag "%s" of image "%s": %w`, tag, image.Name(), err)
 		}
 
+		if primary_image.Alias == "" {
+			primary_image.Alias = "BASE"
+		}
+
 		resolved_images[i] = &clade.ResolvedImage{
-			From: &clade.ResolvedBaseImage{Primary: tagged},
+			From: &clade.ResolvedBaseImage{
+				Primary: clade.ResolvedImageReference{
+					NamedTagged: tagged,
+					Alias:       primary_image.Alias,
+				},
+			},
 			Skip: false,
 		}
 	}
@@ -168,9 +182,11 @@ func (e *Expand) Expand(ctx context.Context, image *clade.Image, bg *clade.Build
 			continue
 		}
 
-		resolved_image.From.Secondaries = make([]reference.NamedTagged, len(image.From.Secondaries))
+		resolved_image.From.Secondaries = make([]clade.ResolvedImageReference, len(image.From.Secondaries))
 		for j, ref := range image.From.Secondaries {
 			if err := func() error {
+				executor.Funcs["tags"] = e.newTagsFunc(ctx, ref, bg)
+
 				tag, err := executeBeSingleString(executor, (*pl.Pl)(ref.Tag), result)
 				if err != nil {
 					return fmt.Errorf("execute: ")
@@ -181,7 +197,10 @@ func (e *Expand) Expand(ctx context.Context, image *clade.Image, bg *clade.Build
 					return fmt.Errorf(`"%s": %w`, tag, err)
 				}
 
-				resolved_image.From.Secondaries[j] = tagged
+				resolved_image.From.Secondaries[j] = clade.ResolvedImageReference{
+					NamedTagged: tagged,
+					Alias:       ref.Alias,
+				}
 				return nil
 			}(); err != nil {
 				return nil, fmt.Errorf("from.with[%d].tag: %w", j, err)

@@ -74,8 +74,10 @@ func TestBuildTree(t *testing.T) {
 
 		bt.Insert(&clade.ResolvedImage{
 			Named: named,
-			From:  &clade.ResolvedBaseImage{Primary: from_tagged},
-			Tags:  img.tags,
+			From: &clade.ResolvedBaseImage{
+				Primary: clade.ResolvedImageReference{NamedTagged: from_tagged},
+			},
+			Tags: img.tags,
 		})
 	}
 
@@ -135,7 +137,9 @@ func TestBuildTree(t *testing.T) {
 		err = bt.Insert(&clade.ResolvedImage{
 			Named: named,
 			Tags:  []string{"John Wick"},
-			From:  &clade.ResolvedBaseImage{Primary: from_tagged},
+			From: &clade.ResolvedBaseImage{
+				Primary: clade.ResolvedImageReference{NamedTagged: from_tagged},
+			},
 		})
 		require.ErrorContains(err, "invalid")
 	})
