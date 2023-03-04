@@ -55,15 +55,16 @@ func CreateTreeCmd(flags *TreeFlags, svc Service) *cobra.Command {
 				}
 			}
 
-			var visit func(int, *graph.Node[*clade.ResolvedImage])
-			visit = func(level int, node *graph.Node[*clade.ResolvedImage]) {
+			var visit func(int, *graph.Node[*clade.ResolvedImage]) error
+			visit = func(level int, node *graph.Node[*clade.ResolvedImage]) error {
 				effective_next := make([]*graph.Node[*clade.ResolvedImage], 0, len(node.Next))
 				for _, next := range node.Next {
-					if node.Key() != next.Value.From.Primary.String() {
+					if !flags.All && next.Value.Skip {
 						continue
 					}
 
-					if !flags.All && next.Value.Skip {
+					if node.Key() != next.Value.From.Primary.String() {
+						// Node is not primary dependency.
 						continue
 					}
 
@@ -71,34 +72,42 @@ func CreateTreeCmd(flags *TreeFlags, svc Service) *cobra.Command {
 				}
 
 				if len(node.Next) != 0 && len(effective_next) == 0 {
-					return
+					// Node is not primary dependency.
+					return nil
 				}
 
 				if flags.Depth != 0 && level >= flags.Depth {
-					return
+					return nil
 				}
 
 				if level >= 0 {
-					fmt.Fprint(svc.Output(), strings.Repeat("\t", level), node.Key(), "\n")
+					is_print := true
+					if len(node.Prev) != 0 && flags.Fold {
+						tagged, err := node.Value.Tagged()
+						if err != nil {
+							return fmt.Errorf(`"%s": %w`, node.Key(), err)
+						}
+						is_print = node.Key() == tagged.String()
+					}
+
+					if is_print {
+						fmt.Fprint(svc.Output(), strings.Repeat("\t", level), node.Key(), "\n")
+					}
 				}
 
 				for _, next := range effective_next {
-					if flags.Fold {
-						tagged, err := next.Value.Tagged()
-						if err != nil {
-							panic("image must have valid tag")
-						}
-						if next.Key() != tagged.String() {
-							continue
-						}
+					if err := visit(level+1, next); err != nil {
+						return err
 					}
-
-					visit(level+1, next)
 				}
+
+				return nil
 			}
 
 			for _, node := range root_nodes {
-				visit(0-flags.Strip, node)
+				if err := visit(0-flags.Strip, node); err != nil {
+					return err
+				}
 			}
 
 			return nil

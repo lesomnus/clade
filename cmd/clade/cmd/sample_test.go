@@ -8,6 +8,28 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type TmpPortDir struct {
+	T   *testing.T
+	Dir string
+}
+
+func NewTmpPortDir(t *testing.T) *TmpPortDir {
+	return &TmpPortDir{
+		T:   t,
+		Dir: t.TempDir(),
+	}
+}
+
+func (d *TmpPortDir) AddRaw(name string, port string) {
+	require := require.New(d.T)
+
+	err := os.Mkdir(filepath.Join(d.Dir, name), 0755)
+	require.NoError(err)
+
+	err = os.WriteFile(filepath.Join(d.Dir, name, "port.yaml"), []byte(port), 0644)
+	require.NoError(err)
+}
+
 func GenerateSamplePorts(t *testing.T) string {
 	require := require.New(t)
 

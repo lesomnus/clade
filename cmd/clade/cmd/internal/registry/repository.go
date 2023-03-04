@@ -6,6 +6,7 @@ import (
 
 	"github.com/distribution/distribution/v3"
 	"github.com/distribution/distribution/v3/manifest/manifestlist"
+	"github.com/distribution/distribution/v3/manifest/ocischema"
 	"github.com/distribution/distribution/v3/manifest/schema2"
 	"github.com/distribution/distribution/v3/reference"
 	"github.com/distribution/distribution/v3/uuid"
@@ -50,6 +51,28 @@ func (r *Repository) PopulateLayer() distribution.Descriptor {
 	return desc
 }
 
+func (r *Repository) addManifest(manif distribution.Manifest) (distribution.Descriptor, bool) {
+	mt, data, err := manif.Payload()
+	if err != nil {
+		panic(err)
+	}
+
+	dgst := digest.FromBytes(data)
+	if _, ok := r.Storage.Manifests[dgst.String()]; ok {
+		return distribution.Descriptor{}, false
+	}
+
+	r.Storage.Manifests[dgst.String()] = manif
+
+	desc := distribution.Descriptor{
+		MediaType: mt,
+		Size:      int64(len(data)),
+		Digest:    dgst,
+	}
+
+	return desc, true
+}
+
 func (r *Repository) PopulateManifest() (distribution.Descriptor, *schema2.DeserializedManifest) {
 	for {
 		manif := schema2.Manifest{
@@ -68,22 +91,37 @@ func (r *Repository) PopulateManifest() (distribution.Descriptor, *schema2.Deser
 			panic(err)
 		}
 
-		_, data, err := m.Payload()
+		desc, ok := r.addManifest(m)
+		if !ok {
+			continue
+		}
+
+		return desc, m
+	}
+}
+
+func (r *Repository) PopulateOciManifest() (distribution.Descriptor, *ocischema.DeserializedManifest) {
+	for {
+		manif := ocischema.Manifest{
+			Versioned:   ocischema.SchemaVersion,
+			Config:      distribution.Descriptor{},
+			Annotations: make(map[string]string),
+		}
+
+		num_layers := rand.Intn(5) + 3
+		manif.Layers = make([]distribution.Descriptor, num_layers)
+		for i := range manif.Layers {
+			manif.Layers[i] = r.PopulateLayer()
+		}
+
+		m, err := ocischema.FromStruct(manif)
 		if err != nil {
 			panic(err)
 		}
 
-		dgst := digest.FromBytes(data)
-		if _, ok := r.Storage.Manifests[dgst.String()]; ok {
+		desc, ok := r.addManifest(m)
+		if !ok {
 			continue
-		}
-
-		r.Storage.Manifests[dgst.String()] = m
-
-		desc := distribution.Descriptor{
-			MediaType: manif.MediaType,
-			Size:      int64(len(data)),
-			Digest:    dgst,
 		}
 
 		return desc, m

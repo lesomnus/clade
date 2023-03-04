@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/distribution/distribution/v3"
+	"github.com/distribution/distribution/v3/registry/api/errcode"
+	v2 "github.com/distribution/distribution/v3/registry/api/v2"
 	"github.com/opencontainers/go-digest"
 )
 
@@ -23,7 +25,7 @@ func (s *ManifestService) Get(ctx context.Context, dgst digest.Digest, options .
 		case distribution.WithTagOption:
 			desc, ok := s.Repo.Storage.Tags[opt.Tag]
 			if !ok {
-				return nil, ErrNotExists
+				return nil, errcode.Errors{v2.ErrorCodeManifestUnknown}
 			}
 
 			dgst = desc.Digest
@@ -32,7 +34,7 @@ func (s *ManifestService) Get(ctx context.Context, dgst digest.Digest, options .
 
 	manif, ok := s.Repo.Storage.Manifests[dgst.String()]
 	if !ok {
-		return nil, ErrNotExists
+		return nil, errcode.Errors{v2.ErrorCodeManifestUnknown}
 	}
 
 	return manif, nil

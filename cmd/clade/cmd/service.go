@@ -30,9 +30,10 @@ type Service interface {
 	Output() io.Writer // TODO: Rename to Stdout and add Stderr
 	Registry() Namespace
 
-	LoadBuildTreeFromFs(ctx context.Context, bt *clade.BuildTree, path string) error
 	LoadBuildGraphFromFs(ctx context.Context, bg *clade.BuildGraph, path string) error
-	GetLayer(ctx context.Context, named_tagged reference.NamedTagged) ([]distribution.Descriptor, error)
+
+	// Deprecated: use LoadBuildGraphFromFs() instead.
+	LoadBuildTreeFromFs(ctx context.Context, bt *clade.BuildTree, path string) error
 }
 
 type CmdService struct {
