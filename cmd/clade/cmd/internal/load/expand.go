@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/distribution/distribution/v3"
 	"github.com/distribution/distribution/v3/reference"
 	"github.com/lesomnus/clade"
 	"github.com/lesomnus/clade/plf"
@@ -41,6 +42,10 @@ func executeBeSingleString(executor *pl.Executor, pl *pl.Pl, data any) (string, 
 	}
 
 	return v, nil
+}
+
+type Namespace interface {
+	Repository(named reference.Named) (distribution.Repository, error)
 }
 
 type Expand struct {
