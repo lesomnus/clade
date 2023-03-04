@@ -226,6 +226,39 @@ images:
 			include: []string{"cr.io/repo/foo:1"},
 			exclude: []string{"cr.io/repo/bar:1"},
 		},
+		{
+			desc: "only first tag is printed",
+			prepare: func(t *testing.T) (*TmpPortDir, *registry.Registry) {
+				require := require.New(t)
+
+				ports := NewTmpPortDir(t)
+				ports.AddRaw("foo", `
+name: cr.io/repo/foo
+images:
+  - tags: [1, 2]
+    from: cr.io/repo/bar:1`)
+
+				reg := registry.NewRegistry()
+
+				foo, err := reference.ParseNamed("cr.io/repo/foo")
+				require.NoError(err)
+
+				reg.NewRepository(foo)
+
+				bar, err := reference.ParseNamed("cr.io/repo/bar")
+				require.NoError(err)
+
+				bar_repo := reg.NewRepository(bar)
+				bar_repo.Storage.Tags["1"], _ = bar_repo.PopulateOciManifest()
+
+				return ports, reg
+			},
+			include: []string{"cr.io/repo/foo:1"},
+			exclude: []string{
+				"cr.io/repo/foo:2",
+				"cr.io/repo/bar:1",
+			},
+		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.desc, func(t *testing.T) {

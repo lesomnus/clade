@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -54,7 +55,7 @@ func CreateOutdatedCmd(flags *OutdatedFlags, svc Service) *cobra.Command {
 				visit_next := func() error {
 					for _, node := range effective_next {
 						if err := visit(level+1, node); err != nil {
-							return err
+							return fmt.Errorf("visit %s: %w", node.Key(), err)
 						}
 					}
 
@@ -62,6 +63,16 @@ func CreateOutdatedCmd(flags *OutdatedFlags, svc Service) *cobra.Command {
 				}
 
 				if len(node.Prev) == 0 {
+					// level == 0
+					return visit_next()
+				}
+
+				tagged, err := node.Value.Tagged()
+				if err != nil {
+					return err
+				}
+				if node.Key() != tagged.String() {
+					// This node does not have a tag that is first one.
 					return visit_next()
 				}
 
@@ -217,7 +228,28 @@ func isOutdated(ctx context.Context, reg Namespace, node *graph.Node[*clade.Reso
 		return isOutdatedByLayers(ctx, reg, node)
 
 	case *manifestlist.DeserializedManifestList:
-		return isOutdatedByLayers(ctx, reg, node)
+		if m.MediaType == manifestlist.SchemaVersion.MediaType {
+			return isOutdatedByLayers(ctx, reg, node)
+		}
+
+		_, data, err := m.Payload()
+		if err != nil {
+			return false, fmt.Errorf("get manifestlist payload: %w", err)
+		}
+
+		var annotated struct {
+			Annotations map[string]string `json:"annotations,omitempty"`
+		}
+
+		if err := json.Unmarshal(data, &annotated); err != nil {
+			return false, fmt.Errorf("unmarshal oci index: %w", err)
+		}
+
+		if id, ok := annotated.Annotations[clade.AnnotationDerefId]; !ok {
+			return isOutdatedByLayers(ctx, reg, node)
+		} else {
+			deref_id = id
+		}
 
 	default:
 		return false, fmt.Errorf("unknown manifest type")
