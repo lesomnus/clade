@@ -15,15 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type serviceWithRegistry struct {
-	cmd.Service
-	registry cmd.Namespace
-}
-
-func (s *serviceWithRegistry) Registry() cmd.Namespace {
-	return s.registry
-}
-
 func TestOutdatedCmd(t *testing.T) {
 	tcs := []struct {
 		desc    string
@@ -267,13 +258,9 @@ images:
 			ports, reg := tc.prepare(t)
 
 			buff := new(bytes.Buffer)
-			cmd_svc := cmd.NewCmdService()
-			cmd_svc.Sink = buff
-
-			svc := &serviceWithRegistry{
-				Service:  cmd_svc,
-				registry: reg,
-			}
+			svc := cmd.NewCmdService()
+			svc.Sink = buff
+			svc.RegistryClient = reg
 
 			flags := cmd.OutdatedFlags{
 				RootFlags: &cmd.RootFlags{

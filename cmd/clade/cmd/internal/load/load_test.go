@@ -102,14 +102,17 @@ images:
 		require.NoError(err)
 
 		snapshot := bg.Snapshot()
-		require.Len(snapshot, 3)
-		require.Contains(snapshot, "cr.io/repo/foo")
-		require.Contains(snapshot, "cr.io/repo/bar")
-		require.Contains(snapshot, "cr.io/repo/baz")
+		require.Len(snapshot, 6)
+		require.Contains(snapshot, fmt.Sprintf("%s/origin/foo:foo", reg_url.Host))
+		require.Contains(snapshot, fmt.Sprintf("%s/origin/bar:bar", reg_url.Host))
+		require.Contains(snapshot, fmt.Sprintf("%s/origin/baz:baz", reg_url.Host))
+		require.Contains(snapshot, "cr.io/repo/foo:a")
+		require.Contains(snapshot, "cr.io/repo/bar:c")
+		require.Contains(snapshot, "cr.io/repo/baz:e")
 
-		entry_foo := snapshot["cr.io/repo/foo"]
-		entry_bar := snapshot["cr.io/repo/bar"]
-		entry_baz := snapshot["cr.io/repo/baz"]
+		entry_foo := snapshot["cr.io/repo/foo:a"]
+		entry_bar := snapshot["cr.io/repo/bar:c"]
+		entry_baz := snapshot["cr.io/repo/baz:e"]
 
 		require.Equal(uint(1), entry_foo.Level)
 		require.Equal(uint(2), entry_bar.Level)

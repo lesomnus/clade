@@ -114,6 +114,7 @@ func TestBuildCmd(t *testing.T) {
 				c := cmd.CreateBuildCmd(&flags, svc)
 				c.SetOutput(io.Discard)
 				c.SetArgs(tc.args)
+
 				err := c.Execute()
 				require.Error(err)
 

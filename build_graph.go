@@ -59,7 +59,10 @@ func (g *BuildGraph) Put(image *ResolvedImage) ([]*graph.Node[*ResolvedImage], e
 		nodes = append(nodes, node)
 	}
 
-	tags_by_name := make([]string, 0, len(nodes))
+	tags_by_name, ok := g.tags_by_name[image.Name()]
+	if !ok {
+		tags_by_name = make([]string, 0, len(nodes))
+	}
 	for _, ref := range refs {
 		tags_by_name = append(tags_by_name, ref.Tag())
 	}
@@ -67,8 +70,7 @@ func (g *BuildGraph) Put(image *ResolvedImage) ([]*graph.Node[*ResolvedImage], e
 
 	// Put previous references.
 	refs_prev := make(map[string]bool, 1+len(image.From.Secondaries))
-	refs_prev[image.From.Primary.String()] = true
-	for _, ref := range image.From.Secondaries {
+	for _, ref := range image.From.All() {
 		refs_prev[ref.String()] = true
 	}
 
@@ -83,14 +85,17 @@ func (g *BuildGraph) Put(image *ResolvedImage) ([]*graph.Node[*ResolvedImage], e
 }
 
 func (g *BuildGraph) Snapshot() graph.Snapshot {
-	snapshot := g.Graph.Snapshot(func(n *graph.Node[*ResolvedImage]) string {
-		if n.Value == nil {
-			return ""
+	snapshot := g.Graph.Snapshot(func(node *graph.Node[*ResolvedImage]) string {
+		if node.Value == nil {
+			return node.Key()
 		} else {
-			return n.Value.Name()
+			tagged, err := node.Value.Tagged()
+			if err != nil {
+				panic(fmt.Sprintf("tag must be valid: %s", err.Error()))
+			}
+			return tagged.String()
 		}
 	})
 
-	delete(snapshot, "")
 	return snapshot
 }
