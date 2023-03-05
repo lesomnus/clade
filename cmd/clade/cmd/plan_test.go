@@ -177,6 +177,40 @@ images:
 			},
 		},
 		{
+			desc: "nested dependency",
+			args: []string{"cr.io/repo/foo:1", "cr.io/repo/bar:1", "cr.io/repo/baz:1"},
+			prepare: func(t *testing.T) *TmpPortDir {
+				ports := NewTmpPortDir(t)
+				ports.AddRaw("foo", `
+name: cr.io/repo/foo
+images:
+  - tags: [1]
+    from: cr.io/origin/foo:1`)
+				ports.AddRaw("bar", `
+name: cr.io/repo/bar
+images:
+  - tags: [1]
+    from: cr.io/repo/foo:1`)
+				ports.AddRaw("baz", `
+name: cr.io/repo/baz
+images:
+  - tags: [1]
+    from:
+      name: cr.io/repo/foo
+      tags: 1
+      with: [cr.io/repo/bar:1]`)
+
+				return ports
+			},
+			expected: clade.BuildPlan{
+				Iterations: [][][]string{
+					{{"cr.io/repo/foo:1"}},
+					{{"cr.io/repo/bar:1"}},
+					{{"cr.io/repo/baz:1"}},
+				},
+			},
+		},
+		{
 			desc: `get references from stdin if "-" is given as argument`,
 			args: []string{"-", "cr.io/repo/foo:1\n cr.io/repo/bar:1"},
 			prepare: func(t *testing.T) *TmpPortDir {
@@ -245,22 +279,22 @@ images:
 			require.NoError(err, string(output))
 
 			require.Len(actual.Iterations, len(tc.expected.Iterations))
-			for level, expected_ref_groups := range tc.expected.Iterations {
-				actual_ref_groups := actual.Iterations[level]
-				require.Len(actual_ref_groups, len(expected_ref_groups))
+			for level, expected_collections := range tc.expected.Iterations {
+				actual_collections := actual.Iterations[level]
+				require.Len(actual_collections, len(expected_collections))
 
-				for _, expected_ref_group := range expected_ref_groups {
+				for _, expected_collection := range expected_collections {
 					done := false
-					for _, actual_ref_group := range actual_ref_groups {
-						if !slices.Contains(actual_ref_group, expected_ref_group[0]) {
+					for _, actual_collection := range actual_collections {
+						if !slices.Contains(actual_collection, expected_collection[0]) {
 							continue
 						}
 
 						done = true
-						require.ElementsMatch(expected_ref_group, actual_ref_group)
+						require.ElementsMatch(expected_collection, actual_collection)
 					}
 					if !done {
-						require.Fail("ref omitted", expected_ref_group[0])
+						require.Fail("ref omitted", expected_collection[0])
 					}
 				}
 			}
