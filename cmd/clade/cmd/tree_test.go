@@ -101,7 +101,7 @@ func TestTreeCmd(t *testing.T) {
 				buff := new(bytes.Buffer)
 
 				svc := cmd.NewCmdService()
-				svc.Sink = buff
+				svc.Out = buff
 				flags := cmd.TreeFlags{
 					RootFlags: &cmd.RootFlags{
 						PortsPath: ports,

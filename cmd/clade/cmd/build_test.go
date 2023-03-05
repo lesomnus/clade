@@ -35,7 +35,7 @@ func TestBuildCmd(t *testing.T) {
 		repo.PopulateImageWithTag("12.2")
 
 		svc := cmd.NewCmdService()
-		svc.Sink = io.Discard
+		svc.Out = io.Discard
 		svc.RegistryClient = reg
 		flags := cmd.BuildFlags{
 			RootFlags: &cmd.RootFlags{
@@ -104,7 +104,7 @@ func TestBuildCmd(t *testing.T) {
 				require := require.New(t)
 
 				svc := cmd.NewCmdService()
-				svc.Sink = io.Discard
+				svc.Out = io.Discard
 				flags := cmd.BuildFlags{
 					RootFlags: &cmd.RootFlags{
 						PortsPath: ports,
@@ -128,7 +128,7 @@ func TestBuildCmd(t *testing.T) {
 			require := require.New(t)
 
 			svc := cmd.NewCmdService()
-			svc.Sink = io.Discard
+			svc.Out = io.Discard
 			flags := cmd.BuildFlags{
 				RootFlags: &cmd.RootFlags{
 					PortsPath: "not-exists",

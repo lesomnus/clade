@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 
@@ -31,11 +32,24 @@ func CreatePlanCmd(flags *PlanFlags, svc Service) *cobra.Command {
 			if len(args) == 0 {
 				// Plan for all nodes.
 				bg_filtered = bg
-			} else if (len(args) == 1) && (args[0] == "-") {
-				panic("not implemented")
 			} else {
-				refs = make([]reference.NamedTagged, 0, len(args))
-				for _, arg := range args {
+				ref_args := args
+				if (len(args) == 1) && (args[0] == "-") {
+					ref_args = make([]string, 0)
+					scanner := bufio.NewScanner(svc.Input())
+					scanner.Split(bufio.ScanWords)
+
+					for scanner.Scan() {
+						ref_args = append(ref_args, scanner.Text())
+					}
+				}
+
+				if len(ref_args) == 0 {
+					return fmt.Errorf("no references are input")
+				}
+
+				refs = make([]reference.NamedTagged, 0, len(ref_args))
+				for _, arg := range ref_args {
 					named, err := reference.ParseNamed(arg)
 					if err != nil {
 						return fmt.Errorf(`"%s": %w`, arg, err)
@@ -50,15 +64,12 @@ func CreatePlanCmd(flags *PlanFlags, svc Service) *cobra.Command {
 				}
 			}
 
-			fmt.Printf("refs: %v\n", refs)
 			var visit func(node *graph.Node[*clade.ResolvedImage]) error
 			visit = func(node *graph.Node[*clade.ResolvedImage]) error {
-				fmt.Printf("node.Key(): %v\n", node.Key())
 				if node_existing, ok := bg_filtered.Get(node.Key()); ok && node_existing.Value != nil {
 					return nil
 				}
 
-				fmt.Printf("node.Key(): %v\n", node.Key())
 				if _, err := bg_filtered.Put(node.Value); err != nil {
 					return fmt.Errorf(`put "%s": %w`, node.Key(), err)
 				}

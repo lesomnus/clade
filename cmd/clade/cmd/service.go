@@ -22,26 +22,36 @@ type Namespace interface {
 }
 
 type Service interface {
-	Output() io.Writer // TODO: Rename to Stdout and add Stderr
+	Input() io.Reader
+	Output() io.Writer
+
 	Registry() Namespace
 
 	LoadBuildGraphFromFs(ctx context.Context, bg *clade.BuildGraph, path string) error
 }
 
 type CmdService struct {
-	Sink           io.Writer
+	In  io.Reader
+	Out io.Writer
+
 	RegistryClient Namespace
 }
 
 func NewCmdService() *CmdService {
 	return &CmdService{
-		Sink:           os.Stdout,
+		In:  os.Stdin,
+		Out: os.Stdout,
+
 		RegistryClient: cache.WithRemote(resolveRegistryCache(), RegistryClient),
 	}
 }
 
+func (o *CmdService) Input() io.Reader {
+	return o.In
+}
+
 func (o *CmdService) Output() io.Writer {
-	return o.Sink
+	return o.Out
 }
 
 func (o *CmdService) Registry() Namespace {

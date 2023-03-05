@@ -15,7 +15,7 @@ func TestCachePathCmd(t *testing.T) {
 	buff := new(bytes.Buffer)
 
 	svc := cmd.NewCmdService()
-	svc.Sink = buff
+	svc.Out = buff
 
 	c := cmd.CreateCachePathCmd(svc)
 	c.SetOutput(io.Discard)

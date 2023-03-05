@@ -146,16 +146,84 @@ images:
 				},
 			},
 		},
+		{
+			desc: "put dependent image does not cause duplicated error",
+			args: []string{"cr.io/repo/foo:1", "cr.io/repo/bar:1", "cr.io/repo/baz:1"},
+			prepare: func(t *testing.T) *TmpPortDir {
+				ports := NewTmpPortDir(t)
+				ports.AddRaw("foo", `
+name: cr.io/repo/foo
+images:
+  - tags: [1]
+    from: cr.io/origin/foo:1`)
+				ports.AddRaw("bar", `
+name: cr.io/repo/bar
+images:
+  - tags: [1]
+    from: cr.io/origin/bar:1`)
+				ports.AddRaw("baz", `
+name: cr.io/repo/baz
+images:
+  - tags: [1]
+    from: cr.io/repo/bar:1`)
+
+				return ports
+			},
+			expected: clade.BuildPlan{
+				Iterations: [][][]string{
+					{{"cr.io/repo/foo:1"}, {"cr.io/repo/bar:1"}},
+					{{"cr.io/repo/baz:1"}},
+				},
+			},
+		},
+		{
+			desc: `get references from stdin if "-" is given as argument`,
+			args: []string{"-", "cr.io/repo/foo:1\n cr.io/repo/bar:1"},
+			prepare: func(t *testing.T) *TmpPortDir {
+				ports := NewTmpPortDir(t)
+				ports.AddRaw("foo", `
+name: cr.io/repo/foo
+images:
+  - tags: [1]
+    from: cr.io/origin/foo:1`)
+				ports.AddRaw("bar", `
+name: cr.io/repo/bar
+images:
+  - tags: [1]
+    from: cr.io/origin/bar:1`)
+				ports.AddRaw("baz", `
+name: cr.io/repo/baz
+images:
+  - tags: [1]
+    from: cr.io/repo/bar:1`)
+
+				return ports
+			},
+			expected: clade.BuildPlan{
+				Iterations: [][][]string{
+					{{"cr.io/repo/foo:1"}, {"cr.io/repo/bar:1"}},
+					{{"cr.io/repo/baz:1"}},
+				},
+			},
+		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.desc, func(t *testing.T) {
 			require := require.New(t)
 
 			ports := tc.prepare(t)
+			args := tc.args
 
-			buff := new(bytes.Buffer)
+			buff_in := new(bytes.Buffer)
+			if len(tc.args) > 1 && tc.args[0] == "-" {
+				buff_in.Write([]byte(tc.args[1]))
+				args = []string{"-"}
+			}
+
+			buff_out := new(bytes.Buffer)
 			svc := cmd.NewCmdService()
-			svc.Sink = buff
+			svc.In = buff_in
+			svc.Out = buff_out
 			svc.RegistryClient = registry.NewRegistry()
 
 			flags := cmd.PlanFlags{
@@ -166,12 +234,12 @@ images:
 
 			c := cmd.CreatePlanCmd(&flags, svc)
 			c.SetOut(os.Stderr)
-			c.SetArgs(tc.args)
+			c.SetArgs(args)
 
 			err := c.Execute()
 			require.NoError(err)
 
-			output := buff.Bytes()
+			output := buff_out.Bytes()
 			var actual clade.BuildPlan
 			err = json.Unmarshal(output, &actual)
 			require.NoError(err, string(output))

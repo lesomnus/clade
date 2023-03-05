@@ -259,7 +259,7 @@ images:
 
 			buff := new(bytes.Buffer)
 			svc := cmd.NewCmdService()
-			svc.Sink = buff
+			svc.Out = buff
 			svc.RegistryClient = reg
 
 			flags := cmd.OutdatedFlags{
