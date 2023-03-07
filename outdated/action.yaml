@@ -8,9 +8,9 @@ inputs:
     default: info
 
 outputs:
-  plan_name:
+  plan-name:
     description: Outdated images
-    value: ${{ steps.outdated.outputs.references }}
+    value: ${{ steps.outdated.outputs.plan-name }}
 
 runs:
   using: composite
@@ -22,10 +22,9 @@ runs:
         clade --log-level ${{ inputs.log-level }} outdated | tee outdated_references
         cat outdated_references | clade --log-level ${{ inputs.log-level }} plan | tee "${_PLAN_NAME}"
 
-        echo "PLAN_NAME=${_PLAN_NAME}" >> $GITHUB_ENV
-        echo "plan_name=${_PLAN_NAME}" >> $GITHUB_OUTPUT
+        echo "plan-name=${_PLAN_NAME}" >> $GITHUB_OUTPUT
 
     - uses: actions/cache@v3
       with:
-        path: ${{ env.PLAN_NAME }}
-        key: clade-${{ env.PLAN_NAME }}
+        path: ${{ steps.outdated.outputs.plan-name }}
+        key: clade-${{ steps.outdated.outputs.plan-name }}
