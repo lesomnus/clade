@@ -1,0 +1,100 @@
+name: clade iterate
+run-name: clade iterate - ${{ inputs.nextof }}...
+
+on:
+  workflow_dispatch:
+    inputs:
+      plan-name:
+        description: Name of the plan file
+        required: true
+        type: string
+      reference:
+        description: Image reference included in the group to build.
+        required: true
+        type: string
+      cascade:
+        description: Trigger builds on next images
+        required: false
+        default: false
+        type: boolean
+      log-level:
+        description: Log level
+        required: true
+        default: info
+        type: choice
+        options:
+          - fatal
+          - error
+          - warn
+          - info
+          - debug
+
+jobs:
+  setup:
+    runs-on: ubuntu-22.04
+    outputs:
+      references: ${{ steps.find-group.outputs.references }}
+    steps:
+      - uses: lesomnus/clade/init@ci/use-plan
+      - uses: actions/cache@v3
+        with:
+          path: ${{ inputs.plan-name }}
+          key: clade-${{ inputs.plan-name }}
+
+      - name: Find group
+        id: find-group
+        run: |
+          cat ${{ inputs.plan-name }} \
+            | jq -c '.iterations[][] | select(.[] | . == "${{ inputs.reference }}")' \
+            | tee > references
+
+          echo "references=$(cat references)" >> $GITHUB_OUTPUT
+
+  build:
+    runs-on: ubuntu-22.04
+    needs: setup
+    strategy:
+      matrix:
+        reference: ${{ fromJson(needs.setup.outputs.references) }}
+    steps:
+      - run: |
+          echo ${{ matrix.reference }}
+
+      # - uses: docker/setup-qemu-action@v2
+      # - uses: docker/setup-buildx-action@v2
+
+      # - name: Login GHCR
+      #   uses: docker/login-action@v2
+      #   if: ${{ !env.ACT }}
+      #   with:
+      #     registry: ghcr.io
+      #     username: ${{ github.repository_owner }}
+      #     password: ${{ secrets.GITHUB_TOKEN }}
+
+      # - name: Build and Push
+      #   run: |
+      #     clade --log-level ${{ inputs.log-level }} build ${{ env.ACT && '--dry-run' }} \
+      #       --builder buildx \
+      #       ${{ inputs.reference }} \
+      #       -- \
+      #       --platform linux/amd64,linux/arm64 \
+      #       --push
+
+      # - id: child
+      #   uses: lesomnus/clade/child@ci/use-plan
+      #   if: ${{ inputs.cascade }}
+      #   with:
+      #     reference: ${{ inputs.reference }}
+      #     log-level: ${{ inputs.log-level }}
+
+      # - name: Trigger
+      #   if: ${{ inputs.cascade }}
+      #   env:
+      #     GH_TOKEN: ${{ github.token }}
+      #   run: |
+      #     echo '${{ steps.child.outputs.references }}' | jq '.[]' | while read ref; do
+      #       gh workflow run clade-build.yaml \
+      #         --ref "${{ github.ref }}" \
+      #         --field "reference=${ref}" \
+      #         --field "cascade=true"
+      #     done
