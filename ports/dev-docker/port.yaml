@@ -1,5 +1,4 @@
 name: ghcr.io/lesomnus/dev-docker
-skip: true
 
 images:
   - tags:
