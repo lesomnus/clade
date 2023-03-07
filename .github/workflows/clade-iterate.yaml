@@ -1,5 +1,5 @@
 name: clade iterate
-run-name: clade iterate - ${{ inputs.nextof }}...
+run-name: clade iterate - ${{ inputs.reference }}...
 
 on:
   workflow_dispatch:

@@ -49,10 +49,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          fi [ "$(cat ${{ steps.outdated.outputs.plan_name }} | jq '.iterations | length')" = "0" ]; then
+          if [ "$(cat ${{ steps.outdated.outputs.plan_name }} | jq '.iterations | length')" = "0" ]; then
             echo no outdated images
             return
-          if
+          fi
 
           cat ${{ steps.outdated.outputs.plan_name }} | jq -r '.iterations[0][][0]' | while read ref; do
             gh workflow run clade-iterate.yaml \
