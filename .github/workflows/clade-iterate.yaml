@@ -2,6 +2,7 @@ name: clade iterate
 run-name: clade iterate - ${{ inputs.reference }}...
 
 on:
+  pull_request:
   workflow_dispatch:
     inputs:
       plan-name:
