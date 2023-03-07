@@ -54,7 +54,8 @@ jobs:
             return
           fi
 
-          cat ${{ steps.outdated.outputs.plan_name }} | jq -r '.iterations[0][][0]' | while read ref; do
+          cat ${{ steps.outdated.outputs.plan-name }} | jq -r '.iterations[0][][0]' | while read ref; do
+            echo trigger build for ${ref}
             gh workflow run clade-iterate.yaml \
               --ref "${{ github.ref }}" \
               --field "plan-name=${{ steps.outdated.outputs.plan-name }}"
