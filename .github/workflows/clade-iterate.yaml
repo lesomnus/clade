@@ -94,7 +94,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          clade --log-level ${{ inputs.log-level }} nextof {{ inputs.plan-name }} ${{ inputs.reference }} \
+          clade --log-level ${{ inputs.log-level }} nextof ${{ inputs.plan-name }} ${{ inputs.reference }} \
             | tee reference-next-iteration
 
           cat reference-next-iteration | jq -r '.[][0]' | while read ref; do
