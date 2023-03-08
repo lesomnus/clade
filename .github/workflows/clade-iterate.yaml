@@ -101,7 +101,7 @@ jobs:
             echo trigger build for ${ref}
             gh workflow run clade-iterate.yaml \
               --ref "${{ github.ref }}" \
-              --field "plan-name=${{ steps.outdated.outputs.plan-name }}" \
+              --field "plan-name=${{ inputs.plan-name }}" \
               --field "reference=${ref}" \
               --field "cascade=true" \
               --field "log-level=${{ inputs.log-level || 'info' }}"
