@@ -95,7 +95,6 @@ jobs:
 
       - name: Plan
         id: plan
-        if: inputs.plan-name == ''
         run: |
           if [ -z "${{ inputs.plan-name }}" ]; then
             _PLAN_NAME="${{ inputs.plan-name }}"
