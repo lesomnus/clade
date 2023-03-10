@@ -79,7 +79,7 @@ jobs:
 
       - name: Build and push
         run: |
-          clade --log-level "${{ inputs.log-level }}"" build ${{ env.ACT && '--dry-run' }} \
+          clade --log-level "${{ inputs.log-level }}"" build --dry-run ${{ env.ACT && '--dry-run' }} \
             "${{ matrix.reference }}" \
             -- \
             --platform linux/amd64,linux/arm64 \
