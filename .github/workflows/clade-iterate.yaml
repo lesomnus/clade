@@ -46,11 +46,11 @@ jobs:
         id: find-group
         run: |
           if [ -z "${{ inputs.plan-name }}" ]; then
-            cat "${{ inputs.plan-name }}" \
-              | jq -c '.iterations[][] | select(.[] | . == "${{ inputs.reference }}")' \
+            echo '["${{ inputs.reference }}"]' \
               > references
           else
-            echo '["${{ inputs.reference }}"]' \
+            cat "${{ inputs.plan-name }}" \
+              | jq -c '.iterations[][] | select(.[] | . == "${{ inputs.reference }}")' \
               > references
           fi
 
@@ -97,10 +97,10 @@ jobs:
         id: plan
         run: |
           if [ -z "${{ inputs.plan-name }}" ]; then
-            _PLAN_NAME="${{ inputs.plan-name }}"
-          else
             _PLAN_NAME="plan-${{ github.run_id }}-${{ github.run_attempt }}.json"
             clade --log-level "${{ inputs.log-level }}" plan "${{ inputs.reference }}" | tee "${_PLAN_NAME}"
+          else
+            _PLAN_NAME="${{ inputs.plan-name }}"
           fi
 
           echo "plan-name=${_PLAN_NAME}" | tee -a "$GITHUB_OUTPUT"
