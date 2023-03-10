@@ -75,8 +75,20 @@ func CreatePlanCmd(flags *PlanFlags, svc Service) *cobra.Command {
 					return fmt.Errorf(`put "%s": %w`, node.Key(), err)
 				}
 
-				for _, next := range node.Next {
-					return visit(next)
+				for _, tag := range node.Value.Tags {
+					ref, err := reference.WithTag(node.Value.Named, tag)
+					if err != nil {
+						panic(fmt.Sprintf(`"%s" must have valid tag: %s`, node.Value.Name(), err.Error()))
+					}
+
+					sibling, ok := bg.Get(ref.String())
+					if !ok {
+						panic(fmt.Sprintf(`"%s", sibling of "%s", must be exist`, node.Key(), ref.String()))
+					}
+
+					for _, next := range sibling.Next {
+						return visit(next)
+					}
 				}
 
 				return nil

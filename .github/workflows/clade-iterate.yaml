@@ -6,7 +6,8 @@ on:
     inputs:
       plan-name:
         description: Name of the plan file
-        required: true
+        required: false
+        default: ""
         type: string
       reference:
         description: Image reference included in the group to build.
@@ -36,6 +37,7 @@ jobs:
       references: ${{ steps.find-group.outputs.references }}
     steps:
       - uses: actions/cache@v3
+        if: inputs.plan-name != ''
         with:
           path: ${{ inputs.plan-name }}
           key: clade-${{ inputs.plan-name }}
@@ -43,11 +45,16 @@ jobs:
       - name: Find group
         id: find-group
         run: |
-          cat ${{ inputs.plan-name }} \
-            | jq -c '.iterations[][] | select(.[] | . == "${{ inputs.reference }}")' \
-            | tee > references
+          if [ -z "${{ inputs.plan-name }}" ]; then
+            cat ${{ inputs.plan-name }} \
+              | jq -c '.iterations[][] | select(.[] | . == "${{ inputs.reference }}")' \
+              > references
+          else
+            echo '["${{ inputs.reference }}"]' \
+              > references
+          fi
 
-          echo "references=$(cat references)" >> $GITHUB_OUTPUT
+          echo "references=$(cat references)" | tee -a "$GITHUB_OUTPUT"
 
   build:
     runs-on: ubuntu-22.04
@@ -72,8 +79,8 @@ jobs:
 
       - name: Build and push
         run: |
-          clade --log-level ${{ inputs.log-level }} build --dry-run ${{ env.ACT && '--dry-run' }} \
-            ${{ matrix.reference }} \
+          clade --log-level "${{ inputs.log-level }}"" build ${{ env.ACT && '--dry-run' }} \
+            "${{ matrix.reference }}" \
             -- \
             --platform linux/amd64,linux/arm64 \
             --push
@@ -85,23 +92,32 @@ jobs:
     steps:
       - uses: lesomnus/clade/init@ci/use-plan
       - uses: actions/checkout@v3
+
+      - id: plan
+        if: inputs.plan-name == ''
+        run: |
+          _PLAN_NAME="plan-${{ github.run_id }}-${{ github.run_attempt }}.json"
+          clade --log-level "${{ inputs.log-level }}" plan "${{ inputs.reference }}" | tee "${_PLAN_NAME}"
+
+          echo "plan-name=${_PLAN_NAME}" | tee -a "$GITHUB_OUTPUT"
+
       - uses: actions/cache@v3
         with:
-          path: ${{ inputs.plan-name }}
-          key: clade-${{ inputs.plan-name }}
+          path: ${{ steps.plan.outputs.plan-name }}
+          key: clade-${{ steps.plan.outputs.plan-name }}
 
       - name: Trigger
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          clade --log-level ${{ inputs.log-level }} nextof ${{ inputs.plan-name }} ${{ inputs.reference }} \
+          clade --log-level ${{ inputs.log-level }} nextof "${{ steps.plan.outputs.plan-name }}" "${{ inputs.reference }}" \
             | tee reference-next-iteration
 
           cat reference-next-iteration | jq -r '.[][0]' | while read ref; do
             echo trigger build for ${ref}
             gh workflow run clade-iterate.yaml \
               --ref "${{ github.ref }}" \
-              --field "plan-name=${{ inputs.plan-name }}" \
+              --field "plan-name=${{ needs.setup.outputs.plan-name }}" \
               --field "reference=${ref}" \
               --field "cascade=true" \
               --field "log-level=${{ inputs.log-level || 'info' }}"

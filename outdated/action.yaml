@@ -19,10 +19,10 @@ runs:
       shell: bash
       run: |
         _PLAN_NAME="plan-${{ github.run_id }}-${{ github.run_attempt }}.json"
-        clade --log-level ${{ inputs.log-level }} outdated | tee outdated_references
-        cat outdated_references | clade --log-level ${{ inputs.log-level }} plan - | tee "${_PLAN_NAME}"
+        clade --log-level "${{ inputs.log-level }}" outdated | tee outdated_references
+        cat outdated_references | clade --log-level "${{ inputs.log-level }}" plan - | tee "${_PLAN_NAME}"
 
-        echo "plan-name=${_PLAN_NAME}" >> $GITHUB_OUTPUT
+        echo "plan-name=${_PLAN_NAME}" | tee -a "$GITHUB_OUTPUT"
 
     - uses: actions/cache@v3
       with:

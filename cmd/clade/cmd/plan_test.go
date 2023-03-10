@@ -81,6 +81,31 @@ images:
 			},
 		},
 		{
+			desc: "images depend on the secondary tag are also planed",
+			args: []string{"cr.io/repo/foo:1"},
+			prepare: func(t *testing.T) *TmpPortDir {
+				ports := NewTmpPortDir(t)
+				ports.AddRaw("foo", `
+name: cr.io/repo/foo
+images:
+  - tags: [1, 2]
+    from: cr.io/origin/foo:1`)
+				ports.AddRaw("bar", `
+name: cr.io/repo/bar
+images:
+  - tags: [1]
+    from: cr.io/repo/foo:2`)
+
+				return ports
+			},
+			expected: clade.BuildPlan{
+				Iterations: [][][]string{
+					{{"cr.io/repo/foo:1"}},
+					{{"cr.io/repo/bar:1"}},
+				},
+			},
+		},
+		{
 			desc: "dependent image is planed if secondary image is given",
 			args: []string{"cr.io/repo/bar:1"},
 			prepare: func(t *testing.T) *TmpPortDir {
