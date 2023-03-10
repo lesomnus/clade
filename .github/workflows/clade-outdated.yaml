@@ -10,7 +10,7 @@ on:
         type: boolean
       log-level:
         description: Log level
-        required: true
+        required: false
         default: info
         type: choice
         options:

@@ -20,7 +20,7 @@ on:
         type: boolean
       log-level:
         description: Log level
-        required: true
+        required: false
         default: info
         type: choice
         options:
@@ -46,7 +46,7 @@ jobs:
         id: find-group
         run: |
           if [ -z "${{ inputs.plan-name }}" ]; then
-            cat ${{ inputs.plan-name }} \
+            cat "${{ inputs.plan-name }}" \
               | jq -c '.iterations[][] | select(.[] | . == "${{ inputs.reference }}")' \
               > references
           else
@@ -79,7 +79,7 @@ jobs:
 
       - name: Build and push
         run: |
-          clade --log-level "${{ inputs.log-level }}"" build --dry-run ${{ env.ACT && '--dry-run' }} \
+          clade --log-level "${{ inputs.log-level }}" build --dry-run ${{ env.ACT && '--dry-run' }} \
             "${{ matrix.reference }}" \
             -- \
             --platform linux/amd64,linux/arm64 \
@@ -110,7 +110,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          clade --log-level ${{ inputs.log-level }} nextof "${{ steps.plan.outputs.plan-name }}" "${{ inputs.reference }}" \
+          clade --log-level "${{ inputs.log-level }}" nextof "${{ steps.plan.outputs.plan-name }}" "${{ inputs.reference }}" \
             | tee reference-next-iteration
 
           cat reference-next-iteration | jq -r '.[][0]' | while read ref; do

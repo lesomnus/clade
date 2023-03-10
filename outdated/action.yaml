@@ -4,7 +4,7 @@ description: Lists outdated images
 inputs:
   log-level:
     description: Log level
-    required: true
+    required: false
     default: info
 
 outputs:
