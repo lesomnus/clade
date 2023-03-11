@@ -63,7 +63,7 @@ jobs:
       matrix:
         reference: ${{ fromJson(needs.setup.outputs.references) }}
     steps:
-      - uses: lesomnus/clade/init@ci/use-plan
+      - uses: lesomnus/clade/init@main
       - uses: actions/checkout@v3
 
       - uses: docker/setup-qemu-action@v2
@@ -90,7 +90,7 @@ jobs:
     needs: build
     if: inputs.cascade
     steps:
-      - uses: lesomnus/clade/init@ci/use-plan
+      - uses: lesomnus/clade/init@main
       - uses: actions/checkout@v3
 
       - name: Plan

@@ -29,7 +29,7 @@ jobs:
     outputs:
       references: ${{ steps.outdated.outputs.references }}
     steps:
-      - uses: lesomnus/clade/init@ci/use-plan
+      - uses: lesomnus/clade/init@main
       - uses: actions/checkout@v3
 
       - name: Login GHCR
@@ -40,7 +40,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - id: outdated
-        uses: lesomnus/clade/outdated@ci/use-plan
+        uses: lesomnus/clade/outdated@main
         with:
           log-level: ${{ inputs.log-level || 'info' }}
 
