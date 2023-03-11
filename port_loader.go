@@ -1,4 +1,4 @@
-package load
+package clade
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 
 	"github.com/distribution/distribution/v3"
 	"github.com/distribution/distribution/v3/reference"
-	"github.com/lesomnus/clade"
 	"github.com/lesomnus/clade/plf"
 	"github.com/lesomnus/pl"
 	"github.com/rs/zerolog"
@@ -15,45 +14,16 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func toString(value any) (string, bool) {
-	switch v := value.(type) {
-	case interface{ String() string }:
-		return v.String(), true
-	case string:
-		return v, true
-
-	default:
-		return "", false
-	}
-}
-
-func executeBeSingleString(executor *pl.Executor, pl *pl.Pl, data any) (string, error) {
-	results, err := executor.Execute(pl, data)
-	if err != nil {
-		return "", err
-	}
-	if len(results) != 1 {
-		return "", fmt.Errorf("expect result be sized 1 but was %d", len(results))
-	}
-
-	v, ok := toString(results[0])
-	if !ok {
-		return "", fmt.Errorf("expect result be string or stringer")
-	}
-
-	return v, nil
-}
-
 type Namespace interface {
 	Repository(named reference.Named) (distribution.Repository, error)
 }
 
-type Expand struct {
+type PortLoader struct {
 	Registry Namespace
 }
 
-func (e *Expand) remoteTags(ctx context.Context, ref reference.Named) ([]string, error) {
-	repo, err := e.Registry.Repository(ref)
+func (l *PortLoader) remoteTags(ctx context.Context, ref reference.Named) ([]string, error) {
+	repo, err := l.Registry.Repository(ref)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client: %w", err)
 	}
@@ -66,45 +36,41 @@ func (e *Expand) remoteTags(ctx context.Context, ref reference.Named) ([]string,
 	return tags, nil
 }
 
-func (e *Expand) newTagsFunc(ctx context.Context, ref *clade.ImageReference, bg *clade.BuildGraph) func() ([]string, error) {
+func (l *PortLoader) newTagsFunc(ctx context.Context, named reference.Named, bg *BuildGraph) func() ([]string, error) {
 	return func() ([]string, error) {
-		if tags, ok := bg.TagsByName(ref.Named); ok {
+		if tags, ok := bg.TagsByName(named); ok {
 			return tags, nil
 		}
 
-		return e.remoteTags(ctx, ref)
+		return l.remoteTags(ctx, named)
 	}
 }
 
-func (e *Expand) newExecutor(ctx context.Context, image *clade.Image, bg *clade.BuildGraph) *pl.Executor {
-	l := zerolog.Ctx(ctx)
+func (l *PortLoader) newExecutor(ctx context.Context, image *Image, bg *BuildGraph) *pl.Executor {
+	log := zerolog.Ctx(ctx)
 
 	executor := pl.NewExecutor()
 	maps.Copy(executor.Funcs, plf.Funcs())
 	executor.Convs.MergeWith(plf.Convs())
 	executor.Funcs["log"] = func(vs ...string) []string {
-		l.Info().Str("name", image.Name()).Msg(strings.Join(vs, ", "))
+		log.Info().Str("name", image.Name()).Msg(strings.Join(vs, ", "))
 		return vs
 	}
-	executor.Funcs["tags"] = e.newTagsFunc(ctx, image.From.Primary, bg)
+	executor.Funcs["tags"] = l.newTagsFunc(ctx, image.From.Primary, bg)
 	executor.Funcs["tagsOf"] = func(ref string) ([]string, error) {
 		named, err := reference.ParseNamed(ref)
 		if err != nil {
 			return nil, fmt.Errorf("reference must be fully named: %w", err)
 		}
 
-		if tags, ok := bg.TagsByName(named); ok {
-			return tags, nil
-		}
-
-		return e.remoteTags(ctx, named)
+		return l.newTagsFunc(ctx, named, bg)()
 	}
 
 	return executor
 }
 
-func (e *Expand) Load(ctx context.Context, bg *clade.BuildGraph, ports []*clade.Port) error {
-	dg := clade.NewDependencyGraph()
+func (l *PortLoader) Load(ctx context.Context, bg *BuildGraph, ports []*Port) error {
+	dg := NewDependencyGraph()
 	for _, port := range ports {
 		for _, image := range port.Images {
 			dg.Put(image)
@@ -127,7 +93,7 @@ func (e *Expand) Load(ctx context.Context, bg *clade.BuildGraph, ports []*clade.
 		}
 
 		for _, image := range node.Value {
-			resolved_images, err := e.Expand(ctx, image, bg)
+			resolved_images, err := l.Expand(ctx, image, bg)
 			if err != nil {
 				return fmt.Errorf(`expand "%s": %w`, name, err)
 			}
@@ -143,16 +109,16 @@ func (e *Expand) Load(ctx context.Context, bg *clade.BuildGraph, ports []*clade.
 	return nil
 }
 
-func (e *Expand) Expand(ctx context.Context, image *clade.Image, bg *clade.BuildGraph) ([]*clade.ResolvedImage, error) {
-	executor := e.newExecutor(ctx, image, bg)
+func (l *PortLoader) Expand(ctx context.Context, image *Image, bg *BuildGraph) ([]*ResolvedImage, error) {
+	executor := l.newExecutor(ctx, image, bg)
 
 	// Executes `images[].from.tags`.
-	from_results, err := executor.Execute((*pl.Pl)(image.From.Primary.Tag), nil)
+	from_results, err := executor.Execute(image.From.Primary.Tag.AsPl(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("from.tags: execute pipeline: %w", err)
 	}
 
-	resolved_images := make([]*clade.ResolvedImage, len(from_results))
+	resolved_images := make([]*ResolvedImage, len(from_results))
 	for i, result := range from_results {
 		tag, ok := toString(result)
 		if !ok {
@@ -169,9 +135,9 @@ func (e *Expand) Expand(ctx context.Context, image *clade.Image, bg *clade.Build
 			primary_image.Alias = "BASE"
 		}
 
-		resolved_images[i] = &clade.ResolvedImage{
-			From: &clade.ResolvedBaseImage{
-				Primary: clade.ResolvedImageReference{
+		resolved_images[i] = &ResolvedImage{
+			From: &ResolvedBaseImage{
+				Primary: ResolvedImageReference{
 					NamedTagged: tagged,
 					Alias:       primary_image.Alias,
 				},
@@ -187,10 +153,10 @@ func (e *Expand) Expand(ctx context.Context, image *clade.Image, bg *clade.Build
 			continue
 		}
 
-		resolved_image.From.Secondaries = make([]clade.ResolvedImageReference, len(image.From.Secondaries))
+		resolved_image.From.Secondaries = make([]ResolvedImageReference, len(image.From.Secondaries))
 		for j, ref := range image.From.Secondaries {
 			if err := func() error {
-				executor.Funcs["tags"] = e.newTagsFunc(ctx, ref, bg)
+				executor.Funcs["tags"] = l.newTagsFunc(ctx, ref, bg)
 
 				tag, err := executeBeSingleString(executor, (*pl.Pl)(ref.Tag), result)
 				if err != nil {
@@ -202,7 +168,7 @@ func (e *Expand) Expand(ctx context.Context, image *clade.Image, bg *clade.Build
 					return fmt.Errorf(`"%s": %w`, tag, err)
 				}
 
-				resolved_image.From.Secondaries[j] = clade.ResolvedImageReference{
+				resolved_image.From.Secondaries[j] = ResolvedImageReference{
 					NamedTagged: tagged,
 					Alias:       ref.Alias,
 				}
@@ -220,7 +186,7 @@ func (e *Expand) Expand(ctx context.Context, image *clade.Image, bg *clade.Build
 	for i, result := range from_results {
 		tags := make([]string, len(image.Tags))
 		for j, tag := range image.Tags {
-			v, err := executeBeSingleString(executor, (*pl.Pl)(&tag), result)
+			v, err := executeBeSingleString(executor, tag.AsPl(), result)
 			if err != nil {
 				return nil, fmt.Errorf("tags[%d]: %w", j, err)
 			}
@@ -235,7 +201,7 @@ func (e *Expand) Expand(ctx context.Context, image *clade.Image, bg *clade.Build
 	for i, result := range from_results {
 		args := make(map[string]string)
 		for key, arg := range image.Args {
-			v, err := executeBeSingleString(executor, (*pl.Pl)(&arg), result)
+			v, err := executeBeSingleString(executor, arg.AsPl(), result)
 			if err != nil {
 				return nil, fmt.Errorf("args[%s]: %w", key, err)
 			}
@@ -257,7 +223,7 @@ func (e *Expand) Expand(ctx context.Context, image *clade.Image, bg *clade.Build
 	// TODO: make it as functions.
 	for i := 0; i < len(resolved_images); i++ {
 		for j := i + 1; j < len(resolved_images); j++ {
-			clade.DeduplicateBySemver(&resolved_images[i].Tags, &resolved_images[j].Tags)
+			DeduplicateBySemver(&resolved_images[i].Tags, &resolved_images[j].Tags)
 		}
 	}
 

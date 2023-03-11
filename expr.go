@@ -11,6 +11,10 @@ import (
 
 type Pipeline pl.Pl
 
+func (p *Pipeline) AsPl() *pl.Pl {
+	return (*pl.Pl)(p)
+}
+
 func (p *Pipeline) UnmarshalYAML(node *yaml.Node) error {
 	expr := ""
 	if err := node.Decode(&expr); err != nil {

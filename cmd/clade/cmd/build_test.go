@@ -8,7 +8,7 @@ import (
 	"github.com/lesomnus/clade"
 	"github.com/lesomnus/clade/builder"
 	"github.com/lesomnus/clade/cmd/clade/cmd"
-	"github.com/lesomnus/clade/cmd/clade/cmd/internal/registry"
+	"github.com/lesomnus/clade/internal/registry"
 	"github.com/stretchr/testify/require"
 )
 

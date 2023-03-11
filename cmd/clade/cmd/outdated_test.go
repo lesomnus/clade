@@ -10,7 +10,7 @@ import (
 	"github.com/distribution/distribution/v3/reference"
 	"github.com/lesomnus/clade"
 	"github.com/lesomnus/clade/cmd/clade/cmd"
-	"github.com/lesomnus/clade/cmd/clade/cmd/internal/registry"
+	"github.com/lesomnus/clade/internal/registry"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/require"
 )

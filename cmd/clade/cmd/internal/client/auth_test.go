@@ -9,7 +9,7 @@ import (
 	"github.com/distribution/distribution/v3/reference"
 	"github.com/distribution/distribution/v3/registry/client/auth/challenge"
 	"github.com/lesomnus/clade/cmd/clade/cmd/internal/client"
-	"github.com/lesomnus/clade/cmd/clade/cmd/internal/registry"
+	"github.com/lesomnus/clade/internal/registry"
 	"github.com/stretchr/testify/require"
 )
 

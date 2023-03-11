@@ -1,35 +1,121 @@
-package load_test
+package clade_test
 
 import (
 	"context"
 	"fmt"
-	"net/http/httptest"
-	"net/url"
 	"testing"
 
 	"github.com/distribution/distribution/v3/reference"
 	"github.com/lesomnus/clade"
-	"github.com/lesomnus/clade/cmd/clade/cmd/internal/client"
-	"github.com/lesomnus/clade/cmd/clade/cmd/internal/load"
-	"github.com/lesomnus/clade/cmd/clade/cmd/internal/registry"
+	"github.com/lesomnus/clade/internal/registry"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
 )
 
-func TestExpand_(t *testing.T) {
+func TestPortLoaderLoad(t *testing.T) {
 	reg := registry.NewRegistry()
-	srv := registry.NewServer(t, reg)
-	s := httptest.NewTLSServer(srv.Handler())
-	defer s.Close()
+	origin_foo := reg.NewRepository(must(reference.ParseNamed("cr.io/origin/foo")))
+	origin_bar := reg.NewRepository(must(reference.ParseNamed("cr.io/origin/bar")))
+	origin_baz := reg.NewRepository(must(reference.ParseNamed("cr.io/origin/baz")))
 
-	reg_url, err := url.Parse(s.URL)
-	require.NoError(t, err)
+	origin_foo.PopulateImageWithTag("foo")
+	origin_bar.PopulateImageWithTag("bar")
+	origin_baz.PopulateImageWithTag("baz")
 
-	ref_foo, err := reference.ParseNamed(reg_url.Host + "/repo/foo")
+	make_port := func(port string) *clade.Port {
+		rst := &clade.Port{}
+		err := yaml.Unmarshal([]byte(port), &rst)
+		require.NoError(t, err)
+
+		return rst
+	}
+
+	t.Run("static", func(t *testing.T) {
+		//              origin/bar:bar -| repo/bar:c
+		//                              | repo/bar:d
+		//                             /            \
+		// origin/foo:foo -| repo/foo:a              \
+		//                 | repo/foo:b --------------| repo/baz:e
+		//                                           /
+		//                             origin/baz:baz
+
+		require := require.New(t)
+
+		ports := []*clade.Port{
+			make_port(`
+name: cr.io/repo/foo
+images:
+  - tags: [a, b]
+    from:
+      name: cr.io/origin/foo
+      tags: foo`),
+			make_port(`
+name: cr.io/repo/bar
+images:
+  - tags: [c, d]
+    from:
+      name: cr.io/origin/bar
+      tags: bar
+      with:
+        - cr.io/repo/foo:a`),
+			make_port(`
+name: cr.io/repo/baz
+images:
+  - tags: [e]
+    from:
+      name: cr.io/origin/baz
+      tags: baz
+      with:
+        - cr.io/repo/foo:b
+        - cr.io/repo/bar:d`),
+		}
+
+		port_loader := clade.PortLoader{
+			Registry: reg,
+		}
+
+		ctx := context.Background()
+		bg := clade.NewBuildGraph()
+		err := port_loader.Load(ctx, bg, ports)
+		require.NoError(err)
+
+		snapshot := bg.Snapshot()
+		require.Len(snapshot, 6)
+		require.Contains(snapshot, "cr.io/origin/foo:foo")
+		require.Contains(snapshot, "cr.io/origin/bar:bar")
+		require.Contains(snapshot, "cr.io/origin/baz:baz")
+		require.Contains(snapshot, "cr.io/repo/foo:a")
+		require.Contains(snapshot, "cr.io/repo/bar:c")
+		require.Contains(snapshot, "cr.io/repo/baz:e")
+
+		entry_foo := snapshot["cr.io/repo/foo:a"]
+		entry_bar := snapshot["cr.io/repo/bar:c"]
+		entry_baz := snapshot["cr.io/repo/baz:e"]
+
+		require.Equal(uint(1), entry_foo.Level)
+		require.Equal(uint(2), entry_bar.Level)
+		require.Equal(uint(3), entry_baz.Level)
+
+		require.Subset(maps.Keys(entry_foo.Group), maps.Keys(entry_bar.Group))
+		require.Subset(maps.Keys(entry_foo.Group), maps.Keys(entry_baz.Group))
+		require.Subset(maps.Keys(entry_bar.Group), maps.Keys(entry_baz.Group))
+
+		require.NotSubset(maps.Keys(entry_baz.Group), maps.Keys(entry_bar.Group))
+		require.NotSubset(maps.Keys(entry_baz.Group), maps.Keys(entry_foo.Group))
+
+		require.ElementsMatch(maps.Keys(entry_bar.Group), maps.Keys(entry_foo.Group))
+	})
+}
+
+func TestPortLoaderExpand(t *testing.T) {
+	reg := registry.NewRegistry()
+
+	ref_foo, err := reference.ParseNamed("cr.io/repo/foo")
 	require.NoError(t, err)
-	ref_bar, err := reference.ParseNamed(reg_url.Host + "/repo/bar")
+	ref_bar, err := reference.ParseNamed("cr.io/repo/bar")
 	require.NoError(t, err)
-	ref_baz, err := reference.ParseNamed(reg_url.Host + "/repo/baz")
+	ref_baz, err := reference.ParseNamed("cr.io/repo/baz")
 	require.NoError(t, err)
 
 	repo_foo := reg.NewRepository(ref_foo)
@@ -41,26 +127,23 @@ func TestExpand_(t *testing.T) {
 	repo_baz.PopulateImageWithTag("2.3.4")
 	repo_baz.PopulateImageWithTag("2.3.5")
 
-	reg_client := client.NewClient()
-	reg_client.Transport = s.Client().Transport
-
-	expander := load.Expand{
-		Registry: reg_client,
+	port_loader := clade.PortLoader{
+		Registry: reg,
 	}
 
 	t.Run("from static tag", func(t *testing.T) {
 		require := require.New(t)
 
 		image := clade.Image{Named: ref_foo}
-		err = yaml.Unmarshal([]byte(fmt.Sprintf(`
+		err = yaml.Unmarshal([]byte(`
 tags: [first]
 from:
-  name: %s/repo/foo
-  tags: "1.2.3"`, reg_url.Host)), &image)
+  name: cr.io/repo/foo
+  tags: "1.2.3"`), &image)
 		require.NoError(err)
 
 		ctx := context.Background()
-		images, err := expander.Expand(ctx, &image, clade.NewBuildGraph())
+		images, err := port_loader.Expand(ctx, &image, clade.NewBuildGraph())
 		require.NoError(err)
 		require.Len(images[0].Tags, 1)
 		require.Equal("first", images[0].Tags[0])
@@ -71,17 +154,17 @@ from:
 		require := require.New(t)
 
 		image := clade.Image{Named: ref_foo}
-		err = yaml.Unmarshal([]byte(fmt.Sprintf(`
-tags: [( printf "%%d" $.Major )]
+		err = yaml.Unmarshal([]byte(`
+tags: [( printf "%d" $.Major )]
 from:
-  name: %s/repo/foo
+  name: cr.io/repo/foo
   tags: ( tags | semver )
 args:
-  MAJOR: ( printf "%%d" $.Major )`, reg_url.Host)), &image)
+  MAJOR: ( printf "%d" $.Major )`), &image)
 		require.NoError(err)
 
 		ctx := context.Background()
-		images, err := expander.Expand(ctx, &image, clade.NewBuildGraph())
+		images, err := port_loader.Expand(ctx, &image, clade.NewBuildGraph())
 		require.NoError(err)
 		require.Len(images, 1)
 		require.Len(images[0].Tags, 1)
@@ -120,7 +203,7 @@ from:
 		})
 
 		ctx := context.Background()
-		images, err := expander.Expand(ctx, &image, bg)
+		images, err := port_loader.Expand(ctx, &image, bg)
 		require.NoError(err)
 		require.Len(images, 1)
 		require.Len(images[0].Tags, 1)
@@ -132,15 +215,15 @@ from:
 		require := require.New(t)
 
 		image := clade.Image{Named: ref_foo}
-		err = yaml.Unmarshal([]byte(fmt.Sprintf(`
-tags: [( printf "%%d" $.Major )]
+		err = yaml.Unmarshal([]byte(`
+tags: [( printf "%d" $.Major )]
 from:
-  name: %s/repo/foo
-  tags: ( tagsOf "%s/repo/bar" | semver )`, reg_url.Host, reg_url.Host)), &image)
+  name: cr.io/repo/foo
+  tags: ( tagsOf "cr.io/repo/bar" | semver )`), &image)
 		require.NoError(err)
 
 		ctx := context.Background()
-		images, err := expander.Expand(ctx, &image, clade.NewBuildGraph())
+		images, err := port_loader.Expand(ctx, &image, clade.NewBuildGraph())
 		require.NoError(err)
 		require.Len(images, 1)
 		require.Len(images[0].Tags, 1)
@@ -158,8 +241,8 @@ from:
 		err = yaml.Unmarshal([]byte(fmt.Sprintf(`
 tags: [( printf "%%d" $.Patch )]
 from:
-  name: %s/repo/foo
-  tags: ( tagsOf "%s" | semver )`, reg_url.Host, local_named.String())), &image)
+  name: cr.io/repo/foo
+  tags: ( tagsOf "%s" | semver )`, local_named.String())), &image)
 		require.NoError(err)
 
 		origin_named, err := reference.Parse("cr.io/origin/name:tag")
@@ -177,7 +260,7 @@ from:
 		})
 
 		ctx := context.Background()
-		images, err := expander.Expand(ctx, &image, bg)
+		images, err := port_loader.Expand(ctx, &image, bg)
 		require.NoError(err)
 		require.Len(images, 1)
 		require.Len(images[0].Tags, 1)
@@ -189,15 +272,15 @@ from:
 		require := require.New(t)
 
 		image := clade.Image{Named: ref_baz}
-		err = yaml.Unmarshal([]byte(fmt.Sprintf(`
-tags: [( printf "%%d" $.Patch )]
+		err = yaml.Unmarshal([]byte(`
+tags: [( printf "%d" $.Patch )]
 from:
-  name: %s/repo/baz
-  tags: ( tags | semver )`, reg_url.Host)), &image)
+  name: cr.io/repo/baz
+  tags: ( tags | semver )`), &image)
 		require.NoError(err)
 
 		ctx := context.Background()
-		images, err := expander.Expand(ctx, &image, clade.NewBuildGraph())
+		images, err := port_loader.Expand(ctx, &image, clade.NewBuildGraph())
 		require.NoError(err)
 		require.Len(images, 2)
 		require.ElementsMatch(
@@ -214,116 +297,116 @@ from:
 		}{
 			{
 				desc: "remote repo not exists",
-				port: fmt.Sprintf(`
+				port: `
 tags: [foo]
 from:
-  name: %s/repo/not-exists
-  tags: ( tags | semver)`, reg_url.Host),
-				msgs: []string{"get", "tags"},
+  name: cr.io/repo/not-exists
+  tags: ( tags | semver )`,
+				msgs: []string{"name", "unknown"},
 			},
 			{
 				desc: "invalid repo format",
-				port: fmt.Sprintf(`
+				port: `
 tags: [foo]
 from:
-  name: %s/repo/foo
-  tags: ( tagsOf "invalid repo"  | semver)`, reg_url.Host),
+  name: cr.io/repo/foo
+  tags: ( tagsOf "invalid repo"  | semver )`,
 				msgs: []string{"invalid", "format"},
 			},
 			{
 				desc: "from pipeline with undefined functions",
-				port: fmt.Sprintf(`
+				port: `
 tags: [foo]
 from:
-  name: %s/repo/foo
-  tags: ( awesome )`, reg_url.Host),
+  name: cr.io/repo/foo
+  tags: ( awesome )`,
 				msgs: []string{"awesome", "defined"},
 			},
 			{
 				desc: "from pipeline result is not string",
-				port: fmt.Sprintf(`
+				port: `
 tags: [foo]
 from:
-  name: %s/repo/foo
-  tags: ( pass 42 )`, reg_url.Host),
+  name: cr.io/repo/foo
+  tags: ( pass 42 )`,
 				msgs: []string{"result", "string"},
 			},
 			{
 				desc: "from pipeline results invalid tag format",
-				port: fmt.Sprintf(`
+				port: `
 tags: [foo]
 from:
-  name: %s/repo/foo
-  tags: ( log "invalid tag" )`, reg_url.Host),
+  name: cr.io/repo/foo
+  tags: ( log "invalid tag" )`,
 				msgs: []string{"invalid", "tag"},
 			},
 			{
 				desc: "tag pipeline with undefined functions",
-				port: fmt.Sprintf(`
+				port: `
 tags: [( awesome )]
 from:
-  name: %s/repo/foo
-  tags: "1.0.0"`, reg_url.Host),
+  name: cr.io/repo/foo
+  tags: "1.0.0"`,
 				msgs: []string{"awesome", "defined"},
 			},
 			{
 				desc: "tag pipeline results multiple value",
-				port: fmt.Sprintf(`
+				port: `
 tags: [( log "foo" "bar" )]
 from:
-  name: %s/repo/foo
-  tags: "1.0.0"`, reg_url.Host),
+  name: cr.io/repo/foo
+  tags: "1.0.0"`,
 				msgs: []string{"sized 1", "2"},
 			},
 			{
 				desc: "tag pipeline results type not string",
-				port: fmt.Sprintf(`
+				port: `
 tags: [( pass 42 )]
 from:
-  name: %s/repo/foo
-  tags: "1.0.0"`, reg_url.Host),
+  name: cr.io/repo/foo
+  tags: "1.0.0"`,
 				msgs: []string{"string"},
 			},
 			{
 				desc: "tag is duplicated",
-				port: fmt.Sprintf(`
+				port: `
 tags: [ foo ]
 from:
-  name: %s/repo/baz
-  tags: ( tags | semver )`, reg_url.Host),
+  name: cr.io/repo/baz
+  tags: ( tags | semver )`,
 				msgs: []string{"duplicated", "foo"},
 			},
 			{
 				desc: "arg pipeline with undefined functions",
-				port: fmt.Sprintf(`
+				port: `
 tags: [ foo ]
 from:
-  name: %s/repo/foo
+  name: cr.io/repo/foo
   tags: "1.0.0"
 args:
-  FOO: ( awesome )`, reg_url.Host),
+  FOO: ( awesome )`,
 				msgs: []string{"awesome", "defined"},
 			},
 			{
 				desc: "arg pipeline results multiple value",
-				port: fmt.Sprintf(`
+				port: `
 tags: [ foo ]
 from:
-  name: %s/repo/foo
+  name: cr.io/repo/foo
   tags: "1.0.0"
 args:
-  FOO: ( log "foo" "bar" )`, reg_url.Host),
+  FOO: ( log "foo" "bar" )`,
 				msgs: []string{"sized 1", "2"},
 			},
 			{
 				desc: "arg pipeline results type not string",
-				port: fmt.Sprintf(`
+				port: `
 tags: [ foo ]
 from:
-  name: %s/repo/foo
+  name: cr.io/repo/foo
   tags: "1.0.0"
 args:
-  FOO: ( pass 42 )`, reg_url.Host),
+  FOO: ( pass 42 )`,
 				msgs: []string{"string"},
 			},
 		}
@@ -336,7 +419,7 @@ args:
 				require.NoError(err)
 
 				ctx := context.Background()
-				_, err := expander.Expand(ctx, &image, clade.NewBuildGraph())
+				_, err := port_loader.Expand(ctx, &image, clade.NewBuildGraph())
 				require.Error(err)
 				for _, msg := range tc.msgs {
 					require.ErrorContains(err, msg)

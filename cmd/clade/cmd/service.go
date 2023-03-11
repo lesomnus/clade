@@ -11,7 +11,6 @@ import (
 	"github.com/lesomnus/clade"
 	"github.com/lesomnus/clade/cmd/clade/cmd/internal/cache"
 	"github.com/lesomnus/clade/cmd/clade/cmd/internal/client"
-	"github.com/lesomnus/clade/cmd/clade/cmd/internal/load"
 )
 
 var RegistryClient = client.NewClient()
@@ -59,11 +58,11 @@ func (o *CmdService) Registry() Namespace {
 }
 
 func (o *CmdService) LoadBuildGraphFromFs(ctx context.Context, bg *clade.BuildGraph, path string) error {
-	ports, err := load.ReadFromFs(ctx, path)
+	ports, err := clade.ReadPortsFromFs(ctx, path)
 	if err != nil {
 		return fmt.Errorf("failed to read ports: %w", err)
 	}
 
-	expand := load.Expand{Registry: o.Registry()}
-	return expand.Load(ctx, bg, ports)
+	port_loader := clade.PortLoader{Registry: o.Registry()}
+	return port_loader.Load(ctx, bg, ports)
 }
