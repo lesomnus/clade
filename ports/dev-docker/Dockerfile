@@ -1,8 +1,7 @@
 ARG BASE
-ARG TAG
-ARG DEBIAN_TAG
-FROM ${BASE}:${TAG}-dind AS DOCKER
-FROM registry.hub.docker.com/library/debian:${DEBIAN_TAG}
+ARG DEBIAN
+FROM ${BASE} AS DOCKER
+FROM ${DEBIAN}
 
 RUN apt-get update \
 	&& apt-get install --yes --no-install-recommends \

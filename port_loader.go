@@ -158,7 +158,7 @@ func (l *PortLoader) Expand(ctx context.Context, image *Image, bg *BuildGraph) (
 			if err := func() error {
 				executor.Funcs["tags"] = l.newTagsFunc(ctx, ref, bg)
 
-				tag, err := executeBeSingleString(executor, (*pl.Pl)(ref.Tag), result)
+				tag, err := executeBeSingleString(executor, ref.Tag.AsPl(), result)
 				if err != nil {
 					return fmt.Errorf("execute: ")
 				}
