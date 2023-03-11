@@ -1,137 +1,96 @@
 package clade
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/distribution/distribution/reference"
-	"github.com/lesomnus/pl"
+	"github.com/distribution/distribution/v3/reference"
+	"github.com/opencontainers/go-digest"
 	"gopkg.in/yaml.v3"
 )
 
-type RefNamedPipelineTagged interface {
-	reference.NamedTagged
-	Pipeline() *pl.Pl
-}
-
-type refNamedPipelineTagged struct {
+type ImageReference struct {
 	reference.Named
-	tag      string
-	pipeline *pl.Pl
+	Tag   *Pipeline
+	Alias string
 }
 
-func (r *refNamedPipelineTagged) Domain() string {
-	return reference.Domain(r.Named)
-}
-
-func (r *refNamedPipelineTagged) Path() string {
-	return reference.Path(r.Named)
-}
-
-func (r *refNamedPipelineTagged) Tag() string {
-	return r.tag
-}
-
-func (r *refNamedPipelineTagged) String() string {
-	return fmt.Sprintf("%s:%s", r.Name(), r.tag)
-}
-
-func (r *refNamedPipelineTagged) Pipeline() *pl.Pl {
-	return r.pipeline
-}
-
-func (r *refNamedPipelineTagged) UnmarshalYAML(n *yaml.Node) error {
-	ref_str := ""
-
-	switch n.Kind {
-	case yaml.ScalarNode:
-		if err := n.Decode(&ref_str); err != nil {
-			return err
-		}
-
-	case yaml.MappingNode:
-		type refMap struct {
-			Name string
-			Tag  string
-		}
-
-		var ref refMap
-		if err := n.Decode(&ref); err != nil {
-			return err
-		}
-
-		ref_str = fmt.Sprintf("%s:%s", ref.Name, ref.Tag)
-
-	default:
-		return errors.New("invalid node type")
-	}
-
-	ref, err := ParseRefNamedTagged(ref_str)
+func (r *ImageReference) FromNameTag(name string, tag string) error {
+	named, err := reference.ParseNamed(name)
 	if err != nil {
-		return err
+		return fmt.Errorf("parse reference name: %w", err)
+	} else {
+		r.Named = named
 	}
 
-	*r = *asRefNamedPipelineTagged(ref)
+	if strings.HasPrefix(tag, "(") && strings.HasSuffix(tag, ")") {
+		// Pipeline expression
+	} else if strings.ContainsRune(tag, ':') {
+		if _, err := reference.WithDigest(named, digest.Digest(tag)); err != nil {
+			return err
+		}
+	} else {
+		if _, err := reference.WithTag(named, tag); err != nil {
+			return err
+		}
+	}
+
+	if err := yaml.Unmarshal([]byte(tag), &r.Tag); err != nil {
+		return fmt.Errorf("unmarshal reference tag: %w", err)
+	}
 
 	return nil
 }
 
-// ParseRefNamedTagged parses given string into named tagged reference.
-// If the tag is a pipeline expression, returned reference implements `RefNamedPipelineTagged`.
-func ParseRefNamedTagged(s string) (reference.NamedTagged, error) {
-	pos := 0
-	if pos = strings.LastIndex(s, ":("); pos > 0 && s[len(s)-1] == ')' {
-		// with pipeline tag
-	} else if pos = strings.LastIndex(s, ":"); pos > 0 {
-		// with tag
-	} else {
-		return nil, errors.New("no tag")
+func (r *ImageReference) unmarshalYamlScalar(node *yaml.Node) error {
+	ref := ""
+	if err := node.Decode(&ref); err != nil {
+		return err
 	}
 
-	tag := s[pos+1:]
-	if tag == "" {
-		return nil, errors.New("no tag")
+	pos := strings.LastIndex(ref, "/") + 1
+	pos += strings.IndexAny(ref[pos:], ":@")
+	if (ref[pos] == '@') && !strings.ContainsRune(ref[pos+1:], ':') {
+		return reference.ErrDigestInvalidFormat
+	}
+	if err := r.FromNameTag(ref[:pos], ref[pos+1:]); err != nil {
+		return err
 	}
 
-	named, err := reference.ParseNamed(s[:pos])
-	if err != nil {
-		return nil, err
-	}
-
-	if strings.HasPrefix(tag, "(") && strings.HasSuffix(tag, ")") {
-		pl, err := pl.ParseString(tag)
-		if err != nil {
-			return nil, fmt.Errorf("invalid pipeline: %w", err)
-		}
-
-		return &refNamedPipelineTagged{
-			Named:    named,
-			tag:      tag,
-			pipeline: pl,
-		}, nil
-	} else {
-		return reference.WithTag(named, tag)
-	}
+	return nil
 }
 
-func asRefNamedPipelineTagged(ref reference.NamedTagged) *refNamedPipelineTagged {
-	pl_ref, ok := ref.(*refNamedPipelineTagged)
-	if ok {
-		return pl_ref
+func (r *ImageReference) unmarshalYamlMap(node *yaml.Node) error {
+	var ref struct {
+		Name string
+		Tag  string
+		As   string
+	}
+	if err := node.Decode(&ref); err != nil {
+		return err
+	}
+	if err := r.FromNameTag(ref.Name, ref.Tag); err != nil {
+		return err
 	}
 
-	fn, _ := pl.NewFn("pass", ref.Tag())
+	r.Alias = ref.As
 
-	return &refNamedPipelineTagged{
-		Named:    ref,
-		tag:      ref.Tag(),
-		pipeline: pl.NewPl(fn),
-	}
+	return nil
 }
 
-// AsRefNamedPipelineTagged returns reference implements RefNamedPipelineTagged by creating
-// pass-only pipeline that passes tag string of given reference.
-func AsRefNamedPipelineTagged(ref reference.NamedTagged) RefNamedPipelineTagged {
-	return asRefNamedPipelineTagged(ref)
+func (r *ImageReference) UnmarshalYAML(node *yaml.Node) error {
+	switch node.Kind {
+	case yaml.ScalarNode:
+		return r.unmarshalYamlScalar(node)
+
+	case yaml.MappingNode:
+		return r.unmarshalYamlMap(node)
+	}
+
+	return &yaml.TypeError{Errors: []string{"must be string or map"}}
+}
+
+type ResolvedImageReference struct {
+	reference.NamedTagged
+	Alias string
 }

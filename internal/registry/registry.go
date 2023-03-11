@@ -1,10 +1,10 @@
 package registry
 
 import (
-	"os"
-
 	"github.com/distribution/distribution/v3"
 	"github.com/distribution/distribution/v3/reference"
+	"github.com/distribution/distribution/v3/registry/api/errcode"
+	v2 "github.com/distribution/distribution/v3/registry/api/v2"
 )
 
 type Blob struct {
@@ -33,7 +33,7 @@ func NewRegistry() *Registry {
 func (r *Registry) Repository(named reference.Named) (distribution.Repository, error) {
 	repo, ok := r.Repos[named.Name()]
 	if !ok {
-		return nil, os.ErrNotExist
+		return nil, errcode.Errors{v2.ErrorCodeNameUnknown}
 	}
 
 	return repo, nil

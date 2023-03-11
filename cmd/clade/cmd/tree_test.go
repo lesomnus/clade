@@ -101,7 +101,7 @@ func TestTreeCmd(t *testing.T) {
 				buff := new(bytes.Buffer)
 
 				svc := cmd.NewCmdService()
-				svc.Sink = buff
+				svc.Out = buff
 				flags := cmd.TreeFlags{
 					RootFlags: &cmd.RootFlags{
 						PortsPath: ports,
@@ -155,7 +155,8 @@ func TestTreeCmd(t *testing.T) {
 			c.SetOutput(io.Discard)
 			c.SetArgs([]string{"cr.io/somewhere/not-exists:tag"})
 			err := c.Execute()
-			require.ErrorContains(err, "not-exists:tag not found")
+			require.ErrorContains(err, "not-exists:tag")
+			require.ErrorContains(err, "not found")
 		})
 	})
 }

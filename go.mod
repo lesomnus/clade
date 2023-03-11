@@ -6,7 +6,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/distribution/distribution v2.8.1+incompatible
 	github.com/distribution/distribution/v3 v3.0.0-20221119093643-85d4039064cc
-	github.com/lesomnus/boolal v0.0.0-20221111154606-4c829ae3c1e7
+	github.com/lesomnus/boolal v0.0.0-20230222155629-b1bfa0fe498e
 	github.com/lesomnus/pl v0.0.0-20221106105300-04535031e29b
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/rs/zerolog v1.28.0

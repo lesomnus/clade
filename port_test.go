@@ -1,100 +1,142 @@
 package clade_test
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
-	ba "github.com/lesomnus/boolal"
 	"github.com/lesomnus/clade"
+	"github.com/lesomnus/pl"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 )
 
 func TestPortUnmarshalYAML(t *testing.T) {
-	t.Run("well formed", func(t *testing.T) {
+	t.Run(".name", func(t *testing.T) {
 		require := require.New(t)
 
 		var port clade.Port
-		err := yaml.Unmarshal([]byte(`
-name: cr.io/foo/bar
-args:
-  USERNAME: hypnos 
-
-dockerfile: ./path/to/dockerfile
-context: ./../ctx
-platform: x & y | z
-
-images:
-  - tags: [a, b, c]
-    from: hub.io/foo/bar:a
-
-  - platform: a | b & c
-`), &port)
-
+		err := yaml.Unmarshal([]byte("name: cr.io/repo/name"), &port)
 		require.NoError(err)
-		require.Equal("cr.io/foo/bar", port.Name.String())
+		require.Equal("cr.io/repo/name", port.Name.String())
+	})
 
-		require.Contains(port.Args, "USERNAME")
-		require.Equal("hypnos", port.Args["USERNAME"])
+	t.Run(".images", func(t *testing.T) {
+		t.Run("can have empty value", func(t *testing.T) {
+			require := require.New(t)
 
-		require.Equal("./path/to/dockerfile", port.Dockerfile)
-		require.Equal("./../ctx", port.ContextPath)
-		require.Equal(ba.And("x", "y").Or("z"), port.Platform)
+			var port clade.Port
+			err := yaml.Unmarshal([]byte(`
+name: cr.io/repo/name
+images:
+  - 
+`), &port)
+			require.NoError(err)
+			require.Len(port.Images, 1)
+			require.Nil(port.Images[0])
+		})
 
-		require.Len(port.Images, 2)
-		require.Equal("cr.io/foo/bar", port.Images[0].Name())
+		t.Run("`.skip` is true if `$.skip` is true", func(t *testing.T) {
+			require := require.New(t)
 
-		tags := make([]string, len(port.Images[0].Tags))
-		for i, tag := range port.Images[0].Tags {
-			tags[i] = tag.String()
-		}
-		require.ElementsMatch([]string{"a", "b", "c"}, tags)
+			var port clade.Port
+			err := yaml.Unmarshal([]byte(`
+name: cr.io/repo/name
+images:
+  - skip: false
+`), &port)
+			require.NoError(err)
+			require.Len(port.Images, 1)
+			require.False(port.Images[0].Skip)
 
-		require.Equal("hub.io/foo/bar:a", port.Images[0].From.String())
-		require.Contains(port.Images[0].Args, "USERNAME")
-		require.Equal("hypnos", port.Images[0].Args["USERNAME"].String())
-		require.Empty(port.Images[0].Dockerfile)
-		require.Empty(port.Images[0].ContextPath)
+			err = yaml.Unmarshal([]byte(`
+name: cr.io/repo/name
+skip: true
+images:
+  - skip: false
+`), &port)
+			require.NoError(err)
+			require.Len(port.Images, 1)
+			require.True(port.Images[0].Skip)
+		})
 
-		require.Equal(ba.And("x", "y").Or("z"), port.Images[0].Platform)
-		require.Equal(ba.Or("a", "b").And("c"), port.Images[1].Platform)
+		t.Run("`.platform` will be set by `$.platform` if it is empty", func(t *testing.T) {
+			require := require.New(t)
+
+			var port clade.Port
+			err := yaml.Unmarshal([]byte(`
+name: cr.io/repo/name
+images:
+  - platform: foo
+`), &port)
+			require.NoError(err)
+			require.Len(port.Images, 1)
+			require.NotNil(port.Images[0].Platform)
+			require.Equal("foo", port.Images[0].Platform.Lhs.Var)
+
+			err = yaml.Unmarshal([]byte(`
+name: cr.io/repo/name
+platform: bar
+images:
+  - name: cr.io/repo/baz
+`), &port)
+			require.NoError(err)
+			require.Len(port.Images, 1)
+			require.Equal("bar", port.Images[0].Platform.Lhs.Var)
+		})
+
+		t.Run("`.args` is merged from `$.args`", func(t *testing.T) {
+			require := require.New(t)
+
+			var port clade.Port
+			err := yaml.Unmarshal([]byte(`
+name: cr.io/repo/name
+args:
+  keyA: valA
+  keyB: valB
+images:
+  - args:
+      keyB: valFoo
+      keyC: valC
+`), &port)
+			require.NoError(err)
+			require.Len(port.Images, 1)
+			require.Len(port.Images[0].Args, 3)
+			require.Contains(port.Images[0].Args, "keyA")
+			require.Contains(port.Images[0].Args, "keyB")
+			require.Contains(port.Images[0].Args, "keyC")
+			require.Equal(*(*clade.Pipeline)(pl.NewPl(must(pl.NewFn("pass", "valA")))), port.Images[0].Args["keyA"])
+			require.Equal(*(*clade.Pipeline)(pl.NewPl(must(pl.NewFn("pass", "valFoo")))), port.Images[0].Args["keyB"], "no overwrite")
+			require.Equal(*(*clade.Pipeline)(pl.NewPl(must(pl.NewFn("pass", "valC")))), port.Images[0].Args["keyC"])
+
+		})
 	})
 
 	t.Run("fails if", func(t *testing.T) {
 		tcs := []struct {
-			desc  string
-			input string
-			msgs  []string
+			desc string
+			data string
+			msgs []string
 		}{
 			{
-				desc:  "invalid port format",
-				input: "args: [SpongeBob SquarePants]",
-				msgs:  []string{"seq", "map[string]string"},
+				desc: "not a map",
+				data: "string",
+				msgs: []string{"string"},
 			},
 			{
-				desc:  "name not string",
-				input: "name:\n  - Somnus",
-				msgs:  []string{"seq", "string"},
-			},
-			{
-				desc:  "name is invalid reference format",
-				input: "name: no/domain",
-				msgs:  []string{"repo", "canonical"},
-			},
-			{
-				desc:  "platform is invalid syntax",
-				input: "name: cr.io/foo/bar\nplatform: x && y || z",
-				msgs:  []string{"platform:"},
+				desc: "name is invalid",
+				data: `{"name": "not_canonical"}`,
+				msgs: []string{"canonical"},
 			},
 		}
 		for _, tc := range tcs {
 			t.Run(tc.desc, func(t *testing.T) {
 				require := require.New(t)
 
-				var port clade.Port
-				err := yaml.Unmarshal([]byte(tc.input), &port)
+				var actual clade.Port
+				err := yaml.Unmarshal([]byte(tc.data), &actual)
 				for _, msg := range tc.msgs {
 					require.ErrorContains(err, msg)
 				}
@@ -200,18 +242,83 @@ images:
 	port, err := clade.ReadPort(tmp.Name())
 	require.NoError(err)
 	require.Len(port.Images, 2)
-	require.Equal(port.Images[0].From.String(), "hub.io/foo/bar:baz")
-	require.Equal(port.Images[1].From.String(), "hub.io/foo/bar:basterds")
+	require.Equal("hub.io/foo/bar", port.Images[0].From.Primary.String())
+	require.Equal((*clade.Pipeline)(pl.NewPl(must(pl.NewFn("pass", "baz")))), port.Images[0].From.Primary.Tag)
+	require.Equal("hub.io/foo/bar", port.Images[1].From.Primary.String())
+	require.Equal((*clade.Pipeline)(pl.NewPl(must(pl.NewFn("pass", "basterds")))), port.Images[1].From.Primary.Tag)
 
 	require.Equal(filepath.Join(dir, "Dockerfile"), port.Images[0].Dockerfile, "default dockerfile is {path}/Dockerfile")
 	require.Equal(filepath.Join(dir, "."), port.Images[0].ContextPath, "default context is {path}")
 	require.Contains(port.Images[0].Args, "YEAR", "root args are inherited")
-	require.Equal("1995", port.Images[0].Args["YEAR"].String(), "root args are inherited")
+	require.Equal(*(*clade.Pipeline)(pl.NewPl(must(pl.NewFn("pass", "1995")))), port.Images[0].Args["YEAR"], "root args are inherited")
 
 	require.Equal(port.Images[1].Dockerfile, filepath.Join(dir, "35mm Nitrate Film"))
 	require.Equal(port.Images[1].ContextPath, filepath.Join(dir, "Le Gamaar cinema"))
 	require.Contains(port.Images[1].Args, "YEAR")
-	require.Equal("2009", port.Images[1].Args["YEAR"].String())
+	require.Equal(*(*clade.Pipeline)(pl.NewPl(must(pl.NewFn("pass", "2009")))), port.Images[1].Args["YEAR"])
 	require.Contains(port.Images[1].Args, "VILLAIN")
-	require.Equal("Hans Landa", port.Images[1].Args["VILLAIN"].String())
+	require.Equal(*(*clade.Pipeline)(pl.NewPl(must(pl.NewFn("pass", "Hans Landa")))), port.Images[1].Args["VILLAIN"])
+}
+
+func TestReadPortsFromFs(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("reads port.yaml for each directory", func(t *testing.T) {
+		require := require.New(t)
+
+		tmp := t.TempDir()
+
+		// Make valid port directory.
+		err := os.Mkdir(filepath.Join(tmp, "foo"), 0755)
+		require.NoError(err)
+
+		err = os.WriteFile(
+			filepath.Join(tmp, "foo", "port.yaml"),
+			[]byte(`name: ghcr.io/repo/name`),
+			0644)
+		require.NoError(err)
+
+		// Directory without port.yaml.
+		err = os.Mkdir(filepath.Join(tmp, "bar"), 0755)
+		require.NoError(err)
+
+		err = os.WriteFile(filepath.Join(tmp, "bar", "secrets"), []byte("Frank Moses"), 0644)
+		require.NoError(err)
+
+		// A file.
+		err = os.WriteFile(filepath.Join(tmp, "baz"), []byte("Sarah Ross"), 0644)
+		require.NoError(err)
+
+		ports, err := clade.ReadPortsFromFs(ctx, tmp)
+		require.NoError(err)
+		require.Len(ports, 1)
+	})
+
+	t.Run("fails if directory not exists", func(t *testing.T) {
+		require := require.New(t)
+
+		_, err := clade.ReadPortsFromFs(ctx, "/not exists")
+		require.ErrorIs(err, os.ErrNotExist)
+	})
+
+	t.Run("fails if port.yaml is invalid", func(t *testing.T) {
+		require := require.New(t)
+
+		tmp := t.TempDir()
+
+		// Make valid port directory.
+		err := os.Mkdir(filepath.Join(tmp, "foo"), 0755)
+		require.NoError(err)
+
+		err = os.WriteFile(
+			filepath.Join(tmp, "foo", "port.yaml"),
+			[]byte(`name: invalid name`),
+			0644)
+		require.NoError(err)
+
+		_, err = clade.ReadPortsFromFs(ctx, tmp)
+		require.ErrorContains(err, filepath.Join(tmp, "foo", "port.yaml"))
+		require.ErrorContains(err, "name")
+		require.ErrorContains(err, "invalid")
+	})
 }

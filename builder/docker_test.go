@@ -124,7 +124,7 @@ func TestDockerCmdBuild(t *testing.T) {
 			Named:       named,
 			Tags:        []string{"tag"},
 			ContextPath: ".",
-			Platform:    boolal.Or("os", "arch"),
+			Platform:    (*clade.BoolAlgebra)(boolal.Or("os", "arch")),
 		}, builder.BuildOption{
 			DerefId: "foo",
 			Stdout:  &o,
@@ -150,7 +150,7 @@ func TestDockerCmdBuild(t *testing.T) {
 			Named:       named,
 			Tags:        []string{"tag"},
 			ContextPath: ".",
-			Platform:    boolal.Or("os", "arch"),
+			Platform:    (*clade.BoolAlgebra)(boolal.Or("os", "arch")),
 		}, builder.BuildOption{
 			DerefId: "foo",
 			Stdout:  &o,
@@ -176,7 +176,7 @@ func TestDockerCmdBuild(t *testing.T) {
 			Named:       named,
 			Tags:        []string{"tag"},
 			ContextPath: ".",
-			Platform:    boolal.And("os", "arch"),
+			Platform:    (*clade.BoolAlgebra)(boolal.And("os", "arch")),
 		}, builder.BuildOption{
 			Stdout: &o,
 			Stderr: io.Discard,
@@ -200,7 +200,7 @@ func TestDockerCmdBuild(t *testing.T) {
 			Named:       named,
 			Tags:        []string{"foo", "bar"},
 			ContextPath: ".",
-			Platform:    boolal.And("os", "arch"),
+			Platform:    (*clade.BoolAlgebra)(boolal.And("os", "arch")),
 		}, builder.BuildOption{
 			Stdout: &o,
 			Stderr: io.Discard,
@@ -229,7 +229,7 @@ func TestDockerCmdBuild(t *testing.T) {
 				"answer": "42",
 			},
 			ContextPath: ".",
-			Platform:    boolal.And("os", "arch"),
+			Platform:    (*clade.BoolAlgebra)(boolal.And("os", "arch")),
 		}, builder.BuildOption{
 			Stdout: &o,
 			Stderr: io.Discard,

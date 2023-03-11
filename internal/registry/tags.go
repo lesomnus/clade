@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/distribution/distribution/v3"
+	"github.com/distribution/distribution/v3/registry/api/errcode"
+	v2 "github.com/distribution/distribution/v3/registry/api/v2"
 	"golang.org/x/exp/maps"
 )
 
@@ -14,7 +16,7 @@ type TagService struct {
 func (s *TagService) Get(ctx context.Context, tag string) (distribution.Descriptor, error) {
 	desc, ok := s.Repo.Storage.Tags[tag]
 	if !ok {
-		return distribution.Descriptor{}, ErrNotExists
+		return distribution.Descriptor{}, errcode.Errors{v2.ErrorCodeManifestUnknown}
 	}
 
 	return desc, nil

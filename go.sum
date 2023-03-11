@@ -172,8 +172,8 @@ github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORN
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0 h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
-github.com/lesomnus/boolal v0.0.0-20221111154606-4c829ae3c1e7 h1:aF+SRMyyHx2R8RiFoRyl6r2qrJ1yEMTZ/g+L125qDDM=
-github.com/lesomnus/boolal v0.0.0-20221111154606-4c829ae3c1e7/go.mod h1:nXbVOs99AaHXcQBL8uA4HmRRrCswRdCIGk87pcmn13o=
+github.com/lesomnus/boolal v0.0.0-20230222155629-b1bfa0fe498e h1:C34edyCTBgstqo189V+4SzmgUNbP2wzFufXFLf7iCds=
+github.com/lesomnus/boolal v0.0.0-20230222155629-b1bfa0fe498e/go.mod h1:nXbVOs99AaHXcQBL8uA4HmRRrCswRdCIGk87pcmn13o=
 github.com/lesomnus/pl v0.0.0-20221106105300-04535031e29b h1:HtxIqUdpAUgsaEVJmpH8MbPn+pyWvyfv0fAj0LESwDE=
 github.com/lesomnus/pl v0.0.0-20221106105300-04535031e29b/go.mod h1:KDd3PSIfEEMP2D1HII03jdoiRm30OcnV+zr7H11DjYI=
 github.com/mattn/go-colorable v0.1.12 h1:jF+Du6AlPIjs2BiUiQlKOX0rt3SujHxPnksPKZbaA40=

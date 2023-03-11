@@ -1,12 +1,7 @@
 package registry
 
 import (
-	"errors"
 	"fmt"
-)
-
-var (
-	ErrNotExists = errors.New("not exists")
 )
 
 type ErrorCode struct {
@@ -27,6 +22,7 @@ func (e *ErrorCodes) Error() string {
 	return fmt.Sprintf("%v", e.Errors)
 }
 
+// TODO use distribution/.../errcode
 var (
 	ErrCodeBlobUnknown         = ErrorCode{Code: "BLOB_UNKNOWN", Message: "blob unknown to registry"}
 	ErrCodeBlobUploadInvalid   = ErrorCode{Code: "BLOB_UPLOAD_INVALID", Message: "blob upload invalid"}

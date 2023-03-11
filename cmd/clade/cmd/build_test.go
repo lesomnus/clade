@@ -8,7 +8,7 @@ import (
 	"github.com/lesomnus/clade"
 	"github.com/lesomnus/clade/builder"
 	"github.com/lesomnus/clade/cmd/clade/cmd"
-	"github.com/lesomnus/clade/cmd/clade/cmd/internal/registry"
+	"github.com/lesomnus/clade/internal/registry"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,7 +35,7 @@ func TestBuildCmd(t *testing.T) {
 		repo.PopulateImageWithTag("12.2")
 
 		svc := cmd.NewCmdService()
-		svc.Sink = io.Discard
+		svc.Out = io.Discard
 		svc.RegistryClient = reg
 		flags := cmd.BuildFlags{
 			RootFlags: &cmd.RootFlags{
@@ -104,7 +104,7 @@ func TestBuildCmd(t *testing.T) {
 				require := require.New(t)
 
 				svc := cmd.NewCmdService()
-				svc.Sink = io.Discard
+				svc.Out = io.Discard
 				flags := cmd.BuildFlags{
 					RootFlags: &cmd.RootFlags{
 						PortsPath: ports,
@@ -114,6 +114,7 @@ func TestBuildCmd(t *testing.T) {
 				c := cmd.CreateBuildCmd(&flags, svc)
 				c.SetOutput(io.Discard)
 				c.SetArgs(tc.args)
+
 				err := c.Execute()
 				require.Error(err)
 
@@ -127,7 +128,7 @@ func TestBuildCmd(t *testing.T) {
 			require := require.New(t)
 
 			svc := cmd.NewCmdService()
-			svc.Sink = io.Discard
+			svc.Out = io.Discard
 			flags := cmd.BuildFlags{
 				RootFlags: &cmd.RootFlags{
 					PortsPath: "not-exists",

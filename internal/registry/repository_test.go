@@ -6,7 +6,7 @@ import (
 
 	"github.com/distribution/distribution/v3"
 	"github.com/distribution/distribution/v3/reference"
-	"github.com/lesomnus/clade/cmd/clade/cmd/internal/registry"
+	"github.com/lesomnus/clade/internal/registry"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/require"
 )
@@ -107,7 +107,7 @@ func TestTagService(t *testing.T) {
 		require := require.New(t)
 
 		_, err := ts.Get(ctx, "foo")
-		require.ErrorIs(err, registry.ErrNotExists)
+		require.ErrorContains(err, "unknown")
 
 		desc, _ := repo.PopulateManifest()
 		err = ts.Tag(ctx, "foo", desc)
@@ -126,7 +126,7 @@ func TestTagService(t *testing.T) {
 		require.NoError(err)
 
 		_, err = ts.Get(ctx, tagged.Tag())
-		require.ErrorIs(err, registry.ErrNotExists)
+		require.ErrorContains(err, "unknown")
 	}))
 
 	t.Run("All", test(func(t *testing.T, repo *registry.Repository, ts distribution.TagService) {

@@ -2,184 +2,274 @@ package cmd_test
 
 import (
 	"bytes"
-	"context"
-	"io"
+	"encoding/hex"
+	"os"
 	"testing"
 
 	"github.com/distribution/distribution/v3"
 	"github.com/distribution/distribution/v3/reference"
-	"github.com/distribution/distribution/v3/registry/api/errcode"
-	v2 "github.com/distribution/distribution/v3/registry/api/v2"
+	"github.com/lesomnus/clade"
 	"github.com/lesomnus/clade/cmd/clade/cmd"
+	"github.com/lesomnus/clade/internal/registry"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/require"
 )
 
-type LayerService struct {
-	cmd.Service
-	Layers map[string][]distribution.Descriptor
-}
-
-func (s *LayerService) GetLayer(ctx context.Context, named_tagged reference.NamedTagged) ([]distribution.Descriptor, error) {
-	layers, ok := s.Layers[named_tagged.String()]
-	if !ok {
-		errs := make(errcode.Errors, 1)
-		errs[0] = v2.ErrorCodeManifestUnknown
-		return nil, errs
-	}
-
-	return layers, nil
-}
-
 func TestOutdatedCmd(t *testing.T) {
-	ports := GenerateSamplePorts(t)
-
-	newLayers := func() map[string][]distribution.Descriptor {
-		return map[string][]distribution.Descriptor{
-			"registry.hub.docker.com/library/gcc:12.2": {
-				{Digest: digest.Digest("a")},
-			},
-			"ghcr.io/lesomnus/gcc:12.2": {
-				{Digest: digest.Digest("a")},
-				{Digest: digest.Digest("b")},
-			},
-			"ghcr.io/lesomnus/ffmpeg:4.4.1": {
-				{Digest: digest.Digest("a")},
-				{Digest: digest.Digest("b")},
-				{Digest: digest.Digest("f")},
-			},
-			"ghcr.io/lesomnus/pcl:1.11.1": {
-				{Digest: digest.Digest("a")},
-				{Digest: digest.Digest("b")},
-				{Digest: digest.Digest("c")},
-			},
-			"registry.hub.docker.com/library/node:19": {
-				{Digest: digest.Digest("a")},
-			},
-			"ghcr.io/lesomnus/node:19": {
-				{Digest: digest.Digest("a")},
-				{Digest: digest.Digest("b")},
-			},
-		}
-	}
-
 	tcs := []struct {
 		desc    string
-		args    []string
-		layers  map[string][]distribution.Descriptor
+		prepare func(t *testing.T) (*TmpPortDir, *registry.Registry)
 		include []string
 		exclude []string
 	}{
 		{
-			desc:   "prints nothing if all up-to-date",
-			layers: newLayers(),
-			exclude: []string{
-				"registry.hub.docker.com/library/gcc:12.2",
-				"ghcr.io/lesomnus/gcc:12.2",
-				"ghcr.io/lesomnus/pcl:1.11.1",
-				"registry.hub.docker.com/library/node:19",
-				"ghcr.io/lesomnus/node:19",
-			},
-		},
-		{
-			desc: "outdated if child does not have parent as base",
-			layers: (func() map[string][]distribution.Descriptor {
-				layers := newLayers()
-				layers["registry.hub.docker.com/library/node:19"][0].Digest = "a2"
-				return layers
-			})(),
-			include: []string{
-				"ghcr.io/lesomnus/node:19",
-			},
-			exclude: []string{
-				"registry.hub.docker.com/library/gcc:12.2",
-				"ghcr.io/lesomnus/gcc:12.2",
-				"ghcr.io/lesomnus/pcl:1.11.1",
-				"registry.hub.docker.com/library/node:19",
-			},
-		},
-		{
-			desc: "child image of outdated image is not printed",
-			layers: (func() map[string][]distribution.Descriptor {
-				layers := newLayers()
-				layers["registry.hub.docker.com/library/gcc:12.2"][0].Digest = "a2"
-				return layers
-			})(),
-			include: []string{
-				"ghcr.io/lesomnus/gcc:12.2",
-			},
-			exclude: []string{
-				"registry.hub.docker.com/library/gcc:12.2",
-				"ghcr.io/lesomnus/pcl:1.11.1",
-				"registry.hub.docker.com/library/node:19",
-				"ghcr.io/lesomnus/node:19",
-			},
-		},
-		{
-			desc: "outdated if layer manifest does not eixsts",
-			layers: (func() map[string][]distribution.Descriptor {
-				layers := newLayers()
-				delete(layers, "ghcr.io/lesomnus/pcl:1.11.1")
-				return layers
-			})(),
-			include: []string{
-				"ghcr.io/lesomnus/pcl:1.11.1",
-			},
-			exclude: []string{
-				"registry.hub.docker.com/library/gcc:12.2",
-				"ghcr.io/lesomnus/gcc:12.2",
-				"registry.hub.docker.com/library/node:19",
-				"ghcr.io/lesomnus/node:19",
-			},
-		},
-		{
-			desc:   "skipped image is not printed",
-			layers: newLayers(),
-			exclude: []string{
-				`ghcr.io/lesomnus/skipped:42`,
-				`ghcr.io/lesomnus/skipped-child:36`,
-			},
-		},
-		{
-			desc: "--all flag prints all images including skipped images",
-			layers: (func() map[string][]distribution.Descriptor {
-				layers := newLayers()
-				layers["ghcr.io/lesomnus/skipped:42"] = []distribution.Descriptor{
-					{Digest: digest.Digest("a")},
-					{Digest: digest.Digest("b")},
-					{Digest: digest.Digest("s")},
-				}
+			desc: "not outdated if image has same layers with its base",
+			prepare: func(t *testing.T) (*TmpPortDir, *registry.Registry) {
+				require := require.New(t)
 
-				return layers
-			})(),
-			args: []string{"--all"},
-			include: []string{
-				`ghcr.io/lesomnus/skipped-child:36`,
+				ports := NewTmpPortDir(t)
+				ports.AddRaw("foo", `
+name: cr.io/repo/foo
+images:
+  - tags: [1]
+    from: cr.io/repo/bar:1`)
+
+				reg := registry.NewRegistry()
+
+				foo, err := reference.ParseNamed("cr.io/repo/foo")
+				require.NoError(err)
+
+				foo_repo := reg.NewRepository(foo)
+				foo_desc, foo_manif := foo_repo.PopulateManifest()
+				foo_repo.Storage.Tags["1"] = foo_desc
+
+				bar, err := reference.ParseNamed("cr.io/repo/bar")
+				require.NoError(err)
+
+				bar_repo := reg.NewRepository(bar)
+				bar_desc, bar_manif := bar_repo.PopulateManifest()
+				bar_repo.Storage.Tags["1"] = bar_desc
+
+				foo_manif.Layers = append([]distribution.Descriptor{}, bar_manif.Layers...)
+				foo_manif.Layers = append(foo_manif.Layers, distribution.Descriptor{Digest: digest.FromBytes([]byte("baz"))})
+
+				return ports, reg
+			},
+			exclude: []string{
+				"cr.io/repo/foo:1",
+				"cr.io/repo/bar:1",
+			},
+		},
+		{
+			desc: "outdated if image has different layers with its base",
+			prepare: func(t *testing.T) (*TmpPortDir, *registry.Registry) {
+				require := require.New(t)
+
+				ports := NewTmpPortDir(t)
+				ports.AddRaw("foo", `
+name: cr.io/repo/foo
+images:
+  - tags: [1]
+    from: cr.io/repo/bar:1`)
+
+				reg := registry.NewRegistry()
+
+				foo, err := reference.ParseNamed("cr.io/repo/foo")
+				require.NoError(err)
+
+				foo_repo := reg.NewRepository(foo)
+				foo_repo.Storage.Tags["1"], _ = foo_repo.PopulateManifest()
+
+				bar, err := reference.ParseNamed("cr.io/repo/bar")
+				require.NoError(err)
+
+				bar_repo := reg.NewRepository(bar)
+				bar_repo.Storage.Tags["1"], _ = bar_repo.PopulateManifest()
+
+				return ports, reg
+			},
+			include: []string{"cr.io/repo/foo:1"},
+			exclude: []string{"cr.io/repo/bar:1"},
+		},
+		{
+			desc: "not outdated if deref ID not changed",
+			prepare: func(t *testing.T) (*TmpPortDir, *registry.Registry) {
+				require := require.New(t)
+
+				ports := NewTmpPortDir(t)
+				ports.AddRaw("foo", `
+name: cr.io/repo/foo
+images:
+  - tags: [1]
+    from: cr.io/repo/bar:1`)
+
+				reg := registry.NewRegistry()
+
+				foo, err := reference.ParseNamed("cr.io/repo/foo")
+				require.NoError(err)
+
+				foo_repo := reg.NewRepository(foo)
+				foo_desc, foo_manif := foo_repo.PopulateOciManifest()
+				foo_repo.Storage.Tags["1"] = foo_desc
+
+				bar, err := reference.ParseNamed("cr.io/repo/bar")
+				require.NoError(err)
+
+				bar_repo := reg.NewRepository(bar)
+				bar_desc, _ := bar_repo.PopulateManifest()
+				bar_repo.Storage.Tags["1"] = bar_desc
+
+				dgst, err := hex.DecodeString(bar_desc.Digest.Encoded())
+				require.NoError(err)
+
+				foo_manif.Annotations[clade.AnnotationDerefId] = clade.CalcDerefId(dgst)
+
+				return ports, reg
+			},
+			exclude: []string{
+				"cr.io/repo/foo:1",
+				"cr.io/repo/bar:1",
+			},
+		},
+		{
+			desc: "outdated is checked by layers if deref ID is not annotated in OCI image",
+			prepare: func(t *testing.T) (*TmpPortDir, *registry.Registry) {
+				require := require.New(t)
+
+				ports := NewTmpPortDir(t)
+				ports.AddRaw("foo", `
+name: cr.io/repo/foo
+images:
+  - tags: [1]
+    from: cr.io/repo/bar:1`)
+
+				reg := registry.NewRegistry()
+
+				foo, err := reference.ParseNamed("cr.io/repo/foo")
+				require.NoError(err)
+
+				foo_repo := reg.NewRepository(foo)
+				foo_repo.Storage.Tags["1"], _ = foo_repo.PopulateOciManifest()
+
+				bar, err := reference.ParseNamed("cr.io/repo/bar")
+				require.NoError(err)
+
+				bar_repo := reg.NewRepository(bar)
+				bar_repo.Storage.Tags["1"], _ = bar_repo.PopulateOciManifest()
+
+				return ports, reg
+			},
+			include: []string{"cr.io/repo/foo:1"},
+			exclude: []string{"cr.io/repo/bar:1"},
+		},
+		{
+			desc: "outdated if the image is not exists",
+			prepare: func(t *testing.T) (*TmpPortDir, *registry.Registry) {
+				require := require.New(t)
+
+				ports := NewTmpPortDir(t)
+				ports.AddRaw("foo", `
+name: cr.io/repo/foo
+images:
+  - tags: [1]
+    from: cr.io/repo/bar:1`)
+
+				reg := registry.NewRegistry()
+
+				bar, err := reference.ParseNamed("cr.io/repo/bar")
+				require.NoError(err)
+
+				bar_repo := reg.NewRepository(bar)
+				bar_repo.Storage.Tags["1"], _ = bar_repo.PopulateOciManifest()
+
+				return ports, reg
+			},
+			include: []string{"cr.io/repo/foo:1"},
+			exclude: []string{"cr.io/repo/bar:1"},
+		},
+		{
+			desc: "outdated if the tag is not exists",
+			prepare: func(t *testing.T) (*TmpPortDir, *registry.Registry) {
+				require := require.New(t)
+
+				ports := NewTmpPortDir(t)
+				ports.AddRaw("foo", `
+name: cr.io/repo/foo
+images:
+  - tags: [1]
+    from: cr.io/repo/bar:1`)
+
+				reg := registry.NewRegistry()
+
+				foo, err := reference.ParseNamed("cr.io/repo/foo")
+				require.NoError(err)
+
+				reg.NewRepository(foo)
+
+				bar, err := reference.ParseNamed("cr.io/repo/bar")
+				require.NoError(err)
+
+				bar_repo := reg.NewRepository(bar)
+				bar_repo.Storage.Tags["1"], _ = bar_repo.PopulateOciManifest()
+
+				return ports, reg
+			},
+			include: []string{"cr.io/repo/foo:1"},
+			exclude: []string{"cr.io/repo/bar:1"},
+		},
+		{
+			desc: "only first tag is printed",
+			prepare: func(t *testing.T) (*TmpPortDir, *registry.Registry) {
+				require := require.New(t)
+
+				ports := NewTmpPortDir(t)
+				ports.AddRaw("foo", `
+name: cr.io/repo/foo
+images:
+  - tags: [1, 2]
+    from: cr.io/repo/bar:1`)
+
+				reg := registry.NewRegistry()
+
+				foo, err := reference.ParseNamed("cr.io/repo/foo")
+				require.NoError(err)
+
+				reg.NewRepository(foo)
+
+				bar, err := reference.ParseNamed("cr.io/repo/bar")
+				require.NoError(err)
+
+				bar_repo := reg.NewRepository(bar)
+				bar_repo.Storage.Tags["1"], _ = bar_repo.PopulateOciManifest()
+
+				return ports, reg
+			},
+			include: []string{"cr.io/repo/foo:1"},
+			exclude: []string{
+				"cr.io/repo/foo:2",
+				"cr.io/repo/bar:1",
 			},
 		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.desc, func(t *testing.T) {
 			require := require.New(t)
-			buff := new(bytes.Buffer)
 
+			ports, reg := tc.prepare(t)
+
+			buff := new(bytes.Buffer)
 			svc := cmd.NewCmdService()
-			svc.Sink = buff
-			layer_svc := &LayerService{
-				Service: svc,
-				Layers:  tc.layers,
-			}
+			svc.Out = buff
+			svc.RegistryClient = reg
+
 			flags := cmd.OutdatedFlags{
 				RootFlags: &cmd.RootFlags{
-					PortsPath: ports,
+					PortsPath: ports.Dir,
 				},
 			}
 
-			c := cmd.CreateOutdatedCmd(&flags, layer_svc)
-			c.SetOut(io.Discard)
-			if tc.args != nil {
-				c.SetArgs(tc.args)
-			}
+			c := cmd.CreateOutdatedCmd(&flags, svc)
+			c.SetOut(os.Stderr)
 
 			err := c.Execute()
 			require.NoError(err)
@@ -193,46 +283,4 @@ func TestOutdatedCmd(t *testing.T) {
 			}
 		})
 	}
-
-	t.Run("fails if", func(t *testing.T) {
-		t.Run("ports directory does not exist", func(t *testing.T) {
-			require := require.New(t)
-
-			svc := cmd.NewCmdService()
-			flags := cmd.OutdatedFlags{
-				RootFlags: &cmd.RootFlags{
-					PortsPath: "not-exists",
-				},
-			}
-
-			c := cmd.CreateOutdatedCmd(&flags, svc)
-			c.SetOutput(io.Discard)
-			err := c.Execute()
-			require.ErrorContains(err, "no such file or directory")
-		})
-
-		t.Run("manifests of top-level image does not exist", func(t *testing.T) {
-			require := require.New(t)
-
-			svc := cmd.NewCmdService()
-			svc.Sink = io.Discard
-			layer_svc := &LayerService{
-				Service: svc,
-				Layers:  newLayers(),
-			}
-			flags := cmd.OutdatedFlags{
-				RootFlags: &cmd.RootFlags{
-					PortsPath: ports,
-				},
-			}
-
-			delete(layer_svc.Layers, "registry.hub.docker.com/library/gcc:12.2")
-
-			c := cmd.CreateOutdatedCmd(&flags, layer_svc)
-			c.SetOutput(io.Discard)
-			err := c.Execute()
-			require.ErrorContains(err, "failed to get layers of")
-			require.ErrorContains(err, "registry.hub.docker.com/library/gcc:12.2")
-		})
-	})
 }

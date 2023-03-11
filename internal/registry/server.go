@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/distribution/distribution/v3/reference"
+	"github.com/distribution/distribution/v3/registry/api/errcode"
+	v2 "github.com/distribution/distribution/v3/registry/api/v2"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/require"
 )
@@ -131,7 +133,7 @@ func (s *Server) handleRoot(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	ecs, ok := err.(*ErrorCodes)
+	ecs, ok := err.(*errcode.Errors)
 	if !ok {
 		res.WriteHeader(http.StatusInternalServerError)
 		return
@@ -170,9 +172,13 @@ func (s *Server) handleManifests(res http.ResponseWriter, req *http.Request, rep
 		if err == nil {
 			dgst = desc.Digest
 		} else {
-			if errors.Is(err, ErrNotExists) {
-				res.WriteHeader(http.StatusNotFound)
-				return false, NewErrorCodes(ErrCodeManifestUnknown)
+			if errs, ok := err.(errcode.Errors); ok {
+				for _, err := range errs {
+					if errors.Is(err, v2.ErrorCodeManifestUnknown) {
+						res.WriteHeader(http.StatusNotFound)
+						return false, NewErrorCodes(ErrCodeManifestUnknown)
+					}
+				}
 			}
 
 			return false, err
@@ -181,9 +187,13 @@ func (s *Server) handleManifests(res http.ResponseWriter, req *http.Request, rep
 
 	manif, err := ms.Get(ctx, dgst)
 	if err != nil {
-		if errors.Is(err, ErrNotExists) {
-			res.WriteHeader(http.StatusNotFound)
-			return false, NewErrorCodes(ErrCodeManifestUnknown)
+		if errs, ok := err.(errcode.Errors); ok {
+			for _, err := range errs {
+				if errors.Is(err, v2.ErrorCodeManifestUnknown) {
+					res.WriteHeader(http.StatusNotFound)
+					return false, NewErrorCodes(ErrCodeManifestUnknown)
+				}
+			}
 		}
 
 		return false, err
@@ -210,9 +220,13 @@ func (s *Server) handleTagsList(res http.ResponseWriter, req *http.Request, repo
 	ctx := req.Context()
 	tags, err := repo.Tags(ctx).All(ctx)
 	if err != nil {
-		if errors.Is(err, ErrNotExists) {
-			res.WriteHeader(http.StatusNotFound)
-			return false, NewErrorCodes(ErrCodeManifestUnknown)
+		if errs, ok := err.(errcode.Errors); ok {
+			for _, err := range errs {
+				if errors.Is(err, v2.ErrorCodeManifestUnknown) {
+					res.WriteHeader(http.StatusNotFound)
+					return false, NewErrorCodes(ErrCodeManifestUnknown)
+				}
+			}
 		}
 
 		return false, err
