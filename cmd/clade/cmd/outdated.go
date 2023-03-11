@@ -203,8 +203,10 @@ func isOutdated(ctx context.Context, reg Namespace, node *graph.Node[*clade.Reso
 			}
 
 			for _, err := range errs {
+				ec := errcode.Error{}
 				// How to distinguish between no existence and permission denied?
-				if errors.Is(err, v2.ErrorCodeManifestUnknown) ||
+				if (errors.As(err, &ec) && ec.Code == v2.ErrorCodeManifestUnknown) ||
+					errors.Is(err, v2.ErrorCodeManifestUnknown) ||
 					errors.Is(err, v2.ErrorCodeNameUnknown) ||
 					errors.Is(err, errcode.ErrorCodeDenied) {
 					return true, nil
