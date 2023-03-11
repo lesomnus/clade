@@ -8,6 +8,7 @@ import (
 	"github.com/distribution/distribution/v3/reference"
 	"github.com/lesomnus/clade"
 	"github.com/lesomnus/clade/graph"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
@@ -21,6 +22,8 @@ func CreatePlanCmd(flags *PlanFlags, svc Service) *cobra.Command {
 		Short: "Make build plan",
 
 		RunE: func(cmd *cobra.Command, args []string) error {
+			l := log.Ctx(cmd.Context())
+
 			bg := clade.NewBuildGraph()
 			if err := svc.LoadBuildGraphFromFs(cmd.Context(), bg, flags.PortsPath); err != nil {
 				return fmt.Errorf("load ports: %w", err)
@@ -40,12 +43,10 @@ func CreatePlanCmd(flags *PlanFlags, svc Service) *cobra.Command {
 					scanner.Split(bufio.ScanWords)
 
 					for scanner.Scan() {
-						ref_args = append(ref_args, scanner.Text())
+						ref_arg := scanner.Text()
+						l.Info().Str("reference", ref_arg).Msg("parse from input stream")
+						ref_args = append(ref_args, ref_arg)
 					}
-				}
-
-				if len(ref_args) == 0 {
-					return fmt.Errorf("no references are input")
 				}
 
 				refs = make([]reference.NamedTagged, 0, len(ref_args))
@@ -74,8 +75,20 @@ func CreatePlanCmd(flags *PlanFlags, svc Service) *cobra.Command {
 					return fmt.Errorf(`put "%s": %w`, node.Key(), err)
 				}
 
-				for _, next := range node.Next {
-					return visit(next)
+				for _, tag := range node.Value.Tags {
+					ref, err := reference.WithTag(node.Value.Named, tag)
+					if err != nil {
+						panic(fmt.Sprintf(`"%s" must have valid tag: %s`, node.Value.Name(), err.Error()))
+					}
+
+					sibling, ok := bg.Get(ref.String())
+					if !ok {
+						panic(fmt.Sprintf(`"%s", sibling of "%s", must be exist`, node.Key(), ref.String()))
+					}
+
+					for _, next := range sibling.Next {
+						return visit(next)
+					}
 				}
 
 				return nil

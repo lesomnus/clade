@@ -10,7 +10,7 @@ on:
         type: boolean
       log-level:
         description: Log level
-        required: true
+        required: false
         default: info
         type: choice
         options:
@@ -29,8 +29,8 @@ jobs:
     outputs:
       references: ${{ steps.outdated.outputs.references }}
     steps:
+      - uses: lesomnus/clade/init@ci/use-plan
       - uses: actions/checkout@v3
-      - uses: lesomnus/clade/init@main
 
       - name: Login GHCR
         uses: docker/login-action@v2
@@ -40,18 +40,26 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - id: outdated
-        uses: lesomnus/clade/outdated@main
+        uses: lesomnus/clade/outdated@ci/use-plan
         with:
           log-level: ${{ inputs.log-level || 'info' }}
 
       - name: Trigger
-        if: ${{ (github.event_name == 'schedule') || inputs.cascade }}
+        if: (github.event_name == 'schedule') || inputs.cascade
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          echo '${{ steps.outdated.outputs.references }}' | jq '.[]' | while read ref; do
-            gh workflow run clade-build.yaml \
+          if [ "$(cat ${{ steps.outdated.outputs.plan_name }} | jq '.iterations | length')" = "0" ]; then
+            echo no outdated images
+            return
+          fi
+
+          cat "${{ steps.outdated.outputs.plan-name }}" | jq -r '.iterations[0][][0]' | while read ref; do
+            echo trigger build for ${ref}
+            gh workflow run clade-iterate.yaml \
               --ref "${{ github.ref }}" \
+              --field "plan-name=${{ steps.outdated.outputs.plan-name }}" \
               --field "reference=${ref}" \
-              --field "cascade=true"
+              --field "cascade=true" \
+              --field "log-level=${{ inputs.log-level || 'info' }}"
           done

@@ -85,7 +85,6 @@ func CreateNextofCmd(flags *NextofFlags, svc Service) *cobra.Command {
 
 					is_next_coll := false
 					for _, base_ref := range node.Value.From.All() {
-						fmt.Printf("base_ref.String(): %v\n", base_ref.String())
 						is_next_coll = slices.Contains(coll_curr, base_ref.String())
 						if is_next_coll {
 							break

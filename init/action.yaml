@@ -39,15 +39,12 @@ runs:
         CLADE_CACHE_DIR_PREV="${CLADE_CACHE_DIR}/${_DATE_PREV}"
         CLADE_CACHE_DIR_CURR="${CLADE_CACHE_DIR}/${_DATE_CURR}"
 
-        echo ${CLADE_CACHE_DIR_PREV}
-        echo ${CLADE_CACHE_DIR_CURR}
+        echo "CLADE_CACHE_DIR_PREV=${CLADE_CACHE_DIR_PREV}" | tee -a $GITHUB_ENV
+        echo "CLADE_CACHE_DIR_CURR=${CLADE_CACHE_DIR_CURR}" | tee -a $GITHUB_ENV
+        echo "CLADE_CACHE_DIR=${CLADE_CACHE_DIR}"           | tee -a $GITHUB_ENV
 
-        echo "CLADE_CACHE_DIR_PREV=${CLADE_CACHE_DIR_PREV}" >> $GITHUB_ENV
-        echo "CLADE_CACHE_DIR_CURR=${CLADE_CACHE_DIR_CURR}" >> $GITHUB_ENV
-        echo "CLADE_CACHE_DIR=${CLADE_CACHE_DIR}"           >> $GITHUB_ENV
-
-        echo "CLADE_CI_DATE_PREV=${_DATE_PREV}" >> $GITHUB_ENV
-        echo "CLADE_CI_DATE_CURR=${_DATE_CURR}" >> $GITHUB_ENV
+        echo "CLADE_CI_DATE_PREV=${_DATE_PREV}" | tee -a $GITHUB_ENV
+        echo "CLADE_CI_DATE_CURR=${_DATE_CURR}" | tee -a $GITHUB_ENV
 
     - uses: actions/cache@v3
       with:
