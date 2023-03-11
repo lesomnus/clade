@@ -26,8 +26,6 @@ on:
 jobs:
   outdated:
     runs-on: ubuntu-22.04
-    outputs:
-      references: ${{ steps.outdated.outputs.references }}
     steps:
       - uses: lesomnus/clade/init@main
       - uses: actions/checkout@v3
