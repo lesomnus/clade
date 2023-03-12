@@ -41,7 +41,7 @@ registry.hub.docker.com/library/gcc:latest
         ghcr.io/my_name/my-gcc:my-tag
 ```
 
-Good. But this is the most basic usage of *CLade*.
+This is the most basic usage of *CLade*.
 How can we create a new image with that version name whenever a new version of GCC is updated? Probably the simplest way would be to populate a list of `images` for all versions. Alternatively, there is a way to have *CLade* fetch tags from the remote repository. Updates our *Port* file as:
 
 ```yaml
@@ -52,7 +52,7 @@ images:
   - tags: ( printf "%d.%d" $.Major $.Minor )
     from:
       name: registry.hub.docker.com/library/gcc
-      tag: ( tags | semverLatest )
+      tagd: ( tags | semverLatest )
 ```
 
 ```sh
@@ -75,7 +75,7 @@ images:
       - ( printf "%d"    $.Major         )
     from:
       name: registry.hub.docker.com/library/gcc
-      tag: ( tags | semverMajorN 1 )
+      tags: ( tags | semverMajorN 1 )
 ```
 
 ```sh
@@ -125,6 +125,6 @@ $ clade build --dry-run ghcr.io/my_name/my-gcc:12
 
 ## Materials
 
-- More examples of *Port* file → [ports](ports)
-- Full *Port* file reference → [docs/port.md](docs/port.md)
-- Available pipeline functions → [docs/pipeline-functions.md](docs/pipeline-functions.md)
+- More examples of *Port* file → [ports](/ports)
+- Full *Port* file reference → [docs/port.md](/docs/port.md)
+- Available pipeline functions → [docs/pipeline-functions.md](/docs/pipeline-functions.md)
