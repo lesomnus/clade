@@ -1,79 +1,142 @@
 {
 	"title": "CLade Port",
-	"type": "object",
-	"properties": {
-		"name": {
-			"type": "string"
+	"allOf": [
+		{
+			"$ref": "#/$defs/image-base-properties"
 		},
+		{
+			"type": "object",
+			"properties": {
+				"name": {
+					"description": "Name of the image this port describe",
+					"type": "string"
+				},
+				"images": {
+					"type": "array",
+					"items": {
+						"description": "Description of the image to build",
+						"allOf": [
+							{
+								"$ref": "#/$defs/image-base-properties"
+							},
+							{
+								"type": "object",
+								"properties": {
+									"tags": {
+										"description": "Tag of the image",
+										"type": "array",
+										"items": {
+											"type": "string"
+										}
+									},
+									"from": {
+										"oneOf": [
+											{
+												"description": "Canonical name of the base image",
+												"type": "string"
+											},
+											{
+												"type": "object",
+												"properties": {
+													"name": {
+														"description": "Name of the base image",
+														"type": "string"
+													},
+													"tags": {
+														"description": "Tag of the base image",
+														"type": "string"
+													},
+													"with": {
+														"type": "array",
+														"items": {
+															"oneOf": [
+																{
+																	"description": "Canonical name of the base image",
+																	"type": "string"
+																},
+																{
+																	"type": "object",
+																	"properties": {
+																		"name": {
+																			"description": "Name of the base image",
+																			"type": "string"
+																		},
+																		"tag": {
+																			"description": "Tag of the base image",
+																			"type": "string"
+																		},
+																		"as": {
+																			"description": "Alias of the base image that can be referenced during build",
+																			"type": "string"
+																		}
+																	},
+																	"required": [
+																		"name",
+																		"tag"
+																	]
+																}
+															]
+														}
+													}
+												},
+												"required": [
+													"name",
+													"tags"
+												]
+											}
+										]
+									}
+								},
+								"required": [
+									"tags",
+									"from"
+								]
+							}
+						]
+					}
+				}
+			},
+			"required": [
+				"name",
+				"images"
+			]
+		}
+	],
+	"$defs": {
 		"args": {
-			"$ref": "#/$defs/args"
+			"description": "Variables passed when building the image",
+			"type": "object",
+			"additionalProperties": {
+				"type": "string"
+			}
 		},
 		"dockerfile": {
+			"description": "Path to Dockerfile to use for the build",
 			"type": "string"
 		},
 		"context": {
+			"description": "Path to build context",
 			"type": "string"
 		},
-		"images": {
-			"type": "array",
+		"platform": {
+			"description": "Boolean expression indicating on which platform it can be built",
+			"type": "string"
+		},
+		"image-base-properties": {
+			"type": "object",
 			"properties": {
-				"tags": {
-					"type": "array",
-					"items": {
-						"type": "string"
-					}
-				},
-				"from": {
-					"oneOf": [
-						{
-							"type": "string"
-						},
-						{
-							"type": "object",
-							"properties": {
-								"name": {
-									"type": "string"
-								},
-								"tag": {
-									"type": "string"
-								}
-							}
-						}
-					]
-				},
 				"args": {
 					"$ref": "#/$defs/args"
 				},
 				"dockerfile": {
-					"type": "string"
+					"$ref": "#/$defs/dockerfile"
 				},
 				"context": {
-					"type": "string"
+					"$ref": "#/$defs/context"
 				},
 				"platform": {
-					"type": "string"
+					"$ref": "#/$defs/platform"
 				}
-			}
-		}
-	},
-	"$defs": {
-		"args": {
-			"type": "object",
-			"additionalProperties": {
-				"oneOf": [
-					{
-						"type": "boolean"
-					},
-					{
-						"type": "integer"
-					},
-					{
-						"type": "number"
-					},
-					{
-						"type": "string"
-					}
-				]
 			}
 		}
 	}
