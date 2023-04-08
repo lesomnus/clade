@@ -1,0 +1,14 @@
+name: ghcr.io/lesomnus/dev-pcl
+
+args:
+  CMAKE_VERSION: "3.24.2"
+
+images:
+  - tags:
+      - "1.13"
+      - "1.13.0"
+    from:
+      name: ghcr.io/lesomnus/dev-vtk
+      tags: "9.2.0"
+    args:
+      VCPKG_REF: "344b1d9608abc7d6f4834c9c3a18e042bfb161de"
