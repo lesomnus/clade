@@ -26,6 +26,7 @@ RUN apt-get update \
 		less \
 		jq \
 		lsb-release \
+		software-properties-common \
 		apt-transport-https \
 		dialog \
 		libc6 \
@@ -35,6 +36,7 @@ RUN apt-get update \
 		libicu[0-9][0-9] \
 		liblttng-ust0 \
 		libstdc++6 \
+		make \
 		zlib1g \
 		locales \
 		sudo \
@@ -52,6 +54,10 @@ RUN apt-get update \
 	&& rm -rf /var/lib/apt/lists/* \
 	&& echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
 	&& locale-gen
+
+RUN curl -s https://apt.llvm.org/llvm.sh | bash -s all \
+	&& apt-get clean --yes \
+	&& rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
 	&& apt-get install --yes --no-install-recommends \
@@ -76,13 +82,11 @@ WORKDIR /home/${USERNAME}
 RUN apt-get update \
 	&& apt-get install --no-install-recommends --yes \
 		gdb \
-		build-essential \
 		pkg-config \
 		ninja-build \
 		doxygen \
 		graphviz \
 		gcovr \
-		clang-tidy \
 	&& apt-get clean --yes \
 	&& rm -rf /var/lib/apt/lists/*
 
