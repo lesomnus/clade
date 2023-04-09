@@ -1,7 +1,7 @@
-name: ghcr.io/lesomnus/dev-gcc
+name: ghcr.io/lesomnus/dev-cpp
 
 args:
-  CMAKE_VERSION: "3.24.2"
+  CMAKE_VERSION: "3.26.3"
 
 images:
   - tags:
