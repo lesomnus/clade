@@ -1,9 +1,0 @@
-name: ghcr.io/lesomnus/dev-ffmpeg
-
-platform: amd64
-
-images:
-  - tags: ["4.4.1", "4.4", "4"]
-    from: ghcr.io/lesomnus/dev-gcc:( tags | semverLatest )
-    args:
-      VCPKG_REF: "2022.08.15"
