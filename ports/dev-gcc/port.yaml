@@ -1,4 +1,4 @@
-name: ghcr.io/lesomnus/dev-cpp
+name: ghcr.io/lesomnus/dev-gcc
 
 args:
   CMAKE_VERSION: "3.26.3"
