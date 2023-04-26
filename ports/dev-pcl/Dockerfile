@@ -1,6 +1,16 @@
 ARG BASE
 FROM ${BASE}
 
+RUN apt-get update \
+	&& apt-get install --yes --no-install-recommends \
+		libxmu-dev \
+		libxi-dev \
+		libxt-dev \
+		libgl-dev \
+		libgl1-mesa-dev \
+	&& apt-get clean --yes \
+	&& rm -rf /var/lib/apt/lists/*
+
 
 
 ARG USERNAME=hypnos
