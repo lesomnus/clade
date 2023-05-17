@@ -1,0 +1,9 @@
+name: ghcr.io/lesomnus/dev-python
+
+images:
+  - tags:
+      - ( printf "%d.%d" $.Major $.Minor )
+      - ( printf "%d"    $.Major         )
+    from:
+      name: registry.hub.docker.com/library/python
+      tags: ( tags | semverFinalized | semverN 1 2 1 )
