@@ -27,7 +27,6 @@ RUN apk update \
 		krb5-libs \
 		libintl \
 		libssl1.1 \
-		lttng-ust \
 		tzdata \
 		userspace-rcu \
 		zlib \
