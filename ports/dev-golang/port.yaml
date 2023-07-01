@@ -7,11 +7,3 @@ images:
     from:
       name: registry.hub.docker.com/library/golang
       tags: ( tags | semverFinalized | semverN 1 2 1 )
-
-  - tags:
-      - ( printf "%d.%d-%s" $.Major $.Minor $.Pre[0] )
-      - ( printf "%d-%s"    $.Major         $.Pre[0] )
-    from:
-      name: registry.hub.docker.com/library/golang
-      tags: ( tags | regex ".+alpine$" | semverN 1 2 1 )
-    dockerfile: alpine.Dockerfile
