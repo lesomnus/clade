@@ -100,6 +100,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 		doxygen \
 		graphviz \
 		gcovr \
+		lcov \
 	&& cp "/root/.gdbinit" "/home/${USERNAME}/.gdbinit" \
 	&& chown ${USER_UID}:${USER_UID} "/home/${USERNAME}/.gdbinit"
 
