@@ -1,8 +1,13 @@
+# syntax=docker/dockerfile:1
 ARG BASE
 FROM ${BASE}
 
-RUN apt-get update \
-	&& apt-get install --yes --no-install-recommends \
+RUN rm -f /etc/apt/apt.conf.d/docker-clean; echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+	--mount=type=cache,target=/var/lib/apt,sharing=locked \
+	apt update \
+	&& apt-get install --no-install-recommends --yes \
 		apt-utils \
 		openssh-client \
 		gnupg2 \
@@ -49,20 +54,25 @@ RUN apt-get update \
 		zsh \
 		python3 \
 		pip \
-	&& apt-get clean --yes \
-	&& rm -rf /var/lib/apt/lists/* \
 	&& echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
 	&& locale-gen
+	
 
-RUN curl -s https://apt.llvm.org/llvm.sh | bash -s all \
-	&& apt-get clean --yes \
-	&& rm -rf /var/lib/apt/lists/*
 
-RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
-	&& apt-get install --yes --no-install-recommends \
-		nodejs \
-	&& apt-get clean --yes \
-	&& rm -rf /var/lib/apt/lists/*
+# Install LLVM.
+# https://github.com/llvm/llvm-project/issues/62475
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+	--mount=type=cache,target=/var/lib/apt,sharing=locked \
+	wget https://apt.llvm.org/llvm.sh \
+	&& chmod +x llvm.sh \
+	&& ./llvm.sh all || ./llvm.sh all
+
+# Install Node.js.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+	--mount=type=cache,target=/var/lib/apt,sharing=locked \
+	curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
+	&& apt-get install --no-install-recommends --yes \
+		nodejs
 
 
 
@@ -78,7 +88,11 @@ WORKDIR /home/${USERNAME}
 
 
 
-RUN apt-get update \
+# Install GCC related tools.
+COPY [".gdbinit", "/root"]
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+	--mount=type=cache,target=/var/lib/apt,sharing=locked \
+	apt update \
 	&& apt-get install --no-install-recommends --yes \
 		gdb \
 		pkg-config \
@@ -86,19 +100,14 @@ RUN apt-get update \
 		doxygen \
 		graphviz \
 		gcovr \
-	&& apt-get clean --yes \
-	&& rm -rf /var/lib/apt/lists/*
+	&& cp "/root/.gdbinit" "/home/${USERNAME}/.gdbinit" \
+	&& chown ${USER_UID}:${USER_UID} "/home/${USERNAME}/.gdbinit"
 
 
 
 # Install CMake
 ARG CMAKE_VERSION
-RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
-	&& case "${dpkgArch##*-}" in \
-		amd64) ARCH='x86_64';; \
-		arm64) ARCH='aarch64';; \
-		*) echo "unsupported architecture"; exit 1 ;; \
-	esac \
+RUN ARCH=$(dpkg-architecture --query DEB_HOST_GNU_CPU) \
 	&& TMP_DIR=$(mktemp -d -t cmake-${CMAKE_VERSION}-XXXX) \
 	&& echo "${TMP_DIR}" \
 	&& cd "${TMP_DIR}" \
@@ -135,3 +144,11 @@ RUN mkdir -p "${VCPKG_ROOT}" "${VCPKG_DOWNLOADS}" \
 		"${VCPKG_ROOT}/buildtrees" \
 		"${VCPKG_ROOT}/packages" \
 		"${VCPKG_DOWNLOADS}"/*
+
+RUN sudo -u "${USERNAME}" VCPKG_FORCE_SYSTEM_BINARIES=1 vcpkg install \
+		catch2 \
+	&& rm -rf \
+		"${VCPKG_ROOT}/buildtrees" \
+		"${VCPKG_ROOT}/packages" \
+		"${VCPKG_DOWNLOADS}"/*
+	

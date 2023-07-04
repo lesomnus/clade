@@ -1,5 +1,4 @@
 name: ghcr.io/lesomnus/dev-gcc
-skip: true
 
 args:
   CMAKE_VERSION: "3.26.3"
