@@ -1,6 +1,6 @@
-FROM ghcr.io/lesomnus/dev-docker:20
+FROM ghcr.io/lesomnus/dev-docker:24
 
-COPY --from=registry.hub.docker.com/library/golang:1.19 \
+COPY --from=registry.hub.docker.com/library/golang:1.21 \
 	/usr/local/go \
 	/usr/local/go
 
