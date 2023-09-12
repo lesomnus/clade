@@ -1,0 +1,12 @@
+*
+
+!go.mod
+!go.sum
+
+!builder
+!cmd
+!graph
+!internal
+!plf
+!sv
+!*.go
