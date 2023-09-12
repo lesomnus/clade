@@ -13,6 +13,7 @@ RUN go build -o "a" ./cmd/clade
 
 FROM debian:bookworm
 
+COPY --from=docker:24-dind "/usr/local/bin/docker" "/usr/local/bin/docker"
 COPY --from=builder "/app/a" "/usr/bin/clade"
 
 RUN rm -f /etc/apt/apt.conf.d/docker-clean; echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
