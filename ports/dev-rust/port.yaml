@@ -1,0 +1,9 @@
+name: ghcr.io/lesomnus/dev-rust
+
+images:
+  - tags:
+      - ( printf "%d.%d" $.Major $.Minor )
+      - ( printf "%d"    $.Major         )
+    from:
+      name: registry.hub.docker.com/library/rust
+      tags: ( tags | semverFinalized | semverN 2 2 0 )
