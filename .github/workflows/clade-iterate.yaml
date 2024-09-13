@@ -36,7 +36,7 @@ jobs:
     outputs:
       references: ${{ steps.find-group.outputs.references }}
     steps:
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         if: inputs.plan-name != ''
         with:
           path: ${{ inputs.plan-name }}
@@ -64,7 +64,7 @@ jobs:
         reference: ${{ fromJson(needs.setup.outputs.references) }}
     steps:
       - uses: lesomnus/clade/init@main
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: docker/setup-qemu-action@v2
       - uses: docker/setup-buildx-action@v2
@@ -91,7 +91,7 @@ jobs:
     if: inputs.cascade
     steps:
       - uses: lesomnus/clade/init@main
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Plan
         id: plan
@@ -105,7 +105,7 @@ jobs:
 
           echo "plan-name=${_PLAN_NAME}" | tee -a "$GITHUB_OUTPUT"
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: ${{ steps.plan.outputs.plan-name }}
           key: clade-${{ steps.plan.outputs.plan-name }}

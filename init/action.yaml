@@ -10,7 +10,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         repository: lesomnus/clade
         ref: ${{ inputs.ref }}
@@ -46,12 +46,12 @@ runs:
         echo "CLADE_CI_DATE_PREV=${_DATE_PREV}" | tee -a $GITHUB_ENV
         echo "CLADE_CI_DATE_CURR=${_DATE_CURR}" | tee -a $GITHUB_ENV
 
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       with:
         path: ${{ env.CLADE_CACHE_DIR_PREV }}
         key: clade-cache-${{ env.CLADE_CI_DATE_PREV }}
 
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       with:
         path: ${{ env.CLADE_CACHE_DIR_CURR }}
         key: clade-cache-${{ env.CLADE_CI_DATE_CURR }}

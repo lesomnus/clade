@@ -24,7 +24,7 @@ runs:
 
         echo "plan-name=${_PLAN_NAME}" | tee -a "$GITHUB_OUTPUT"
 
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       with:
         path: ${{ steps.outdated.outputs.plan-name }}
         key: clade-${{ steps.outdated.outputs.plan-name }}
