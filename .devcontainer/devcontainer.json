@@ -6,10 +6,14 @@
 	"runArgs": [
 		"--privileged"
 	],
-	"extensions": [
-		"ms-azuretools.vscode-docker",
-		"golang.go",
-		"streetsidesoftware.code-spell-checker"
-	],
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-azuretools.vscode-docker",
+				"golang.go",
+				"streetsidesoftware.code-spell-checker"
+			],
+		}
+	},
 	"postStartCommand": "nohup bash -c 'sudo dockerd-entrypoint.sh dockerd --group hypnos &' > ~/.dockerd.log 2>&1"
 }

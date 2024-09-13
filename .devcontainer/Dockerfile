@@ -4,8 +4,13 @@ COPY --from=registry.hub.docker.com/library/golang:1.21 \
 	/usr/local/go \
 	/usr/local/go
 
-ENV GOPATH=/home/hypnos/go
-ENV PATH $GOPATH/bin:$PATH
+ENV GOPATH=/go
+ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
+
+RUN mkdir -p \
+		"$GOPATH/src" \
+		"$GOPATH/bin" \
+	&& chmod -R 1777 "$GOPATH"
 
 
 
