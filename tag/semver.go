@@ -2,7 +2,6 @@ package tag
 
 import (
 	"fmt"
-	"regexp"
 	"sort"
 
 	"github.com/Masterminds/semver/v3"
@@ -17,19 +16,19 @@ func init() {
 //
 //	target:
 //	  kind: semver
-//	  last-major: 2   # keep the latest 2 major lines (0 = all)
-//	  last-minor: 3   # keep the latest 3 minor lines per major (0 = all)
-//	  match: "-alpine$" # only consider tags matching this regexp (optional)
+//	  last-major: 2     # keep the latest 2 major lines (0 = all)
+//	  last-minor: 3     # keep the latest 3 minor lines per major (0 = all)
+//	  pre-release: alpine # only tags with this exact semver pre-release
 type semverConfig struct {
-	LastMajor int    `yaml:"last-major"`
-	LastMinor int    `yaml:"last-minor"`
-	Match     string `yaml:"match"`
+	LastMajor  int    `yaml:"last-major"`
+	LastMinor  int    `yaml:"last-minor"`
+	PreRelease string `yaml:"pre-release"`
 }
 
 type semverSelector struct {
-	lastMajor int
-	lastMinor int
-	match     *regexp.Regexp
+	lastMajor  int
+	lastMinor  int
+	preRelease string
 }
 
 func newSemver(params []byte) (Selector, error) {
@@ -38,15 +37,11 @@ func newSemver(params []byte) (Selector, error) {
 		return nil, fmt.Errorf("decode semver target: %w", err)
 	}
 
-	s := &semverSelector{lastMajor: cfg.LastMajor, lastMinor: cfg.LastMinor}
-	if cfg.Match != "" {
-		re, err := regexp.Compile(cfg.Match)
-		if err != nil {
-			return nil, fmt.Errorf("compile match %q: %w", cfg.Match, err)
-		}
-		s.match = re
-	}
-	return s, nil
+	return &semverSelector{
+		lastMajor:  cfg.LastMajor,
+		lastMinor:  cfg.LastMinor,
+		preRelease: cfg.PreRelease,
+	}, nil
 }
 
 type semverTag struct {
@@ -60,12 +55,12 @@ func (s *semverSelector) Select(tags []string) ([]Matched, error) {
 	// Collapse to the newest version per (major, minor) line.
 	lines := map[[2]uint64]semverTag{}
 	for _, t := range tags {
-		if s.match != nil && !s.match.MatchString(t) {
-			continue
-		}
 		v, err := semver.NewVersion(t)
 		if err != nil {
 			continue // ignore tags that are not semver
+		}
+		if v.Prerelease() != s.preRelease {
+			continue // keep only the exact pre-release ("" = none)
 		}
 
 		key := [2]uint64{v.Major(), v.Minor()}

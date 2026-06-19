@@ -16,7 +16,7 @@
 //	    kind: semver
 //	    last-major: 2
 //	    last-minor: 3
-//	    match: "-alpine$"
+//	    pre-release: alpine
 //	build:
 //	  repo: my-registry/my-image/golang-dev
 //	  tag: "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine"

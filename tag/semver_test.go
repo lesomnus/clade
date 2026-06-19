@@ -49,9 +49,12 @@ func TestSemverCollapsesToLatestPatch(t *testing.T) {
 	}
 }
 
-func TestSemverMatch(t *testing.T) {
-	tags := []string{"1.21.0", "1.21.0-alpine", "1.20.0-alpine", "1.22.0"}
-	matched := selectTags(t, "kind: semver\nmatch: \"-alpine$\"\n", tags)
+func TestSemverPreReleaseSelectsExactMatch(t *testing.T) {
+	tags := []string{
+		"1.21.0", "1.21.0-alpine", "1.21.0-alpine3.20",
+		"1.20.0-alpine", "1.22.0", "1.22.0-rc.1-alpine",
+	}
+	matched := selectTags(t, "kind: semver\npre-release: alpine\n", tags)
 
 	got := tagsOf(matched)
 	want := []string{"1.21.0-alpine", "1.20.0-alpine"}
@@ -60,8 +63,19 @@ func TestSemverMatch(t *testing.T) {
 	}
 }
 
+func TestSemverDefaultExcludesPreRelease(t *testing.T) {
+	tags := []string{"1.21.0", "1.21.0-alpine", "1.22.0-rc.1", "1.20.0-bookworm"}
+	matched := selectTags(t, "kind: semver\n", tags)
+
+	got := tagsOf(matched)
+	want := []string{"1.21.0"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("selected = %v, want %v", got, want)
+	}
+}
+
 func TestSemverDataRendersTemplate(t *testing.T) {
-	matched := selectTags(t, "kind: semver\n", []string{"1.22.3-alpine"})
+	matched := selectTags(t, "kind: semver\npre-release: alpine\n", []string{"1.22.3-alpine"})
 	if len(matched) != 1 {
 		t.Fatalf("got %d matches", len(matched))
 	}

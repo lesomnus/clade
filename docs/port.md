@@ -21,7 +21,7 @@ parent:
     kind: semver
     last-major: 1
     last-minor: 2
-    match: "-alpine$"
+    pre-release: alpine
 build:
   kind: build
   repo: ghcr.io/me/golang-dev
@@ -48,23 +48,24 @@ The upstream image to track.
 | --- | --- |
 | `last-major` | Keep this many of the newest major lines. `0` (default) keeps all. |
 | `last-minor` | Keep this many of the newest minor lines within each kept major. `0` (default) keeps all. |
-| `match` | A [RE2](https://github.com/google/re2/wiki/Syntax) regular expression. Only tags matching it are considered. |
+| `pre-release` | Keep only tags whose semver [pre-release](https://semver.org/#spec-item-9) is *exactly* this. Empty (default) keeps only plain releases with no pre-release. |
 
 Selection works as follows:
 
-1. Filter tags by `match` (if set).
-2. Parse each with semver; tags that do not parse are ignored. Partial versions
-   are accepted (`1.22` is treated as `1.22.0`).
+1. Parse each tag with semver; tags that do not parse are ignored. Partial
+   versions are accepted (`1.22` is treated as `1.22.0`).
+2. Keep tags whose pre-release exactly equals `pre-release` (empty by default).
 3. Collapse to the newest version per `(major, minor)` line.
 4. Keep the newest `last-major` major lines, and within each, the newest
    `last-minor` minor lines.
 
-So `last-major: 1, last-minor: 2, match: "-alpine$"` against a golang repo keeps
-the two newest minor lines of the newest major, alpine variants only.
+So `last-major: 1, last-minor: 2, pre-release: alpine` against a golang repo
+keeps the two newest minor lines of the newest major, `-alpine` variants only.
 
-> **Note.** Tags are matched as plain strings, so `match: "-alpine$"` also
-> matches pre-release tags such as `1.27-rc-alpine`, and non-semver schemes
-> (e.g. date tags) can parse in surprising ways. Constrain `match` accordingly.
+> **Note.** The match is exact, so `pre-release: alpine` selects `1.22.3-alpine`
+> but **not** `1.22.3-alpine3.20` (pre-release `alpine3.20`) nor
+> `1.24.0-rc.3-alpine` (pre-release `rc.3-alpine`). Likewise the default empty
+> value excludes every pre-release, e.g. `-rc.1`, `-bookworm`, `-windowsservercore-*`.
 
 The selected version is exposed to the `build.tag` template (see below).
 
