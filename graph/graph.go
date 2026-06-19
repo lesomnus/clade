@@ -11,7 +11,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"strings"
 	"text/template"
 
@@ -85,13 +84,10 @@ func (b *Builder) Build(ctx context.Context, ports []*port.Port) (*cladev1.Graph
 			}
 
 			node := &cladev1.Node{
-				Id:         target_ref,
-				Base:       base_ref,
-				Port:       p.Dir,
-				Dockerfile: filepath.Join(p.Dir, "Dockerfile"),
-				Context:    p.Dir,
-				Args:       map[string]string{"BASE": base_ref},
-				Image:      &cladev1.Image{Repo: p.Build.Repo, Tag: target_tag},
+				Id:    target_ref,
+				Base:  base_ref,
+				Port:  p.Dir,
+				Image: &cladev1.Image{Repo: p.Build.Repo, Tag: target_tag},
 			}
 			if parent, ok := node_by_id[base_ref]; ok {
 				node.Parents = []string{parent.Id}

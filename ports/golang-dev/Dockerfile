@@ -3,4 +3,7 @@
 ARG BASE
 FROM ${BASE}
 
+ARG EXTRA_TOOLS=""
+RUN if [ -n "${EXTRA_TOOLS}" ]; then apk add --no-cache ${EXTRA_TOOLS}; fi
+
 RUN go version

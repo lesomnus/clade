@@ -46,13 +46,41 @@ type Parent struct {
 	Target Target `yaml:"target"`
 }
 
-// Build declares how the produced image is named.
+// Build declares how the produced image is named and which build strategy
+// produces it. Strategy-specific options (Dockerfile, context, platforms,
+// cache, ...) are kept as raw YAML in Params and decoded by the builder of the
+// selected Kind, so this package stays independent of any build backend.
 type Build struct {
 	// Repo is the destination repository to push to.
-	Repo string `yaml:"repo"`
+	Repo string
 	// Tag is a Go text/template rendered with the data of each selected
 	// upstream tag, e.g. "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine".
-	Tag string `yaml:"tag"`
+	Tag string
+	// Kind names the build strategy, e.g. "build" (docker buildx build) or
+	// "bake" (docker buildx bake). Empty means the default.
+	Kind string
+	// Params is the raw YAML of the whole build mapping (including the fields
+	// above), passed to the builder factory.
+	Params []byte
+}
+
+// UnmarshalYAML implements goccy/go-yaml's BytesUnmarshaler. It extracts the
+// fields needed to build the graph and keeps the raw node for the builder.
+func (b *Build) UnmarshalYAML(data []byte) error {
+	var head struct {
+		Repo string `yaml:"repo"`
+		Tag  string `yaml:"tag"`
+		Kind string `yaml:"kind"`
+	}
+	if err := yaml.Unmarshal(data, &head); err != nil {
+		return fmt.Errorf("decode build: %w", err)
+	}
+
+	b.Repo = head.Repo
+	b.Tag = head.Tag
+	b.Kind = head.Kind
+	b.Params = data
+	return nil
 }
 
 // Target is the tag selection spec. The concrete selection strategy is

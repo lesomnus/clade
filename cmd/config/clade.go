@@ -15,6 +15,13 @@ type CacheConfig struct {
 	TTL string `yaml:"ttl"`
 }
 
+// BuildConfig configures how images are built. The build strategy itself is
+// selected per port via build.kind in port.yaml.
+type BuildConfig struct {
+	// Docker is the docker binary to invoke (default "docker").
+	Docker string `yaml:"docker"`
+}
+
 // CompareConfig selects the outdated-comparison strategy. The strategy specific
 // parameters are kept as raw YAML so the compare package can decode them.
 type CompareConfig struct {

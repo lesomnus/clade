@@ -1,0 +1,81 @@
+name: refresh
+
+# Periodically checks upstream images, computes the graph of outdated build
+# targets, caches it, and dispatches a build.yaml run for each target in
+# topological order (parents before children).
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * *" # daily at 06:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      # JSON array of node ids (target references) in topological order.
+      targets: ${{ steps.outdated.outputs.targets }}
+      count: ${{ steps.outdated.outputs.count }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # Persist registry metadata across runs to conserve rate limits.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/clade
+          key: clade-cache-${{ github.run_id }}
+          restore-keys: clade-cache-
+
+      - run: go build -o /usr/local/bin/clade .
+
+      - name: Compute outdated graph
+        id: outdated
+        run: |
+          clade outdated --format json > graph.json
+          cat graph.json | jq .
+          targets=$(jq -c '[(.nodes // [])[].id]' graph.json)
+          count=$(jq '(.nodes // []) | length' graph.json)
+          echo "targets=${targets}" >> "$GITHUB_OUTPUT"
+          echo "count=${count}" >> "$GITHUB_OUTPUT"
+          echo "found ${count} outdated target(s)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: graph
+          path: graph.json
+
+  dispatch:
+    needs: plan
+    if: needs.plan.outputs.count != '0'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write # required to dispatch build.yaml
+    steps:
+      - name: Dispatch builds in topological order
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF: ${{ github.ref_name }}
+          TARGETS: ${{ needs.plan.outputs.targets }}
+        run: |
+          # Dispatch each build sequentially and wait for it to finish before
+          # the next, so an internal base is pushed before its dependents build.
+          echo "$TARGETS" | jq -r '.[]' | while read -r node; do
+            echo "::group::build ${node}"
+            gh workflow run build.yaml --ref "$REF" -f node="$node"
+
+            # `gh workflow run` does not return the run id; wait for the new run
+            # to register, then watch it (failing the loop on a failed build).
+            sleep 10
+            run_id=$(gh run list \
+              --workflow build.yaml --branch "$REF" --event workflow_dispatch \
+              --limit 1 --json databaseId --jq '.[0].databaseId')
+            gh run watch "$run_id" --exit-status
+            echo "::endgroup::"
+          done

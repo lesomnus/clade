@@ -104,7 +104,9 @@ func (x *Image) GetLabels() map[string]string {
 	return nil
 }
 
-// Node is a buildable target image in the dependency graph.
+// Node is a buildable target image in the dependency graph. How it is built
+// (Dockerfile, context, buildx options, ...) is read from the port's port.yaml
+// at build time, so only the identity and dependency information is carried here.
 type Node struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Stable identifier of the node; the target reference "repo:tag".
@@ -114,20 +116,14 @@ type Node struct {
 	// Reference of the upstream (base) image, "repo:tag".
 	// Passed to the build as the BASE build argument.
 	Base string `protobuf:"bytes,3,opt,name=base,proto3" json:"base,omitempty"`
-	// Directory of the port that produces this image (contains Dockerfile + context).
+	// Directory of the port that produces this image.
 	Port string `protobuf:"bytes,4,opt,name=port,proto3" json:"port,omitempty"`
-	// Path to the Dockerfile relative to the repository root.
-	Dockerfile string `protobuf:"bytes,5,opt,name=dockerfile,proto3" json:"dockerfile,omitempty"`
-	// Build context directory.
-	Context string `protobuf:"bytes,6,opt,name=context,proto3" json:"context,omitempty"`
-	// Build arguments, including BASE.
-	Args map[string]string `protobuf:"bytes,7,rep,name=args,proto3" json:"args,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// Node ids of internal parents (i.e. bases that are themselves built by clade).
 	// Empty when the base is an external upstream image.
-	Parents []string `protobuf:"bytes,8,rep,name=parents,proto3" json:"parents,omitempty"`
+	Parents []string `protobuf:"bytes,5,rep,name=parents,proto3" json:"parents,omitempty"`
 	// True when the target image is out of date with respect to its base
 	// (missing, older, or an ancestor is outdated).
-	Outdated      bool `protobuf:"varint,9,opt,name=outdated,proto3" json:"outdated,omitempty"`
+	Outdated      bool `protobuf:"varint,6,opt,name=outdated,proto3" json:"outdated,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -188,27 +184,6 @@ func (x *Node) GetPort() string {
 		return x.Port
 	}
 	return ""
-}
-
-func (x *Node) GetDockerfile() string {
-	if x != nil {
-		return x.Dockerfile
-	}
-	return ""
-}
-
-func (x *Node) GetContext() string {
-	if x != nil {
-		return x.Context
-	}
-	return ""
-}
-
-func (x *Node) GetArgs() map[string]string {
-	if x != nil {
-		return x.Args
-	}
-	return nil
 }
 
 func (x *Node) GetParents() []string {
@@ -284,22 +259,14 @@ const file_clade_v1_graph_proto_rawDesc = "" +
 	"\x06labels\x18\x05 \x03(\v2\x1b.clade.v1.Image.LabelsEntryR\x06labels\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xbc\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x9b\x01\n" +
 	"\x04Node\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12%\n" +
 	"\x05image\x18\x02 \x01(\v2\x0f.clade.v1.ImageR\x05image\x12\x12\n" +
 	"\x04base\x18\x03 \x01(\tR\x04base\x12\x12\n" +
-	"\x04port\x18\x04 \x01(\tR\x04port\x12\x1e\n" +
-	"\n" +
-	"dockerfile\x18\x05 \x01(\tR\n" +
-	"dockerfile\x12\x18\n" +
-	"\acontext\x18\x06 \x01(\tR\acontext\x12,\n" +
-	"\x04args\x18\a \x03(\v2\x18.clade.v1.Node.ArgsEntryR\x04args\x12\x18\n" +
-	"\aparents\x18\b \x03(\tR\aparents\x12\x1a\n" +
-	"\boutdated\x18\t \x01(\bR\boutdated\x1a7\n" +
-	"\tArgsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"-\n" +
+	"\x04port\x18\x04 \x01(\tR\x04port\x12\x18\n" +
+	"\aparents\x18\x05 \x03(\tR\aparents\x12\x1a\n" +
+	"\boutdated\x18\x06 \x01(\bR\boutdated\"-\n" +
 	"\x05Graph\x12$\n" +
 	"\x05nodes\x18\x01 \x03(\v2\x0e.clade.v1.NodeR\x05nodesB/Z-github.com/lesomnus/clade/pb/clade/v1;cladev1b\x06proto3"
 
@@ -315,26 +282,24 @@ func file_clade_v1_graph_proto_rawDescGZIP() []byte {
 	return file_clade_v1_graph_proto_rawDescData
 }
 
-var file_clade_v1_graph_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_clade_v1_graph_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_clade_v1_graph_proto_goTypes = []any{
 	(*Image)(nil),                 // 0: clade.v1.Image
 	(*Node)(nil),                  // 1: clade.v1.Node
 	(*Graph)(nil),                 // 2: clade.v1.Graph
 	nil,                           // 3: clade.v1.Image.LabelsEntry
-	nil,                           // 4: clade.v1.Node.ArgsEntry
-	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
+	(*timestamppb.Timestamp)(nil), // 4: google.protobuf.Timestamp
 }
 var file_clade_v1_graph_proto_depIdxs = []int32{
-	5, // 0: clade.v1.Image.created:type_name -> google.protobuf.Timestamp
+	4, // 0: clade.v1.Image.created:type_name -> google.protobuf.Timestamp
 	3, // 1: clade.v1.Image.labels:type_name -> clade.v1.Image.LabelsEntry
 	0, // 2: clade.v1.Node.image:type_name -> clade.v1.Image
-	4, // 3: clade.v1.Node.args:type_name -> clade.v1.Node.ArgsEntry
-	1, // 4: clade.v1.Graph.nodes:type_name -> clade.v1.Node
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	1, // 3: clade.v1.Graph.nodes:type_name -> clade.v1.Node
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_clade_v1_graph_proto_init() }
@@ -348,7 +313,7 @@ func file_clade_v1_graph_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_clade_v1_graph_proto_rawDesc), len(file_clade_v1_graph_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

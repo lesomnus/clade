@@ -7,5 +7,22 @@ parent:
     last-minor: 2 # keep the latest two minor lines of it
     match: "-alpine$" # only alpine variants
 build:
+  kind: build # "build" (docker buildx build) or "bake" (docker buildx bake)
   repo: ghcr.io/lesomnus/clade-golang-dev
   tag: "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine"
+
+  # Everything below is decoded by the selected build kind and is optional.
+  # BASE is injected automatically (e.g. docker.io/library/golang:1.22.3-alpine).
+  dockerfile: Dockerfile
+  context: .
+  platforms:
+    - linux/amd64
+    - linux/arm64
+  args:
+    EXTRA_TOOLS: "git make"
+  labels:
+    org.opencontainers.image.source: https://github.com/lesomnus/clade
+  cache-from:
+    - type=gha
+  cache-to:
+    - type=gha,mode=max

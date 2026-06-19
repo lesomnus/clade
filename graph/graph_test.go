@@ -91,9 +91,6 @@ func TestBuildGraph(t *testing.T) {
 	if b11.Base != "me.io/a:1.1.0" {
 		t.Errorf("b:1.1.0 base = %q, want me.io/a:1.1.0", b11.Base)
 	}
-	if b11.Args["BASE"] != "me.io/a:1.1.0" {
-		t.Errorf("b:1.1.0 BASE arg = %q", b11.Args["BASE"])
-	}
 	if len(b11.Parents) != 1 || b11.Parents[0] != "me.io/a:1.1.0" {
 		t.Errorf("b:1.1.0 parents = %v, want [me.io/a:1.1.0]", b11.Parents)
 	}
