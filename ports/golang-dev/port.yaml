@@ -1,0 +1,11 @@
+# Track the latest alpine-based golang upstreams and rebuild a dev image on top.
+parent:
+  repo: docker.io/library/golang
+  target:
+    kind: semver
+    last-major: 1 # keep the latest major line
+    last-minor: 2 # keep the latest two minor lines of it
+    match: "-alpine$" # only alpine variants
+build:
+  repo: ghcr.io/lesomnus/clade-golang-dev
+  tag: "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine"

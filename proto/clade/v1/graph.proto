@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package clade.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/lesomnus/clade/pb/clade/v1;cladev1";
+
+// Image is the metadata of a concrete tagged image as observed in a registry.
+message Image {
+  // Fully qualified repository, e.g. "docker.io/library/golang".
+  string repo = 1;
+  // Tag, e.g. "1.22.3-alpine".
+  string tag = 2;
+  // Manifest digest, e.g. "sha256:...". Empty if the image does not exist.
+  string digest = 3;
+  // Creation time as reported by the image config.
+  google.protobuf.Timestamp created = 4;
+  // Image config labels.
+  map<string, string> labels = 5;
+}
+
+// Node is a buildable target image in the dependency graph.
+message Node {
+  // Stable identifier of the node; the target reference "repo:tag".
+  string id = 1;
+  // Metadata of the target image. digest is empty when the target is absent.
+  Image image = 2;
+  // Reference of the upstream (base) image, "repo:tag".
+  // Passed to the build as the BASE build argument.
+  string base = 3;
+
+  // Directory of the port that produces this image (contains Dockerfile + context).
+  string port = 4;
+  // Path to the Dockerfile relative to the repository root.
+  string dockerfile = 5;
+  // Build context directory.
+  string context = 6;
+  // Build arguments, including BASE.
+  map<string, string> args = 7;
+
+  // Node ids of internal parents (i.e. bases that are themselves built by clade).
+  // Empty when the base is an external upstream image.
+  repeated string parents = 8;
+
+  // True when the target image is out of date with respect to its base
+  // (missing, older, or an ancestor is outdated).
+  bool outdated = 9;
+}
+
+// Graph is a serializable dependency graph of build target images.
+// Nodes are ordered topologically (parents before children).
+message Graph {
+  repeated Node nodes = 1;
+}

@@ -18,6 +18,13 @@ type Config struct {
 	Greet GreetConfig
 
 	Otel OtelConfig
+
+	// Ports is the directory that holds port definitions.
+	Ports string `yaml:"ports"`
+
+	Cache CacheConfig `yaml:"cache"`
+
+	Compare CompareConfig `yaml:"compare"`
 }
 
 func ReadFromFile(p string) (*Config, error) {
@@ -41,5 +48,8 @@ func (c *Config) Path() string {
 
 func (c *Config) Evaluate() error {
 	z.FallbackP(&c.Greet.Format, "Hello, %s!")
+	z.FallbackP(&c.Ports, "ports")
+	z.FallbackP(&c.Cache.TTL, "24h")
+	z.FallbackP(&c.Compare.Kind, "created")
 	return nil
 }
