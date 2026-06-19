@@ -47,6 +47,7 @@ RUN apt-get update \
 		zsh \
 		python3 \
 		pip \
+		tmux \
 	&& apt-get clean --yes \
 	&& rm -rf /var/lib/apt/lists/* \
 	&& echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
