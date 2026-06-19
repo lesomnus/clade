@@ -1,0 +1,10 @@
+/.devcontainer/
+/.git/
+/.github/
+/dist/
+
+/.dockerignore
+/.gitignore
+/docker-bake.hcl
+/docker-compose.yaml
+/clade.yaml
