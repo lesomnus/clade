@@ -53,11 +53,13 @@ parent:
     kind: semver
     last-major: 1
     last-minor: 2
-    match: "-alpine$"
+    pre-release: alpine
 build:
   kind: build
   repo: ghcr.io/me/golang-dev
-  tag: "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine"
+  tags:
+    - "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine"
+    - "{{.Major}}.{{.Minor}}-alpine"
 ```
 
 ```dockerfile

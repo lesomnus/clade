@@ -3,6 +3,10 @@
 	"dockerComposeFile": "docker-compose.yaml",
 	"service": "dev",
 	"workspaceFolder": "/workspace",
+	"runServices": [
+		"dev",
+		"claude"
+	],
 	"customizations": {
 		"vscode": {
 			"extensions": [

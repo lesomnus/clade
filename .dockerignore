@@ -7,4 +7,5 @@
 /.gitignore
 /docker-bake.hcl
 /docker-compose.yaml
+/clade
 /clade.yaml

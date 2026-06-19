@@ -19,7 +19,7 @@ func semverPort(dir, parentRepo, buildRepo string) *port.Port {
 			Repo:   parentRepo,
 			Target: port.Target{Kind: "semver", Params: []byte("kind: semver\n")},
 		},
-		Build: port.Build{Repo: buildRepo, Tag: "{{.Major}}.{{.Minor}}.{{.Patch}}"},
+		Build: port.Build{Repo: buildRepo, Tags: []string{"{{.Major}}.{{.Minor}}.{{.Patch}}"}},
 	}
 }
 
@@ -116,6 +116,68 @@ func TestBuildGraph(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestBuildMultiTag(t *testing.T) {
+	reg := registry.NewFake()
+	reg.Set("up.io/base:1.22.3", &registry.ImageInfo{Created: at(100)})
+	reg.Set("up.io/base:1.22.4", &registry.ImageInfo{Created: at(100)})
+	reg.Set("up.io/base:1.23.1", &registry.ImageInfo{Created: at(100)})
+
+	p := &port.Port{
+		Dir: "ports/x",
+		Parent: port.Parent{
+			Repo:   "up.io/base",
+			Target: port.Target{Kind: "semver", Params: []byte("kind: semver\n")},
+		},
+		Build: port.Build{Repo: "me.io/x", Tags: []string{
+			"{{.Major}}.{{.Minor}}.{{.Patch}}",
+			"{{.Major}}.{{.Minor}}",
+			"{{.Major}}",
+		}},
+	}
+
+	cmp, _ := compare.New("created", nil)
+	b := &graph.Builder{Registry: reg, Comparator: cmp}
+	g, err := b.Build(context.Background(), []*port.Port{p})
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+
+	// Two minor lines collapse to one node each (newest patch).
+	if len(g.Nodes) != 2 {
+		t.Fatalf("nodes = %d, want 2", len(g.Nodes))
+	}
+
+	// The newest version owns the floating major tag "1".
+	newest := nodeByID(g, "me.io/x:1.23.1")
+	if newest == nil {
+		t.Fatal("missing node me.io/x:1.23.1")
+	}
+	if want := []string{"me.io/x:1.23.1", "me.io/x:1.23", "me.io/x:1"}; !equalRefs(newest.Tags, want) {
+		t.Errorf("1.23.1 tags = %v, want %v", newest.Tags, want)
+	}
+
+	// The older version keeps its specific tags but not the floating "1".
+	older := nodeByID(g, "me.io/x:1.22.4")
+	if older == nil {
+		t.Fatal("missing node me.io/x:1.22.4")
+	}
+	if want := []string{"me.io/x:1.22.4", "me.io/x:1.22"}; !equalRefs(older.Tags, want) {
+		t.Errorf("1.22.4 tags = %v, want %v", older.Tags, want)
+	}
+}
+
+func equalRefs(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func TestBuildCycle(t *testing.T) {

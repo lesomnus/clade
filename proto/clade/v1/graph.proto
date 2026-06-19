@@ -25,6 +25,7 @@ message Image {
 // at build time, so only the identity and dependency information is carried here.
 message Node {
   // Stable identifier of the node; the target reference "repo:tag".
+  // It is the first of tags.
   string id = 1;
   // Metadata of the target image. digest is empty when the target is absent.
   Image image = 2;
@@ -41,6 +42,12 @@ message Node {
   // True when the target image is out of date with respect to its base
   // (missing, older, or an ancestor is outdated).
   bool outdated = 6;
+
+  // All target references "repo:tag" that the built image is tagged with,
+  // rendered from the port's build.tags. The first is the canonical id; the
+  // rest are additional (often floating, e.g. "1.22" and "1") tags pointing to
+  // the same image.
+  repeated string tags = 7;
 }
 
 // Graph is a serializable dependency graph of build target images.

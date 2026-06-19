@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/lesomnus/clade/cmd/config"
 	"github.com/lesomnus/clade/compare"
 	"github.com/lesomnus/clade/graph"
@@ -130,7 +131,14 @@ func renderGraph(cmd *xli.Command, nodes []*cladev1.Node, format string) error {
 			if n.Outdated {
 				status = "outdated"
 			}
-			cmd.Printf("%-9s %s  (base: %s)\n", status, n.Id, n.Base)
+			tags := n.Tags
+			if len(tags) == 0 {
+				tags = []string{n.Id}
+			}
+			cmd.Printf("%s from %s\n", status, color.New(color.Underline).Sprint(n.Base))
+			for _, t := range tags {
+				cmd.Printf("\t%s\n", color.New(color.Bold).Sprint(t))
+			}
 		}
 		return nil
 

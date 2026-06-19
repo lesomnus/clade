@@ -110,6 +110,7 @@ func (x *Image) GetLabels() map[string]string {
 type Node struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Stable identifier of the node; the target reference "repo:tag".
+	// It is the first of tags.
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Metadata of the target image. digest is empty when the target is absent.
 	Image *Image `protobuf:"bytes,2,opt,name=image,proto3" json:"image,omitempty"`
@@ -123,7 +124,12 @@ type Node struct {
 	Parents []string `protobuf:"bytes,5,rep,name=parents,proto3" json:"parents,omitempty"`
 	// True when the target image is out of date with respect to its base
 	// (missing, older, or an ancestor is outdated).
-	Outdated      bool `protobuf:"varint,6,opt,name=outdated,proto3" json:"outdated,omitempty"`
+	Outdated bool `protobuf:"varint,6,opt,name=outdated,proto3" json:"outdated,omitempty"`
+	// All target references "repo:tag" that the built image is tagged with,
+	// rendered from the port's build.tags. The first is the canonical id; the
+	// rest are additional (often floating, e.g. "1.22" and "1") tags pointing to
+	// the same image.
+	Tags          []string `protobuf:"bytes,7,rep,name=tags,proto3" json:"tags,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -200,6 +206,13 @@ func (x *Node) GetOutdated() bool {
 	return false
 }
 
+func (x *Node) GetTags() []string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
 // Graph is a serializable dependency graph of build target images.
 // Nodes are ordered topologically (parents before children).
 type Graph struct {
@@ -259,14 +272,15 @@ const file_clade_v1_graph_proto_rawDesc = "" +
 	"\x06labels\x18\x05 \x03(\v2\x1b.clade.v1.Image.LabelsEntryR\x06labels\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x9b\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xaf\x01\n" +
 	"\x04Node\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12%\n" +
 	"\x05image\x18\x02 \x01(\v2\x0f.clade.v1.ImageR\x05image\x12\x12\n" +
 	"\x04base\x18\x03 \x01(\tR\x04base\x12\x12\n" +
 	"\x04port\x18\x04 \x01(\tR\x04port\x12\x18\n" +
 	"\aparents\x18\x05 \x03(\tR\aparents\x12\x1a\n" +
-	"\boutdated\x18\x06 \x01(\bR\boutdated\"-\n" +
+	"\boutdated\x18\x06 \x01(\bR\boutdated\x12\x12\n" +
+	"\x04tags\x18\a \x03(\tR\x04tags\"-\n" +
 	"\x05Graph\x12$\n" +
 	"\x05nodes\x18\x01 \x03(\v2\x0e.clade.v1.NodeR\x05nodesB/Z-github.com/lesomnus/clade/pb/clade/v1;cladev1b\x06proto3"
 

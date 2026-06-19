@@ -66,36 +66,54 @@ func (b *Builder) Build(ctx context.Context, ports []*port.Port) (*cladev1.Graph
 			return nil, fmt.Errorf("select tags for port %q: %w", p.Dir, err)
 		}
 
-		tmpl, err := template.New(p.Dir).Option("missingkey=error").Parse(p.Build.Tag)
-		if err != nil {
-			return nil, fmt.Errorf("parse build tag for port %q: %w", p.Dir, err)
+		tmpls := make([]*template.Template, len(p.Build.Tags))
+		for i, t := range p.Build.Tags {
+			tmpls[i], err = template.New(p.Dir).Option("missingkey=error").Parse(t)
+			if err != nil {
+				return nil, fmt.Errorf("parse build tag for port %q: %w", p.Dir, err)
+			}
 		}
 
 		for _, m := range matched {
-			var sb strings.Builder
-			if err := tmpl.Execute(&sb, m.Data); err != nil {
-				return nil, fmt.Errorf("render build tag for port %q tag %q: %w", p.Dir, m.Tag, err)
+			// Render every build tag for this upstream tag. They all point to
+			// the same image, so collect their full references.
+			var refs, tags []string
+			for _, tmpl := range tmpls {
+				var sb strings.Builder
+				if err := tmpl.Execute(&sb, m.Data); err != nil {
+					return nil, fmt.Errorf("render build tag for port %q tag %q: %w", p.Dir, m.Tag, err)
+				}
+				target_tag := sb.String()
+				target_ref := p.Build.Repo + ":" + target_tag
+				// matched is ordered newest first, so a reference already taken
+				// belongs to a newer image; leave a floating tag (e.g. "1") on it.
+				if _, taken := node_by_id[target_ref]; taken {
+					continue
+				}
+				tags = append(tags, target_tag)
+				refs = append(refs, target_ref)
 			}
-			target_tag := sb.String()
-			base_ref := p.Parent.Repo + ":" + m.Tag
-			target_ref := p.Build.Repo + ":" + target_tag
-			if _, dup := node_by_id[target_ref]; dup {
+			if len(refs) == 0 {
 				continue
 			}
 
+			base_ref := p.Parent.Repo + ":" + m.Tag
 			node := &cladev1.Node{
-				Id:    target_ref,
+				Id:    refs[0],
+				Tags:  refs,
 				Base:  base_ref,
 				Port:  p.Dir,
-				Image: &cladev1.Image{Repo: p.Build.Repo, Tag: target_tag},
+				Image: &cladev1.Image{Repo: p.Build.Repo, Tag: tags[0]},
 			}
 			if parent, ok := node_by_id[base_ref]; ok {
 				node.Parents = []string{parent.Id}
 			}
 
-			expanded[p.Build.Repo] = append(expanded[p.Build.Repo], target_tag)
+			for i, ref := range refs {
+				node_by_id[ref] = node
+				expanded[p.Build.Repo] = append(expanded[p.Build.Repo], tags[i])
+			}
 			nodes = append(nodes, node)
-			node_by_id[target_ref] = node
 		}
 	}
 

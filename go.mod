@@ -4,6 +4,7 @@ go 1.26.2
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
+	github.com/fatih/color v1.19.0
 	github.com/goccy/go-yaml v1.19.2
 	github.com/google/go-containerregistry v0.21.7
 	github.com/lesomnus/mkot v0.0.0-20260611164331-66886cdbecf0
@@ -19,7 +20,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/docker/cli v29.5.3+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.3 // indirect
-	github.com/fatih/color v1.19.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect

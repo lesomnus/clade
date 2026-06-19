@@ -17,7 +17,7 @@ import (
 )
 
 func node(id, base, portDir string, outdated bool, parents ...string) *cladev1.Node {
-	return &cladev1.Node{Id: id, Base: base, Port: portDir, Outdated: outdated, Parents: parents}
+	return &cladev1.Node{Id: id, Tags: []string{id}, Base: base, Port: portDir, Outdated: outdated, Parents: parents}
 }
 
 func ids(nodes []*cladev1.Node) []string {
@@ -84,7 +84,7 @@ func TestBuildRunner(t *testing.T) {
 			Dir: "ports/b",
 			Build: port.Build{
 				Repo:   "b",
-				Tag:    "{{.Major}}",
+				Tags:   []string{"{{.Major}}"},
 				Kind:   "build",
 				Params: []byte("platforms: [linux/amd64]\n"),
 			},

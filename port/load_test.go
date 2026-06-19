@@ -18,7 +18,9 @@ const sample = `parent:
     pre-release: alpine
 build:
   repo: my-registry/golang-dev
-  tag: "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine"
+  tags:
+    - "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine"
+    - "{{.Major}}.{{.Minor}}-alpine"
 `
 
 func writePort(t *testing.T, dir, manifest string) {
@@ -55,8 +57,8 @@ func TestLoad(t *testing.T) {
 	if p.Build.Repo != "my-registry/golang-dev" {
 		t.Errorf("build.repo = %q", p.Build.Repo)
 	}
-	if p.Build.Tag != "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine" {
-		t.Errorf("build.tag = %q", p.Build.Tag)
+	if len(p.Build.Tags) != 2 || p.Build.Tags[0] != "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine" || p.Build.Tags[1] != "{{.Major}}.{{.Minor}}-alpine" {
+		t.Errorf("build.tags = %q", p.Build.Tags)
 	}
 }
 

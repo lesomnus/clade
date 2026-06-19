@@ -218,7 +218,7 @@ func (r *buildRunner) spec(ctx context.Context, node *cladev1.Node) builder.Spec
 
 	return builder.Spec{
 		Dir:    node.Port,
-		Tags:   []string{node.Id},
+		Tags:   node.Tags,
 		Base:   node.Base,
 		Labels: labels,
 		Push:   r.push,

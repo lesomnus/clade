@@ -19,7 +19,9 @@
 //	    pre-release: alpine
 //	build:
 //	  repo: my-registry/my-image/golang-dev
-//	  tag: "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine"
+//	  tags:
+//	    - "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine"
+//	    - "{{.Major}}.{{.Minor}}-alpine"
 package port
 
 import (
@@ -53,9 +55,11 @@ type Parent struct {
 type Build struct {
 	// Repo is the destination repository to push to.
 	Repo string
-	// Tag is a Go text/template rendered with the data of each selected
-	// upstream tag, e.g. "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine".
-	Tag string
+	// Tags are Go text/templates rendered with the data of each selected
+	// upstream tag, e.g. "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine". A single
+	// built image is tagged with every rendered tag; the first is canonical and
+	// the rest are typically floating tags (e.g. "{{.Major}}.{{.Minor}}").
+	Tags []string
 	// Kind names the build strategy, e.g. "build" (docker buildx build) or
 	// "bake" (docker buildx bake). Empty means the default.
 	Kind string
@@ -68,16 +72,16 @@ type Build struct {
 // fields needed to build the graph and keeps the raw node for the builder.
 func (b *Build) UnmarshalYAML(data []byte) error {
 	var head struct {
-		Repo string `yaml:"repo"`
-		Tag  string `yaml:"tag"`
-		Kind string `yaml:"kind"`
+		Repo string   `yaml:"repo"`
+		Tags []string `yaml:"tags"`
+		Kind string   `yaml:"kind"`
 	}
 	if err := yaml.Unmarshal(data, &head); err != nil {
 		return fmt.Errorf("decode build: %w", err)
 	}
 
 	b.Repo = head.Repo
-	b.Tag = head.Tag
+	b.Tags = head.Tags
 	b.Kind = head.Kind
 	b.Params = data
 	return nil
@@ -118,8 +122,13 @@ func (p *Port) Validate() error {
 		return fmt.Errorf("parent.target.kind is required")
 	case p.Build.Repo == "":
 		return fmt.Errorf("build.repo is required")
-	case p.Build.Tag == "":
-		return fmt.Errorf("build.tag is required")
+	case len(p.Build.Tags) == 0:
+		return fmt.Errorf("build.tags is required")
+	}
+	for i, t := range p.Build.Tags {
+		if t == "" {
+			return fmt.Errorf("build.tags[%d] is empty", i)
+		}
 	}
 	return nil
 }

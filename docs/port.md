@@ -25,11 +25,13 @@ parent:
 build:
   kind: build
   repo: ghcr.io/me/golang-dev
-  tag: "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine"
+  tags:
+    - "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine"
+    - "{{.Major}}.{{.Minor}}-alpine"
   # ...optional build options below
 ```
 
-Required fields: `parent.repo`, `parent.target.kind`, `build.repo`, `build.tag`.
+Required fields: `parent.repo`, `parent.target.kind`, `build.repo`, `build.tags`.
 
 ## `parent`
 
@@ -67,7 +69,7 @@ keeps the two newest minor lines of the newest major, `-alpine` variants only.
 > `1.24.0-rc.3-alpine` (pre-release `rc.3-alpine`). Likewise the default empty
 > value excludes every pre-release, e.g. `-rc.1`, `-bookworm`, `-windowsservercore-*`.
 
-The selected version is exposed to the `build.tag` template (see below).
+The selected version is exposed to the `build.tags` templates (see below).
 
 ## `build`
 
@@ -76,12 +78,12 @@ How the produced image is named and built.
 | Field | Description |
 | --- | --- |
 | `repo` | Destination repository to push to. |
-| `tag` | A Go [text/template](https://pkg.go.dev/text/template) rendered once per selected upstream tag. |
+| `tags` | A list of Go [text/templates](https://pkg.go.dev/text/template), each rendered once per selected upstream tag. The built image is tagged with every rendered tag. |
 | `kind` | Build strategy: `build` (default, `docker buildx build`) or `bake` (`docker buildx bake`). |
 
-### `tag` template
+### `tags` templates
 
-The template is rendered with the data of each selected upstream tag. For the
+Each template is rendered with the data of each selected upstream tag. For the
 `semver` strategy the data is the parsed version, so these are available:
 
 | Expression | Example for `1.22.3-alpine` |
@@ -92,8 +94,24 @@ The template is rendered with the data of each selected upstream tag. For the
 | `{{.Original}}` | `1.22.3-alpine` |
 | `{{.String}}` | `1.22.3-alpine` |
 
-For example `tag: "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine"` turns upstream
+For example `tags: ["{{.Major}}.{{.Minor}}.{{.Patch}}-alpine"]` turns upstream
 `1.22.3-alpine` into target `ghcr.io/me/golang-dev:1.22.3-alpine`.
+
+When several templates are given, the built image is tagged with all of them at
+once — the common pattern for floating tags:
+
+```yaml
+build:
+  repo: ghcr.io/me/golang-dev
+  tags:
+    - "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine"
+    - "{{.Major}}.{{.Minor}}-alpine"
+    - "{{.Major}}-alpine"
+```
+
+The first tag is the node's canonical id. When two selected versions render the
+same tag (e.g. `1.22` and `1.23` both render `1-alpine`), the newer version wins
+it; the older version simply omits that floating tag.
 
 ### Build options
 
@@ -148,13 +166,13 @@ upstream port instead of a registry, and `clade` builds them in order.
 
 ```yaml
 # ports/base/port.yaml
-build: { kind: build, repo: ghcr.io/me/base, tag: "{{.Major}}.{{.Minor}}" }
+build: { kind: build, repo: ghcr.io/me/base, tags: ["{{.Major}}.{{.Minor}}"] }
 parent: { repo: docker.io/library/debian, target: { kind: semver, last-major: 1 } }
 ```
 
 ```yaml
 # ports/app/port.yaml  — built on top of ghcr.io/me/base
-build: { kind: build, repo: ghcr.io/me/app, tag: "{{.Major}}.{{.Minor}}" }
+build: { kind: build, repo: ghcr.io/me/app, tags: ["{{.Major}}.{{.Minor}}"] }
 parent: { repo: ghcr.io/me/base, target: { kind: semver } }
 ```
 
