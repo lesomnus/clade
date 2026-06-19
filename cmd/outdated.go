@@ -76,12 +76,7 @@ func buildRegistry(c *config.Config) (registry.Registry, error) {
 		return nil, fmt.Errorf("parse cache ttl %q: %w", c.Cache.TTL, err)
 	}
 
-	dir := c.Cache.Dir
-	if dir == "" {
-		if base, err := os.UserCacheDir(); err == nil {
-			dir = filepath.Join(base, "clade")
-		}
-	}
+	dir := cacheDir(c)
 
 	var cache registry.Cache
 	if dir == "" {
@@ -95,6 +90,19 @@ func buildRegistry(c *config.Config) (registry.Registry, error) {
 	}
 
 	return registry.WithCache(registry.NewRemote(), cache, ttl), nil
+}
+
+// cacheDir resolves the on-disk cache directory from config, falling back to
+// <user cache dir>/clade. An empty result means no suitable directory was found
+// (only possible when os.UserCacheDir fails and cache.dir is unset).
+func cacheDir(c *config.Config) string {
+	if c.Cache.Dir != "" {
+		return c.Cache.Dir
+	}
+	if base, err := os.UserCacheDir(); err == nil {
+		return filepath.Join(base, "clade")
+	}
+	return ""
 }
 
 // selectNodes returns the outdated nodes, or all nodes when all is true.

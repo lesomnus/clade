@@ -68,6 +68,43 @@ clade build ghcr.io/me/golang-dev:1.24.0-alpine   # build one target
 clade build --graph graph.pb                  # build from a saved graph
 ```
 
+## `clade cache`
+
+Inspect and manage the on-disk registry metadata cache (see
+[Configuration](#configuration) for where it lives and how long entries live).
+The cache stores upstream tag listings and image metadata fetched from
+registries, so repeated runs do not re-spend registry rate limit.
+
+```
+clade cache ls [repo]        # list cached repositories, or one repo's tags
+clade cache rm <repo>...     # drop the cached entries of those repositories
+clade cache rm --all         # drop the entire cache
+```
+
+`clade cache ls` with no argument lists every repository that has a cached tag
+listing, with its tag count and time to expiry:
+
+```sh
+clade cache ls
+# REPOSITORY                 TAGS  EXPIRES
+# docker.io/library/golang     42  in 23h58m12s
+# docker.io/library/node       18  expired
+```
+
+`clade cache ls <repo>` prints that repository's cached tags, one per line
+(sorted), which is convenient to pipe. Removing a repository drops both its tag
+listing and any per-tag image metadata cached for it.
+
+| Command | Description |
+| --- | --- |
+| `cache ls` | List cached repositories (tag count + expiry). |
+| `cache ls <repo>` | Print the cached tags of `<repo>`, one per line. |
+| `cache rm <repo>...` | Remove the cached entries of the given repositories. |
+| `cache rm --all` | Remove every cached entry. |
+
+Expired entries are evicted lazily on the next lookup; `cache ls` still shows
+them (marked `expired`) until then, and `cache rm` clears them immediately.
+
 ## `clade config`
 
 Print the effective configuration as YAML (defaults merged with the loaded file).

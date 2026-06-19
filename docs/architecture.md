@@ -76,6 +76,13 @@ reused for a TTL (`cache.ttl`, default 24h) from a memory or filesystem store
 image's digest with a *fresh* (uncached) registry, so a base that was just
 rebuilt and pushed is reflected immediately.
 
+Entries are keyed `tags:<repo>` and `stat:<ref>` (the `registry.KeyTags` /
+`registry.KeyStat` prefixes). The `FileCache` stores each entry under its key's
+hash but records the key inside the file, so its key is recoverable for
+inspection; that backs the `clade cache` command (`Entries`/`Remove`/`Clear`),
+which lists cached repositories, prints a repository's cached tags, and evicts
+entries on demand.
+
 ## Build automation
 
 `.github/workflows/refresh.yaml` (cron) builds `clade`, runs `clade outdated`,

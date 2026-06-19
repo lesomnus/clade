@@ -3,26 +3,15 @@ parent:
   repo: docker.io/library/golang
   target:
     kind: semver
-    last-major: 1 # keep the latest major line
-    last-minor: 2 # keep the latest two minor lines of it
-    match: "-alpine$" # only alpine variants
+    last-major: 2
+    last-minor: 3
 build:
-  kind: build # "build" (docker buildx build) or "bake" (docker buildx bake)
-  repo: ghcr.io/lesomnus/clade-golang-dev
-  tag: "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine"
+  repo: ghcr.io/lesomnus/dev-golang
+  tag: "{{.Major}}.{{.Minor}}.{{.Patch}}"
 
-  # Everything below is decoded by the selected build kind and is optional.
-  # BASE is injected automatically (e.g. docker.io/library/golang:1.22.3-alpine).
+  kind: build
   dockerfile: Dockerfile
   context: .
   platforms:
     - linux/amd64
     - linux/arm64
-  args:
-    EXTRA_TOOLS: "git make"
-  labels:
-    org.opencontainers.image.source: https://github.com/lesomnus/clade
-  cache-from:
-    - type=gha
-  cache-to:
-    - type=gha,mode=max

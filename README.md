@@ -19,8 +19,9 @@ in dependency order, since one of your images can itself be the base of another.
 - Your own images can be the base of other ports, so an upstream update cascades
   to every descendant.
 
-Registry metadata is cached (a metadata lookup costs rate limit), and tag
-selection, "is it outdated?", and the build backend are all pluggable.
+Registry metadata is cached (a metadata lookup costs rate limit) and can be
+inspected or cleared with `clade cache`; tag selection, "is it outdated?", and
+the build backend are all pluggable.
 
 ## Install
 

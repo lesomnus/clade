@@ -12,6 +12,14 @@ import (
 	"time"
 )
 
+// Cache key prefixes used by the Registry decorator. They are exported so
+// cache-management tooling can interpret stored entries: a tag listing is keyed
+// by KeyTags+repo, image metadata by KeyStat+ref ("repo:tag").
+const (
+	KeyTags = "tags:"
+	KeyStat = "stat:"
+)
+
 // Cache is a byte-blob store with per-entry expiry. Implementations must be
 // safe for concurrent use.
 type Cache interface {
@@ -38,7 +46,7 @@ func WithCache(inner Registry, cache Cache, ttl time.Duration) Registry {
 }
 
 func (c *cached) Tags(ctx context.Context, repo string) ([]string, error) {
-	key := "tags:" + repo
+	key := KeyTags + repo
 	if b, ok := c.cache.Get(key); ok {
 		var tags []string
 		if err := json.Unmarshal(b, &tags); err == nil {
@@ -57,7 +65,7 @@ func (c *cached) Tags(ctx context.Context, repo string) ([]string, error) {
 }
 
 func (c *cached) Stat(ctx context.Context, ref string) (*ImageInfo, error) {
-	key := "stat:" + ref
+	key := KeyStat + ref
 	if b, ok := c.cache.Get(key); ok {
 		var info ImageInfo
 		if err := json.Unmarshal(b, &info); err == nil {
@@ -119,10 +127,25 @@ func (c *MemCache) Set(key string, val []byte, ttl time.Duration) {
 	c.entries[key] = memEntry{val: val, expiresAt: exp}
 }
 
-// fileEntry is the on-disk representation of a cached value.
+// fileEntry is the on-disk representation of a cached value. Key is stored so
+// the management tooling can recover what an entry caches; the file is named by
+// the key's hash (keys contain '/' and ':', which are awkward in filenames).
 type fileEntry struct {
+	Key       string    `json:"key"`
 	ExpiresAt time.Time `json:"expires_at"`
 	Val       []byte    `json:"val"`
+}
+
+// CacheEntry is a stored entry as seen by cache-management tooling.
+type CacheEntry struct {
+	// Key is the cache key, e.g. KeyTags+repo or KeyStat+ref.
+	Key string
+	// Val is the stored value (JSON, as written by the Registry decorator).
+	Val []byte
+	// ExpiresAt is when the entry expires; zero means no expiry.
+	ExpiresAt time.Time
+	// Expired reports whether the entry is already past its expiry.
+	Expired bool
 }
 
 // FileCache is a filesystem-backed Cache. It persists entries across runs,
@@ -159,11 +182,20 @@ func (c *FileCache) Get(key string) ([]byte, bool) {
 		_ = os.Remove(c.path(key))
 		return nil, false
 	}
+	if e.Key == "" {
+		// Upgrade entries written before the key was stored on disk, so that
+		// management tooling (Entries) can recover what they cache without a
+		// wasteful re-fetch. The key is known only here, on the read path.
+		e.Key = key
+		if b, err := json.Marshal(e); err == nil {
+			_ = os.WriteFile(c.path(key), b, 0o644)
+		}
+	}
 	return e.Val, true
 }
 
 func (c *FileCache) Set(key string, val []byte, ttl time.Duration) {
-	e := fileEntry{Val: val}
+	e := fileEntry{Key: key, Val: val}
 	if ttl > 0 {
 		e.ExpiresAt = c.now().Add(ttl)
 	}
@@ -172,4 +204,66 @@ func (c *FileCache) Set(key string, val []byte, ttl time.Duration) {
 		return
 	}
 	_ = os.WriteFile(c.path(key), b, 0o644)
+}
+
+// Dir returns the directory the cache is rooted at.
+func (c *FileCache) Dir() string { return c.dir }
+
+// Entries lists every stored entry, including expired ones not yet evicted
+// (each flagged via CacheEntry.Expired). Files that cannot be read or decoded
+// are skipped. This is for inspection/management, not the hot path.
+func (c *FileCache) Entries() ([]CacheEntry, error) {
+	names, err := filepath.Glob(filepath.Join(c.dir, "*.json"))
+	if err != nil {
+		return nil, fmt.Errorf("list cache dir %q: %w", c.dir, err)
+	}
+
+	now := c.now()
+	out := make([]CacheEntry, 0, len(names))
+	for _, name := range names {
+		b, err := os.ReadFile(name)
+		if err != nil {
+			continue
+		}
+		var e fileEntry
+		if err := json.Unmarshal(b, &e); err != nil || e.Key == "" {
+			continue
+		}
+		out = append(out, CacheEntry{
+			Key:       e.Key,
+			Val:       e.Val,
+			ExpiresAt: e.ExpiresAt,
+			Expired:   !e.ExpiresAt.IsZero() && now.After(e.ExpiresAt),
+		})
+	}
+	return out, nil
+}
+
+// Remove deletes the entry for key. It reports whether an entry was present.
+func (c *FileCache) Remove(key string) (bool, error) {
+	err := os.Remove(c.path(key))
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, fmt.Errorf("remove cache entry %q: %w", key, err)
+}
+
+// Clear removes every stored entry and reports how many were removed.
+func (c *FileCache) Clear() (int, error) {
+	names, err := filepath.Glob(filepath.Join(c.dir, "*.json"))
+	if err != nil {
+		return 0, fmt.Errorf("list cache dir %q: %w", c.dir, err)
+	}
+
+	n := 0
+	for _, name := range names {
+		if err := os.Remove(name); err != nil && !os.IsNotExist(err) {
+			return n, fmt.Errorf("remove %q: %w", name, err)
+		}
+		n++
+	}
+	return n, nil
 }
