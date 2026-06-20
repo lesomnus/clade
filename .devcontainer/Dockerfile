@@ -10,5 +10,6 @@ RUN VERSION="1.66" OUT=/usr/local/bin/buf \
 		"https://pkg.opt.td/bufbuild/buf/buf@${VERSION}/linux/$(uname -m)" \
 	&& chmod +x "${OUT}"
 
+
 USER hypnos
 ENV SHELL=/bin/zsh

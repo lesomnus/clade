@@ -1,24 +1,19 @@
 services:
-  dev:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  claude:
+    image: ghcr.io/lesomnus/claude:2.1
+    command: sh -c 'exec claude remote-control --spawn "$${RC_SPAWN:-same-dir}"'
 
-    command: sleep infinity
-
-    privileged: true
-
+    working_dir: /workspace
+    hostname: ${COMPOSE_PROJECT_NAME}
     environment:
       CLAUDE_CONFIG_DIR: /home/hypnos/.claude
       RC_NAME: clade
 
     volumes:
-      - command.history:/commandhistory
       - go.cache.mod:/go/pkg/mod
       - go.cache.bin:/home/hypnos/.cache/go-build
 
       - ..:/workspace
-      - ${HOME}/workspaces:/workspaces
       - ${HOME}/.claude:/home/hypnos/.claude
 
     deploy:
@@ -29,8 +24,3 @@ services:
         reservations:
           cpus: "2"
           memory: 4G
-
-volumes:
-  go.cache.mod:
-  go.cache.bin:
-  command.history:

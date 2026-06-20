@@ -1,12 +1,11 @@
 {
 	"name": "lesomnus/clade",
-	"dockerComposeFile": "docker-compose.yaml",
+	"dockerComposeFile": [
+		"docker-compose.yaml",
+		"docker-compose.claude.yaml"
+	],
 	"service": "dev",
 	"workspaceFolder": "/workspace",
-	"runServices": [
-		"dev",
-		"claude"
-	],
 	"customizations": {
 		"vscode": {
 			"extensions": [
