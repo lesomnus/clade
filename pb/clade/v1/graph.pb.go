@@ -129,7 +129,11 @@ type Node struct {
 	// rendered from the port's build.tags. The first is the canonical id; the
 	// rest are additional (often floating, e.g. "1.22" and "1") tags pointing to
 	// the same image.
-	Tags          []string `protobuf:"bytes,7,rep,name=tags,proto3" json:"tags,omitempty"`
+	Tags []string `protobuf:"bytes,7,rep,name=tags,proto3" json:"tags,omitempty"`
+	// The selected upstream tag this node was expanded from, e.g. "1.22.3-alpine"
+	// for a container source or "1.2.3" for an http source. Passed to the build
+	// as the BASE_TAG build argument for every source kind.
+	BaseTag       string `protobuf:"bytes,8,opt,name=base_tag,json=baseTag,proto3" json:"base_tag,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -213,6 +217,13 @@ func (x *Node) GetTags() []string {
 	return nil
 }
 
+func (x *Node) GetBaseTag() string {
+	if x != nil {
+		return x.BaseTag
+	}
+	return ""
+}
+
 // Graph is a serializable dependency graph of build target images.
 // Nodes are ordered topologically (parents before children).
 type Graph struct {
@@ -272,7 +283,7 @@ const file_clade_v1_graph_proto_rawDesc = "" +
 	"\x06labels\x18\x05 \x03(\v2\x1b.clade.v1.Image.LabelsEntryR\x06labels\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xaf\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xca\x01\n" +
 	"\x04Node\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12%\n" +
 	"\x05image\x18\x02 \x01(\v2\x0f.clade.v1.ImageR\x05image\x12\x12\n" +
@@ -280,7 +291,8 @@ const file_clade_v1_graph_proto_rawDesc = "" +
 	"\x04port\x18\x04 \x01(\tR\x04port\x12\x18\n" +
 	"\aparents\x18\x05 \x03(\tR\aparents\x12\x1a\n" +
 	"\boutdated\x18\x06 \x01(\bR\boutdated\x12\x12\n" +
-	"\x04tags\x18\a \x03(\tR\x04tags\"-\n" +
+	"\x04tags\x18\a \x03(\tR\x04tags\x12\x19\n" +
+	"\bbase_tag\x18\b \x01(\tR\abaseTag\"-\n" +
 	"\x05Graph\x12$\n" +
 	"\x05nodes\x18\x01 \x03(\v2\x0e.clade.v1.NodeR\x05nodesB/Z-github.com/lesomnus/clade/pb/clade/v1;cladev1b\x06proto3"
 

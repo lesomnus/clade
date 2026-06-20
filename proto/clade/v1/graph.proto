@@ -48,6 +48,11 @@ message Node {
   // rest are additional (often floating, e.g. "1.22" and "1") tags pointing to
   // the same image.
   repeated string tags = 7;
+
+  // The selected upstream tag this node was expanded from, e.g. "1.22.3-alpine"
+  // for a container source or "1.2.3" for an http source. Passed to the build
+  // as the BASE_TAG build argument for every source kind.
+  string base_tag = 8;
 }
 
 // Graph is a serializable dependency graph of build target images.

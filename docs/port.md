@@ -158,7 +158,7 @@ map to `docker buildx` options). Paths are relative to the port directory.
 | `context` | build context | Default `.` (the port directory). |
 | `target` | `--target` | Dockerfile stage. |
 | `platforms` | `--platform` | e.g. `[linux/amd64, linux/arm64]`. |
-| `args` | `--build-arg` | `BASE` is injected automatically for `container` sources. |
+| `args` | `--build-arg` | `BASE_TAG` (selected tag) is injected for all sources; `BASE` (full reference) for `container` sources. |
 | `labels` | `--label` | Base name/digest labels are injected automatically when there is a base. |
 | `annotations` | `--annotation` | |
 | `cache-from` | `--cache-from` | e.g. `[type=gha]`. |
@@ -174,27 +174,37 @@ map to `docker buildx` options). Paths are relative to the port directory.
 | `allow` | `--allow` | |
 | `extra-args` | appended verbatim | Escape hatch for options not modeled above. |
 
-## The `BASE` argument
+## The `BASE` and `BASE_TAG` arguments
 
-For a `container` source, `clade` injects the resolved upstream reference as the
-`BASE` build argument, so the Dockerfile builds *on top of the tracked upstream*:
+`clade` injects the **selected upstream tag** as the `BASE_TAG` build argument
+for *every* source kind, so the Dockerfile can pin to the exact version:
+
+```dockerfile
+ARG BASE_TAG
+RUN curl -fsSLo /usr/local/bin/tool \
+    "https://example.com/tool@${BASE_TAG}/$(uname -m)"  # BASE_TAG = e.g. 1.2.3
+```
+
+For a `container` source, `clade` additionally injects the resolved upstream
+*reference* (`repo:tag`) as the `BASE` build argument, so the Dockerfile builds
+*on top of the tracked upstream*:
 
 ```dockerfile
 ARG BASE
 FROM ${BASE}
-# e.g. BASE = docker.io/library/golang:1.22.3-alpine
+# e.g. BASE = docker.io/library/golang:1.22.3-alpine, BASE_TAG = 1.22.3-alpine
 RUN go version
 ```
 
-Each built image is also labelled automatically:
+Such a build is also labelled automatically:
 
 - `org.opencontainers.image.base.name` — the upstream reference.
 - `org.opencontainers.image.base.digest` — the upstream digest (used by the
   `digest` outdated strategy).
 
-> **`http` sources receive no `BASE`.** They have no upstream image, so the
-> Dockerfile must declare its own `FROM` and (if it needs a version) resolve it
-> itself — typically from the same endpoint `source.url` points at.
+> **`http` sources receive `BASE_TAG` but no `BASE`.** They have no upstream
+> image, so the Dockerfile declares its own `FROM` and downloads the artifact for
+> `${BASE_TAG}`.
 
 ## `compare`
 

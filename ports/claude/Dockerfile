@@ -1,11 +1,10 @@
 # syntax=docker/dockerfile:1
 
 # Claude Code ships as a single binary, so this port has an `http` source rather
-# than a parent image. clade injects no build-arg for http sources, so the base
-# image is chosen here and the version is resolved at build time from the same
-# endpoint clade tracks. A rebuild is triggered whenever the stable release
-# advances (its primary {{.Major}}.{{.Minor}}.{{.Patch}} tag goes missing in the
-# destination repository).
+# than a parent image: it has no base image (no FROM ${BASE}), so the base is
+# chosen here. clade injects the selected version as the BASE_TAG build-arg, and
+# a rebuild is triggered whenever the stable release advances (its primary
+# {{.Major}}.{{.Minor}}.{{.Patch}} tag goes missing in the destination repo).
 FROM docker.io/library/debian:bookworm-slim
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -19,10 +18,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 		git \
 	&& rm -rf /var/lib/apt/lists/*
 
-RUN VERSION="$(curl -fsSL https://downloads.claude.ai/claude-code-releases/stable)" \
-	&& OUT=/usr/local/bin/claude \
+ARG BASE_TAG
+RUN OUT=/usr/local/bin/claude \
 	&& curl -fsSL -o "${OUT}" \
-		"https://pkg.opt.td/claude.ai/code@${VERSION}/linux/$(uname -m)" \
+		"https://pkg.opt.td/claude.ai/code@${BASE_TAG}/linux/$(uname -m)" \
 	&& chmod +x "${OUT}" \
 	&& claude --version
 

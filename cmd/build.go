@@ -215,15 +215,16 @@ func (r *buildRunner) spec(ctx context.Context, node *cladev1.Node) builder.Spec
 	}
 
 	return builder.Spec{
-		Dir:    node.Port,
-		Tags:   node.Tags,
-		Base:   node.Base,
-		Labels: labels,
-		Push:   r.push,
-		Load:   r.load,
-		DryRun: r.dryRun,
-		Bin:    r.bin,
-		Stdout: r.stdout,
-		Stderr: r.stderr,
+		Dir:     node.Port,
+		Tags:    node.Tags,
+		Base:    node.Base,
+		BaseTag: node.BaseTag,
+		Labels:  labels,
+		Push:    r.push,
+		Load:    r.load,
+		DryRun:  r.dryRun,
+		Bin:     r.bin,
+		Stdout:  r.stdout,
+		Stderr:  r.stderr,
 	}
 }

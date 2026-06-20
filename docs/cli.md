@@ -55,10 +55,12 @@ arguments, all **outdated** nodes are built.
 | `--dry-run` | Print the build commands instead of running them. |
 | `--docker <bin>` | Binary to invoke (default `docker`). |
 
-A `container`-source build receives the resolved upstream as the `BASE` build
-argument and is labelled with `org.opencontainers.image.base.name` and
-`org.opencontainers.image.base.digest` (used by the `digest` comparator). An
-`http`-source build has no base, so it receives neither.
+Every build receives the selected upstream tag as the `BASE_TAG` build argument.
+A `container`-source build additionally receives the resolved upstream reference
+as the `BASE` build argument and is labelled with
+`org.opencontainers.image.base.name` and `org.opencontainers.image.base.digest`
+(used by the `digest` comparator); an `http`-source build has no base image, so
+it receives neither.
 
 ```sh
 clade build                                   # build & push all stale targets

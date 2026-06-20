@@ -64,17 +64,21 @@ func (o options) dockerfilePath(dir string) string {
 	return filepath.Join(dir, f)
 }
 
-// buildArgs merges the configured build args with the injected BASE. BASE is
-// injected only when the spec carries a base reference: a container source
-// provides one, while sources without an upstream image (e.g. http) do not, so
-// their Dockerfile sets its own FROM.
+// buildArgs merges the configured build args with the injected BASE and
+// BASE_TAG. BASE (the full base image reference) is injected only when the spec
+// carries one: a container source provides it, while sources without an upstream
+// image (e.g. http) do not, so their Dockerfile sets its own FROM. BASE_TAG (the
+// selected upstream tag) is injected for every source kind.
 func (o options) buildArgs(spec Spec) map[string]string {
-	m := make(map[string]string, len(o.Args)+1)
+	m := make(map[string]string, len(o.Args)+2)
 	for k, v := range o.Args {
 		m[k] = v
 	}
 	if spec.Base != "" {
 		m["BASE"] = spec.Base
+	}
+	if spec.BaseTag != "" {
+		m["BASE_TAG"] = spec.BaseTag
 	}
 	return m
 }

@@ -44,11 +44,12 @@ extra-args: ["--quiet"]
 
 func sampleSpec() builder.Spec {
 	return builder.Spec{
-		Dir:    "ports/x",
-		Tags:   []string{"repo:1", "repo:latest"},
-		Base:   "up:1",
-		Labels: map[string]string{"base": "x"},
-		Push:   true,
+		Dir:     "ports/x",
+		Tags:    []string{"repo:1", "repo:latest"},
+		Base:    "up:1",
+		BaseTag: "1",
+		Labels:  map[string]string{"base": "x"},
+		Push:    true,
 	}
 }
 
@@ -63,7 +64,8 @@ func TestBuildxArgv(t *testing.T) {
 		"--target final",
 		"--platform linux/amd64",
 		"--platform linux/arm64",
-		"--build-arg BASE=up:1", // injected from spec.Base
+		"--build-arg BASE=up:1",  // injected from spec.Base
+		"--build-arg BASE_TAG=1", // injected from spec.BaseTag
 		"--build-arg FOO=bar",
 		"--label a=b",
 		"--label base=x", // injected from spec.Labels
@@ -88,14 +90,18 @@ func TestBuildxArgv(t *testing.T) {
 	}
 }
 
-func TestNoBaseOmitsBuildArg(t *testing.T) {
-	// An http source provides no base, so no BASE build-arg is injected; the
-	// Dockerfile declares its own FROM.
-	spec := builder.Spec{Dir: "ports/x", Tags: []string{"repo:1"}, Push: true}
+func TestNoBaseInjectsBaseTagOnly(t *testing.T) {
+	// An http source has no base image, so no BASE build-arg is injected (the
+	// Dockerfile declares its own FROM), but the selected tag is still injected
+	// as BASE_TAG.
+	spec := builder.Spec{Dir: "ports/x", Tags: []string{"repo:1"}, BaseTag: "1.2.3", Push: true}
 	out := buildAndCapture(t, "build", "args:\n  FOO: bar\n", spec)
 
-	if strings.Contains(out, "BASE") {
+	if strings.Contains(out, "--build-arg BASE=") {
 		t.Errorf("expected no BASE build-arg when spec.Base is empty: %s", out)
+	}
+	if !strings.Contains(out, "--build-arg BASE_TAG=1.2.3") {
+		t.Errorf("expected BASE_TAG injected from spec.BaseTag: %s", out)
 	}
 	if !strings.Contains(out, "--build-arg FOO=bar") {
 		t.Errorf("configured args should still be passed: %s", out)

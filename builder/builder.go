@@ -19,7 +19,11 @@ type Spec struct {
 	// Tags are the full references to tag the image with, e.g. "repo:1.2.3".
 	Tags []string
 	// Base is the upstream image reference, injected as the BASE build arg.
+	// Empty for sources without a base image (e.g. http), which inject no BASE.
 	Base string
+	// BaseTag is the selected upstream tag, injected as the BASE_TAG build arg
+	// for every source kind (e.g. "1.22.3-alpine" or "1.2.3").
+	BaseTag string
 	// Labels are labels to inject (e.g. the base name and digest).
 	Labels map[string]string
 

@@ -11,6 +11,8 @@ import (
 	cladev1 "github.com/lesomnus/clade/pb/clade/v1"
 	"github.com/lesomnus/clade/port"
 	"github.com/lesomnus/clade/registry"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 func semverPort(dir, sourceRepo, buildRepo string) *port.Port {
@@ -101,6 +103,9 @@ func TestBuildGraph(t *testing.T) {
 	}
 	if a10.Base != "up.io/base:1.0.0" {
 		t.Errorf("a:1.0.0 base = %q", a10.Base)
+	}
+	if a10.BaseTag != "1.0.0" {
+		t.Errorf("a:1.0.0 base_tag = %q, want 1.0.0", a10.BaseTag)
 	}
 
 	// Topological order: every parent precedes its children.
@@ -201,6 +206,9 @@ func TestBuildHTTPSource(t *testing.T) {
 	if n.Base != "" {
 		t.Errorf("http node base = %q, want empty", n.Base)
 	}
+	if n.BaseTag != "1.2.3" {
+		t.Errorf("http node base_tag = %q, want 1.2.3 (the selected version)", n.BaseTag)
+	}
 	if !n.Outdated {
 		t.Error("expected outdated when the full-version primary tag is absent")
 	}
@@ -214,6 +222,38 @@ func TestBuildHTTPSource(t *testing.T) {
 	}
 	if nodeByID(g2, "me.io/tool:1.2.3").Outdated {
 		t.Error("expected up to date once the primary tag exists")
+	}
+}
+
+func TestNodeBaseTagSerializationRoundTrip(t *testing.T) {
+	// base_tag must survive the outdated --format json|binary -> build --graph
+	// hop that CI relies on.
+	g := &cladev1.Graph{Nodes: []*cladev1.Node{
+		{Id: "r:1.2.3", Tags: []string{"r:1.2.3"}, BaseTag: "1.2.3", Port: "ports/x"},
+	}}
+
+	j, err := protojson.Marshal(g)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var gj cladev1.Graph
+	if err := protojson.Unmarshal(j, &gj); err != nil {
+		t.Fatal(err)
+	}
+	if gj.Nodes[0].BaseTag != "1.2.3" {
+		t.Errorf("protojson base_tag = %q, want 1.2.3", gj.Nodes[0].BaseTag)
+	}
+
+	b, err := proto.Marshal(g)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var gb cladev1.Graph
+	if err := proto.Unmarshal(b, &gb); err != nil {
+		t.Fatal(err)
+	}
+	if gb.Nodes[0].BaseTag != "1.2.3" {
+		t.Errorf("proto base_tag = %q, want 1.2.3", gb.Nodes[0].BaseTag)
 	}
 }
 

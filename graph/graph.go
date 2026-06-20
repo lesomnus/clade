@@ -119,11 +119,12 @@ func (b *Builder) Build(ctx context.Context, ports []*port.Port) (*cladev1.Graph
 				base_ref = p.Source.Repo + ":" + m.Tag
 			}
 			node := &cladev1.Node{
-				Id:    refs[0],
-				Tags:  refs,
-				Base:  base_ref,
-				Port:  p.Dir,
-				Image: &cladev1.Image{Repo: p.Build.Repo, Tag: tags[0]},
+				Id:      refs[0],
+				Tags:    refs,
+				Base:    base_ref,
+				BaseTag: m.Tag,
+				Port:    p.Dir,
+				Image:   &cladev1.Image{Repo: p.Build.Repo, Tag: tags[0]},
 			}
 			if parent, ok := node_by_id[base_ref]; ok {
 				node.Parents = []string{parent.Id}
