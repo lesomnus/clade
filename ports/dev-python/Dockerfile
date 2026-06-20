@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Code generated from Dockerfile.tmpl by scripts/gen-dockerfiles; DO NOT EDIT.
 
-ARG BASE=docker.io/library/golang
+ARG BASE=docker.io/library/python
 FROM ${BASE}
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -44,8 +44,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 		openssh-client \
 		procps \
 		psmisc \
-		python3 \
-		python3-pip \
 		ripgrep \
 		rsync \
 		strace \
@@ -78,8 +76,6 @@ RUN groupadd "${USERNAME}" --gid ${USER_GID} \
 USER ${USERNAME}
 WORKDIR /home/${USERNAME}
 
-RUN mkdir -p ~/.cache/go-build
-
 RUN git clone --depth 1 https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh \
 	&& git clone --depth 1 https://github.com/zsh-users/zsh-autosuggestions     ~/.oh-my-zsh/custom/plugins/zsh-autosuggestions \
 	&& git clone --depth 1 https://github.com/zsh-users/zsh-syntax-highlighting ~/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting \
@@ -110,24 +106,24 @@ setopt SHARE_HISTORY
 setopt HIST_IGNORE_DUPS
 EOF
 
+# Python developer tooling, installed per-user with pipx so each tool gets its
+# own isolated virtualenv (avoids clashing with the image's managed Python env).
+ENV PIPX_BIN_DIR=/home/${USERNAME}/.local/bin
+ENV PATH=${PIPX_BIN_DIR}:${PATH}
+RUN pip install --user pipx \
+	&& for pkg in \
+		uv \
+		ruff \
+		mypy \
+		ipython \
+		debugpy \
+	; do \
+		python -m pipx install "$pkg"; \
+	done
+
 USER root
 WORKDIR /
 
 # Mount point for a persisted command-history volume. Created with USERNAME
 # ownership so a fresh named volume inherits it on first mount.
 RUN install -d -o "${USERNAME}" -g "${USERNAME}" /commandhistory
-
-RUN mkdir -p /go/pkg/mod /go/bin \
-	&& chown -R "${USERNAME}:${USERNAME}" /go
-
-RUN --mount=type=cache,target=/root/.cache/go-build \
-	--mount=type=cache,target=/go/pkg/mod \
-	--mount=type=cache,target=/go/pkg/sumdb \
-	for pkg in \
-		golang.org/x/tools/gopls@latest \
-		github.com/go-delve/delve/cmd/dlv@latest \
-		github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
-	; do \
-		go install "$pkg"; \
-	done \
-		&& chown -R "${USERNAME}:${USERNAME}" /go/bin

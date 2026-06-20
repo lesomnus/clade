@@ -1,0 +1,27 @@
+ARG BASE=docker.io/library/python
+FROM ${BASE}
+
+{{ template "apt" dict "SystemPython" false }}
+
+{{ template "node" . }}
+
+{{ template "user" . }}
+
+{{ template "shell" . }}
+
+# Python developer tooling, installed per-user with pipx so each tool gets its
+# own isolated virtualenv (avoids clashing with the image's managed Python env).
+ENV PIPX_BIN_DIR=/home/${USERNAME}/.local/bin
+ENV PATH=${PIPX_BIN_DIR}:${PATH}
+RUN pip install --user pipx \
+	&& for pkg in \
+		uv \
+		ruff \
+		mypy \
+		ipython \
+		debugpy \
+	; do \
+		python -m pipx install "$pkg"; \
+	done
+
+{{ template "commandhistory" . }}

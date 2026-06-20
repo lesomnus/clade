@@ -1,0 +1,29 @@
+ARG BASE=docker.io/library/golang
+FROM ${BASE}
+
+{{ template "apt" dict "SystemPython" true }}
+
+{{ template "node" . }}
+
+{{ template "user" . }}
+
+RUN mkdir -p ~/.cache/go-build
+
+{{ template "shell" . }}
+
+{{ template "commandhistory" . }}
+
+RUN mkdir -p /go/pkg/mod /go/bin \
+	&& chown -R "${USERNAME}:${USERNAME}" /go
+
+RUN --mount=type=cache,target=/root/.cache/go-build \
+	--mount=type=cache,target=/go/pkg/mod \
+	--mount=type=cache,target=/go/pkg/sumdb \
+	for pkg in \
+		golang.org/x/tools/gopls@latest \
+		github.com/go-delve/delve/cmd/dlv@latest \
+		github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
+	; do \
+		go install "$pkg"; \
+	done \
+		&& chown -R "${USERNAME}:${USERNAME}" /go/bin

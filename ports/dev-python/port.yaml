@@ -1,0 +1,16 @@
+source:
+  kind: container
+  repo: docker.io/library/python
+select:
+  kind: semver
+  last-major: 1
+  last-minor: 3
+build:
+  repo: ghcr.io/lesomnus/dev-python
+  tags:
+    - "{{.Major}}.{{.Minor}}.{{.Patch}}"
+    - "{{.Major}}.{{.Minor}}"
+    - "{{.Major}}"
+  platforms:
+    - linux/amd64
+    - linux/arm64
