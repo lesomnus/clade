@@ -16,6 +16,7 @@ on:
 permissions:
   contents: read
   actions: write # required to dispatch build.yaml
+  packages: read # required to stat ghcr images (authenticated, so missing images return 404 not DENIED)
 
 jobs:
   refresh:
@@ -35,6 +36,15 @@ jobs:
           restore-keys: clade-cache-
 
       - run: go build -o /usr/local/bin/clade .
+
+      # Authenticate to ghcr so Stat can distinguish a missing image (404) from a
+      # private one. Anonymous requests get a 403 DENIED for both, which clade
+      # cannot treat as "needs build".
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
 
       - name: Compute outdated graph
         id: outdated
