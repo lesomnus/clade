@@ -15,11 +15,27 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 	&& apt-get install -y --no-install-recommends \
 		ca-certificates \
 		curl \
-		git
+		git \
+		jq
 
+# Install Claude Code from the official release channel. clade injects the
+# resolved stable version as BASE_TAG; for that version we read the manifest to
+# get the per-platform checksum, download the binary, and verify it before use.
+# The base image is glibc (debian), so the platform is linux-<arch> (no -musl).
 ARG BASE_TAG
-RUN OUT=/usr/local/bin/claude \
-	&& curl -fsSL -o "${OUT}" \
-		"https://pkg.opt.td/claude.ai/code@${BASE_TAG}/linux/$(uname -m)" \
-	&& chmod +x "${OUT}" \
-	&& claude --version
+RUN set -eu; \
+	case "$(uname -m)" in \
+		x86_64 | amd64) arch="x64" ;; \
+		arm64 | aarch64) arch="arm64" ;; \
+		*) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;; \
+	esac; \
+	platform="linux-${arch}"; \
+	base_url="https://downloads.claude.ai/claude-code-releases"; \
+	manifest="$(curl -fsSL "${base_url}/${BASE_TAG}/manifest.json")"; \
+	checksum="$(printf '%s' "${manifest}" | jq -r ".platforms[\"${platform}\"].checksum // empty")"; \
+	[ -n "${checksum}" ] || { echo "Platform ${platform} not found in manifest" >&2; exit 1; }; \
+	out=/usr/local/bin/claude; \
+	curl -fsSL -o "${out}" "${base_url}/${BASE_TAG}/${platform}/claude"; \
+	printf '%s  %s\n' "${checksum}" "${out}" | sha256sum -c -; \
+	chmod +x "${out}"; \
+	claude --version
