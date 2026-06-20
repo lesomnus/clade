@@ -61,11 +61,11 @@ func TestRenderText(t *testing.T) {
 	renderText(&buf, nodes, ports, false)
 	out := buf.String()
 
-	if !strings.Contains(out, "outdated  dev-golang ports/dev-golang from docker.io/library/golang:1.24\n") {
+	if !strings.Contains(out, "outdated  dev-golang ports/dev-golang/port.yaml from docker.io/library/golang:1.24\n") {
 		t.Errorf("container line missing name/path/base: %q", out)
 	}
 	// An http node has no base, so the "from <base>" part is omitted.
-	if !strings.Contains(out, "outdated  claude ports/claude\n") {
+	if !strings.Contains(out, "outdated  claude ports/claude/port.yaml\n") {
 		t.Errorf("http line should show name and path without base: %q", out)
 	}
 	if !strings.Contains(out, "\tghcr.io/me/claude:1.2.3\n") {

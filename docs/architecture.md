@@ -15,10 +15,10 @@ ports/*/port.yaml ──load──▶ []port.Port
    graph.Builder ──▶ pb.Graph        (topologically ordered nodes)
         │   └─ fetch target/base metadata, mark outdated (+ propagate to children)
         │
-   ┌────┴─────────────────────────┐
-   ▼                              ▼
-clade outdated                 clade build
-(filter + serialize)      (per node: port.yaml → builder.New → Build)
+   ┌────┴───────────────┬─────────────────────┐
+   ▼                    ▼                     ▼
+clade outdated       clade graph           clade build
+(filter + serialize) (render as a tree)    (per node: port.yaml → builder.New → Build)
 ```
 
 ## Packages

@@ -17,6 +17,8 @@ in dependency order, since one of your images can itself be the base of another.
   binary can drive rebuilds.
 - `clade outdated` discovers upstream versions, resolves the corresponding target
   images, and emits a serializable **graph** of the targets that need building.
+- `clade graph` prints that graph as a tree, so you can see the upstream →
+  target dependencies (and what is stale) at a glance.
 - `clade build` walks that graph in topological order, building each Dockerfile
   (a `container` source passes the resolved upstream as the `BASE` build
   argument), then pushes.
@@ -79,6 +81,7 @@ Then:
 ```sh
 clade outdated                 # show which targets are stale
 clade outdated --format json   # the build graph, serialized
+clade graph                    # print the dependency graph as a tree
 clade build                    # build & push the stale targets, in order
 clade build --dry-run          # print the buildx commands instead
 ```

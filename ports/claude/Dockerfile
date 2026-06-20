@@ -15,8 +15,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 	&& apt-get install -y --no-install-recommends \
 		ca-certificates \
 		curl \
-		git \
-	&& rm -rf /var/lib/apt/lists/*
+		git
 
 ARG BASE_TAG
 RUN OUT=/usr/local/bin/claude \
@@ -24,5 +23,3 @@ RUN OUT=/usr/local/bin/claude \
 		"https://pkg.opt.td/claude.ai/code@${BASE_TAG}/linux/$(uname -m)" \
 	&& chmod +x "${OUT}" \
 	&& claude --version
-
-ENTRYPOINT ["claude"]

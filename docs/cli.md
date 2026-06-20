@@ -20,11 +20,11 @@ upstream.
 
 Output:
 
-- **text** — per target, a header line `<status>  <port-name> <port-dir> from <base>`
+- **text** — per target, a header line `<status>  <port-name> <port-path> from <base>`
   followed by its tags, indented. The port name links to its `port.yaml` in
-  terminals that support OSC 8 hyperlinks; `<port-dir>` is the port directory
-  relative to the working directory (plain text); `from <base>` is omitted for
-  sources with no base image (e.g. `http`).
+  terminals that support OSC 8 hyperlinks; `<port-path>` is that `port.yaml`'s
+  path relative to the working directory; `from <base>` is omitted for sources
+  with no base image (e.g. `http`).
 - **json** — the graph as protojson.
 - **binary** — the graph as protobuf wire bytes (pipe or cache it, then feed it
   to `clade build --graph`).
@@ -37,6 +37,35 @@ clade outdated
 clade outdated --format json > graph.json
 clade outdated --format binary > graph.pb
 ```
+
+## `clade graph`
+
+Print the dependency graph as a tree. External upstream images (the ones `clade`
+only consumes) are the roots, and each target is nested under the base it derives
+from; outdated targets are flagged. A source with no base image (e.g. `http`) is
+a root itself.
+
+```
+clade graph [flags]
+```
+
+| Flag | Description |
+| --- | --- |
+| `--ports <dir>` | Ports directory (when recomputing the graph). |
+| `--graph <file>` | Read a serialized graph (`.json` or binary) instead of recomputing. |
+
+```sh
+clade graph
+# docker.io/library/golang:1.24-alpine (external)
+# └─ ghcr.io/me/dev-golang:1.24.0-alpine +1.24 [outdated]
+#    └─ ghcr.io/me/app:1.24.0-alpine [outdated]
+
+clade graph --graph graph.pb   # render a saved graph without hitting registries
+```
+
+Floating tags that point at the same image are shown after the canonical
+reference (e.g. `+1.24`). Color is used when writing to a terminal and disabled
+otherwise (or with `NO_COLOR`).
 
 ## `clade build`
 
