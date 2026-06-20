@@ -9,7 +9,6 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/lesomnus/clade/cmd/config"
-	"github.com/lesomnus/clade/compare"
 	"github.com/lesomnus/clade/graph"
 	cladev1 "github.com/lesomnus/clade/pb/clade/v1"
 	"github.com/lesomnus/clade/port"
@@ -28,7 +27,6 @@ func NewCmdOutdated() *xli.Command {
 
 		Flags: flg.Flags{
 			&flg.String{Name: "ports", Brief: "path to the ports directory"},
-			&flg.String{Name: "compare", Brief: "outdated comparison strategy (created, digest)"},
 			&flg.String{Name: "format", Brief: "output format: text, json, binary"},
 			&flg.Switch{Name: "all", Brief: "include up-to-date targets"},
 		},
@@ -36,16 +34,10 @@ func NewCmdOutdated() *xli.Command {
 		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
 			c := use_config.Must(ctx)
 			flg.VisitP(cmd, "ports", &c.Ports)
-			flg.VisitP(cmd, "compare", &c.Compare.Kind)
 
 			reg, err := buildRegistry(c)
 			if err != nil {
 				return z.Err(err, "build registry")
-			}
-
-			cmp, err := compare.New(c.Compare.Kind, c.Compare.Params)
-			if err != nil {
-				return z.Err(err, "build comparator")
 			}
 
 			ports, err := port.LoadAll(c.Ports)
@@ -53,7 +45,7 @@ func NewCmdOutdated() *xli.Command {
 				return z.Err(err, "load ports")
 			}
 
-			b := &graph.Builder{Registry: reg, Comparator: cmp}
+			b := &graph.Builder{Registry: reg}
 			g, err := b.Build(ctx, ports)
 			if err != nil {
 				return z.Err(err, "build graph")

@@ -1,22 +1,24 @@
 // Package compare abstracts how clade decides whether a built image is outdated
 // with respect to its base image. Different strategies (creation time, base
-// digest, and potentially labels in the future) are pluggable: implementations
-// register by kind and are constructed from a raw config blob.
+// digest, ...) are pluggable: implementations register by kind and are
+// constructed from a raw config blob.
 //
-// A comparator only ever sees two existing images. A missing target image is
-// treated as outdated by the caller before any comparator runs.
+// A comparator inspects two operands through capability interfaces (Created,
+// Digested, Labeled) on an opaque, sealed Comparable, and returns a wrapped
+// ErrIncomparable when an operand lacks a capability it requires so that a Chain
+// can fall back to the next strategy. A comparator only ever sees two existing
+// images; a missing target is treated as outdated by the caller before any
+// comparator runs.
 package compare
 
 import (
 	"context"
 	"fmt"
-
-	"github.com/lesomnus/clade/registry"
 )
 
 // Comparator reports whether target is outdated relative to its base.
 type Comparator interface {
-	IsOutdated(ctx context.Context, base, target *registry.ImageInfo) (bool, error)
+	IsOutdated(ctx context.Context, base, target Comparable) (bool, error)
 }
 
 // Factory builds a Comparator from a raw YAML config blob (may be empty).

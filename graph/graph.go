@@ -2,9 +2,10 @@
 // of ports and marks which targets are outdated with respect to their base.
 //
 // Each port is expanded into one or more concrete target images by selecting
-// upstream tags and rendering the build tag template. A port whose parent.repo
-// is the build.repo of another port forms an internal edge; such ports are
-// expanded after their upstream so the upstream's produced tags are available.
+// upstream versions and rendering the build tag template. A container port
+// whose source.repo is the build.repo of another port forms an internal edge;
+// such ports are expanded after their upstream so the upstream's produced tags
+// are available.
 package graph
 
 import (
@@ -18,15 +19,16 @@ import (
 	cladev1 "github.com/lesomnus/clade/pb/clade/v1"
 	"github.com/lesomnus/clade/port"
 	"github.com/lesomnus/clade/registry"
+	"github.com/lesomnus/clade/source"
 	"github.com/lesomnus/clade/tag"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// Builder constructs a graph from ports using a registry for metadata and a
-// comparator to decide whether targets are outdated.
+// Builder constructs a graph from ports using a registry for metadata. Each
+// port's outdated-comparison chain is built from its own compare config (or the
+// default for its source kind).
 type Builder struct {
-	Registry   registry.Registry
-	Comparator compare.Comparator
+	Registry registry.Registry
 }
 
 // Build expands the ports into a graph and marks outdated nodes. The returned
@@ -45,19 +47,32 @@ func (b *Builder) Build(ctx context.Context, ports []*port.Port) (*cladev1.Graph
 	expanded := map[string][]string{} // build.repo -> produced target tags
 	nodes := []*cladev1.Node{}
 	node_by_id := map[string]*cladev1.Node{}
+	chains := map[string]compare.Chain{} // port dir -> comparator chain
 
 	for _, p := range ordered {
 		var parent_tags []string
-		if up, internal := by_repo[p.Parent.Repo]; internal && up != p {
-			parent_tags = expanded[p.Parent.Repo]
+		if up, internal := by_repo[p.Source.Repo]; p.Source.Kind == "container" && internal && up != p {
+			// Internal edge: reuse the upstream port's produced tags.
+			parent_tags = expanded[p.Source.Repo]
 		} else {
-			parent_tags, err = b.Registry.Tags(ctx, p.Parent.Repo)
+			src, err := source.New(p.Source.Kind, p.Source.Params, source.Deps{Tags: b.Registry.Tags})
 			if err != nil {
-				return nil, fmt.Errorf("list tags for port %q: %w", p.Dir, err)
+				return nil, fmt.Errorf("port %q: %w", p.Dir, err)
 			}
+			vs, err := src.Versions(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("list versions for port %q: %w", p.Dir, err)
+			}
+			parent_tags = vs
 		}
 
-		selector, err := tag.New(p.Parent.Target.Kind, p.Parent.Target.Params)
+		chain, err := compareChain(p)
+		if err != nil {
+			return nil, fmt.Errorf("port %q: %w", p.Dir, err)
+		}
+		chains[p.Dir] = chain
+
+		selector, err := tag.New(p.Select.Kind, p.Select.Params)
 		if err != nil {
 			return nil, fmt.Errorf("port %q: %w", p.Dir, err)
 		}
@@ -97,7 +112,12 @@ func (b *Builder) Build(ctx context.Context, ports []*port.Port) (*cladev1.Graph
 				continue
 			}
 
-			base_ref := p.Parent.Repo + ":" + m.Tag
+			// A container source provides the base image; other sources (e.g.
+			// http) have no upstream image, so the Dockerfile sets its own FROM.
+			base_ref := ""
+			if p.Source.Kind == "container" {
+				base_ref = p.Source.Repo + ":" + m.Tag
+			}
 			node := &cladev1.Node{
 				Id:    refs[0],
 				Tags:  refs,
@@ -117,16 +137,31 @@ func (b *Builder) Build(ctx context.Context, ports []*port.Port) (*cladev1.Graph
 		}
 	}
 
-	if err := b.markOutdated(ctx, nodes, node_by_id); err != nil {
+	if err := b.markOutdated(ctx, nodes, node_by_id, chains); err != nil {
 		return nil, err
 	}
 	return &cladev1.Graph{Nodes: nodes}, nil
 }
 
+// compareChain builds a port's outdated-comparison chain from its own compare
+// config, or the default for its source kind when the port declares none.
+func compareChain(p *port.Port) (compare.Chain, error) {
+	var specs []compare.Spec
+	if len(p.Compare) > 0 {
+		specs = make([]compare.Spec, 0, len(p.Compare))
+		for _, c := range p.Compare {
+			specs = append(specs, compare.Spec{Kind: c.Kind, Params: c.Params})
+		}
+	} else {
+		specs = compare.DefaultFor(p.Source.Kind)
+	}
+	return compare.NewChain(specs)
+}
+
 // markOutdated fetches target/base metadata and sets the outdated flag. Nodes
 // are visited in topological order so a parent's flag is final before its
 // children are evaluated.
-func (b *Builder) markOutdated(ctx context.Context, nodes []*cladev1.Node, node_by_id map[string]*cladev1.Node) error {
+func (b *Builder) markOutdated(ctx context.Context, nodes []*cladev1.Node, node_by_id map[string]*cladev1.Node, chains map[string]compare.Chain) error {
 	stats := map[string]*registry.ImageInfo{}
 	stat := func(ref string) (*registry.ImageInfo, error) {
 		if info, ok := stats[ref]; ok {
@@ -165,6 +200,13 @@ func (b *Builder) markOutdated(ctx context.Context, nodes []*cladev1.Node, node_
 			continue
 		}
 
+		// An empty chain (e.g. an http source) judges by existence only: the
+		// primary tag is present, so the target is up to date.
+		chain := chains[node.Port]
+		if len(chain) == 0 {
+			continue
+		}
+
 		base_info, err := stat(node.Base)
 		if err != nil {
 			return fmt.Errorf("stat base %q: %w", node.Base, err)
@@ -176,7 +218,7 @@ func (b *Builder) markOutdated(ctx context.Context, nodes []*cladev1.Node, node_
 			continue
 		}
 
-		outdated, err := b.Comparator.IsOutdated(ctx, base_info, target_info)
+		outdated, err := chain.IsOutdated(ctx, compare.OfImage(base_info), compare.OfImage(target_info))
 		if err != nil {
 			return fmt.Errorf("compare %q: %w", node.Id, err)
 		}
@@ -218,7 +260,7 @@ func topoSort(ports []*port.Port) ([]*port.Port, error) {
 		indeg[p] = 0
 	}
 	for _, p := range ports {
-		if up, ok := by_repo[p.Parent.Repo]; ok && up != p {
+		if up, ok := by_repo[p.Source.Repo]; ok && up != p {
 			children[up] = append(children[up], p)
 			indeg[p]++
 		}

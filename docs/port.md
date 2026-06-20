@@ -5,7 +5,7 @@ its `Dockerfile`, build context, and a `port.yaml`:
 
 ```
 ports/
-  golang-dev/
+  dev-golang/
     Dockerfile
     port.yaml
     ...context files
@@ -15,36 +15,69 @@ By default `clade` scans the `ports/` directory; each immediate subdirectory
 that contains a `port.yaml` is a port (others are ignored).
 
 ```yaml
-parent:
+source:
+  kind: container
   repo: docker.io/library/golang
-  target:
-    kind: semver
-    last-major: 1
-    last-minor: 2
-    pre-release: alpine
+select:
+  kind: semver
+  last-major: 1
+  last-minor: 2
+  pre-release: alpine
 build:
   kind: build
-  repo: ghcr.io/me/golang-dev
+  repo: ghcr.io/me/dev-golang
   tags:
     - "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine"
     - "{{.Major}}.{{.Minor}}-alpine"
   # ...optional build options below
 ```
 
-Required fields: `parent.repo`, `parent.target.kind`, `build.repo`, `build.tags`.
+Required fields: `source.kind`, `select.kind`, `build.repo`, `build.tags`.
+A `container` source also requires `source.repo`; an `http` source requires
+`source.url`.
 
-## `parent`
+## `source`
 
-The upstream image to track.
+Where the upstream versions to track come from. `source.kind` picks the
+discovery strategy; the remaining fields are strategy-specific.
+
+### `kind: container`
+
+Lists the tags of an OCI repository as candidate versions.
 
 | Field | Description |
 | --- | --- |
 | `repo` | Upstream repository, e.g. `docker.io/library/golang`. May also be the `build.repo` of another port — see [Chaining](#chaining-ports). |
-| `target` | How upstream tags are selected. `target.kind` picks the strategy; the remaining fields are strategy-specific. |
 
-### Tag selection — `kind: semver`
+A container source also provides the **base image**: the selected tag is
+injected as the `BASE` build argument (see [The `BASE` argument](#the-base-argument)).
 
-`semver` is the built-in selection strategy.
+### `kind: http`
+
+Fetches a single version string from a URL. The response body is expected to be
+a bare version, e.g. `1.2.3`.
+
+| Field | Description |
+| --- | --- |
+| `url` | Endpoint returning the latest version, e.g. `https://downloads.claude.ai/claude-code-releases/stable`. |
+
+An `http` source has **no base image**: `clade` injects no `BASE` build-arg, so
+the Dockerfile declares its own `FROM`. Because there is no upstream image to
+compare against, an http target is judged outdated purely by **existence** — see
+[`compare`](#compare). For this to detect a new release, make the first
+(primary) `build.tag` the full `{{.Major}}.{{.Minor}}.{{.Patch}}` so that a new
+version produces a primary tag absent in the destination repository.
+
+## `select`
+
+How the discovered versions are selected. `select.kind` picks the strategy; the
+remaining fields are strategy-specific.
+
+### `kind: semver`
+
+`semver` is the built-in selection strategy. It also **parses** each version so
+the `build.tags` templates can use the version components — so it applies even
+when a source yields a single version.
 
 | Field | Description |
 | --- | --- |
@@ -54,9 +87,9 @@ The upstream image to track.
 
 Selection works as follows:
 
-1. Parse each tag with semver; tags that do not parse are ignored. Partial
+1. Parse each version with semver; values that do not parse are ignored. Partial
    versions are accepted (`1.22` is treated as `1.22.0`).
-2. Keep tags whose pre-release exactly equals `pre-release` (empty by default).
+2. Keep versions whose pre-release exactly equals `pre-release` (empty by default).
 3. Collapse to the newest version per `(major, minor)` line.
 4. Keep the newest `last-major` major lines, and within each, the newest
    `last-minor` minor lines.
@@ -78,12 +111,12 @@ How the produced image is named and built.
 | Field | Description |
 | --- | --- |
 | `repo` | Destination repository to push to. |
-| `tags` | A list of Go [text/templates](https://pkg.go.dev/text/template), each rendered once per selected upstream tag. The built image is tagged with every rendered tag. |
+| `tags` | A list of Go [text/templates](https://pkg.go.dev/text/template), each rendered once per selected version. The built image is tagged with every rendered tag. |
 | `kind` | Build strategy: `build` (default, `docker buildx build`) or `bake` (`docker buildx bake`). |
 
 ### `tags` templates
 
-Each template is rendered with the data of each selected upstream tag. For the
+Each template is rendered with the data of each selected version. For the
 `semver` strategy the data is the parsed version, so these are available:
 
 | Expression | Example for `1.22.3-alpine` |
@@ -94,24 +127,25 @@ Each template is rendered with the data of each selected upstream tag. For the
 | `{{.Original}}` | `1.22.3-alpine` |
 | `{{.String}}` | `1.22.3-alpine` |
 
-For example `tags: ["{{.Major}}.{{.Minor}}.{{.Patch}}-alpine"]` turns upstream
-`1.22.3-alpine` into target `ghcr.io/me/golang-dev:1.22.3-alpine`.
+For example `tags: ["{{.Major}}.{{.Minor}}.{{.Patch}}-alpine"]` turns version
+`1.22.3-alpine` into target `ghcr.io/me/dev-golang:1.22.3-alpine`.
 
 When several templates are given, the built image is tagged with all of them at
 once — the common pattern for floating tags:
 
 ```yaml
 build:
-  repo: ghcr.io/me/golang-dev
+  repo: ghcr.io/me/dev-golang
   tags:
     - "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine"
     - "{{.Major}}.{{.Minor}}-alpine"
     - "{{.Major}}-alpine"
 ```
 
-The first tag is the node's canonical id. When two selected versions render the
-same tag (e.g. `1.22` and `1.23` both render `1-alpine`), the newer version wins
-it; the older version simply omits that floating tag.
+The first tag is the node's canonical id; its absence in the destination marks
+the node outdated. When two selected versions render the same tag (e.g. `1.22`
+and `1.23` both render `1-alpine`), the newer version wins it; the older version
+simply omits that floating tag.
 
 ### Build options
 
@@ -124,8 +158,8 @@ map to `docker buildx` options). Paths are relative to the port directory.
 | `context` | build context | Default `.` (the port directory). |
 | `target` | `--target` | Dockerfile stage. |
 | `platforms` | `--platform` | e.g. `[linux/amd64, linux/arm64]`. |
-| `args` | `--build-arg` | `BASE` is injected automatically. |
-| `labels` | `--label` | Base name/digest labels are injected automatically. |
+| `args` | `--build-arg` | `BASE` is injected automatically for `container` sources. |
+| `labels` | `--label` | Base name/digest labels are injected automatically when there is a base. |
 | `annotations` | `--annotation` | |
 | `cache-from` | `--cache-from` | e.g. `[type=gha]`. |
 | `cache-to` | `--cache-to` | e.g. `[type=gha,mode=max]`. |
@@ -142,8 +176,8 @@ map to `docker buildx` options). Paths are relative to the port directory.
 
 ## The `BASE` argument
 
-`clade` injects the resolved upstream reference as the `BASE` build argument, so
-the Dockerfile builds *on top of the tracked upstream*:
+For a `container` source, `clade` injects the resolved upstream reference as the
+`BASE` build argument, so the Dockerfile builds *on top of the tracked upstream*:
 
 ```dockerfile
 ARG BASE
@@ -158,23 +192,59 @@ Each built image is also labelled automatically:
 - `org.opencontainers.image.base.digest` — the upstream digest (used by the
   `digest` outdated strategy).
 
+> **`http` sources receive no `BASE`.** They have no upstream image, so the
+> Dockerfile must declare its own `FROM` and (if it needs a version) resolve it
+> itself — typically from the same endpoint `source.url` points at.
+
+## `compare`
+
+How a target is judged outdated when its primary tag already exists. It is an
+**ordered list** of strategies tried with fallback: the first that can render a
+verdict wins; if a strategy cannot judge the operands (a missing capability) the
+next is tried. When omitted, a default is chosen from `source.kind`.
+
+```yaml
+compare:
+  - kind: digest   # precise: compare the recorded base digest with the base's current digest
+  - kind: created  # fallback: compare creation timestamps
+```
+
+| `kind` | Outdated when |
+| --- | --- |
+| `created` | the target was created *before* its base image. |
+| `digest` | the base-digest label recorded on the target differs from the base's current digest. `label` (optional) overrides the label key. |
+
+Defaults by `source.kind`:
+
+| Source kind | Default chain |
+| --- | --- |
+| `container` | `[created, digest]` — timestamp comparison, the same behavior as before per-port config. |
+| `http` | *(empty)* — existence only: an existing primary tag is up to date; a new version is detected as a missing primary tag. |
+
+A missing primary tag always marks a node outdated, before any comparator runs.
+If every strategy in a non-empty chain is inapplicable, the build aborts (a
+configuration error) rather than silently never rebuilding.
+
 ## Chaining ports
 
-When a port's `parent.repo` equals the `build.repo` of another port, an
-**internal edge** is created: the downstream port tracks the tags produced by the
-upstream port instead of a registry, and `clade` builds them in order.
+When a `container` port's `source.repo` equals the `build.repo` of another port,
+an **internal edge** is created: the downstream port tracks the tags produced by
+the upstream port instead of a registry, and `clade` builds them in order.
 
 ```yaml
 # ports/base/port.yaml
-build: { kind: build, repo: ghcr.io/me/base, tags: ["{{.Major}}.{{.Minor}}"] }
-parent: { repo: docker.io/library/debian, target: { kind: semver, last-major: 1 } }
+source: { kind: container, repo: docker.io/library/debian }
+select: { kind: semver, last-major: 1 }
+build:  { kind: build, repo: ghcr.io/me/base, tags: ["{{.Major}}.{{.Minor}}"] }
 ```
 
 ```yaml
 # ports/app/port.yaml  — built on top of ghcr.io/me/base
-build: { kind: build, repo: ghcr.io/me/app, tags: ["{{.Major}}.{{.Minor}}"] }
-parent: { repo: ghcr.io/me/base, target: { kind: semver } }
+source: { kind: container, repo: ghcr.io/me/base }
+select: { kind: semver }
+build:  { kind: build, repo: ghcr.io/me/app, tags: ["{{.Major}}.{{.Minor}}"] }
 ```
 
 If `ghcr.io/me/base` is rebuilt, every descendant (`ghcr.io/me/app`, ...) is
-considered outdated and rebuilt on top of the fresh base.
+considered outdated and rebuilt on top of the fresh base. Only `container`
+sources chain; an `http` source never forms an internal edge.

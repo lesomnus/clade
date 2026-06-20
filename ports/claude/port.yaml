@@ -1,0 +1,19 @@
+source:
+  kind: http
+  url: https://downloads.claude.ai/claude-code-releases/stable
+select:
+  kind: semver
+  last-major: 1
+  last-minor: 1
+build:
+  repo: ghcr.io/lesomnus/claude
+  # The first (primary) tag is the full version: when the stable release
+  # advances, its primary tag is absent in the destination, which is what marks
+  # the node outdated (an http source has no base image to compare against).
+  tags:
+    - "{{.Major}}.{{.Minor}}.{{.Patch}}"
+    - "{{.Major}}.{{.Minor}}"
+    - "{{.Major}}"
+  platforms:
+    - linux/amd64
+    - linux/arm64

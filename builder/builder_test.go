@@ -88,6 +88,20 @@ func TestBuildxArgv(t *testing.T) {
 	}
 }
 
+func TestNoBaseOmitsBuildArg(t *testing.T) {
+	// An http source provides no base, so no BASE build-arg is injected; the
+	// Dockerfile declares its own FROM.
+	spec := builder.Spec{Dir: "ports/x", Tags: []string{"repo:1"}, Push: true}
+	out := buildAndCapture(t, "build", "args:\n  FOO: bar\n", spec)
+
+	if strings.Contains(out, "BASE") {
+		t.Errorf("expected no BASE build-arg when spec.Base is empty: %s", out)
+	}
+	if !strings.Contains(out, "--build-arg FOO=bar") {
+		t.Errorf("configured args should still be passed: %s", out)
+	}
+}
+
 func TestKindDefaultsToBuild(t *testing.T) {
 	out := buildAndCapture(t, "", "", builder.Spec{Dir: ".", Tags: []string{"x:1"}, Base: "b:1"})
 	if !strings.Contains(out, "docker buildx build") {

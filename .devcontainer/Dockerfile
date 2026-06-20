@@ -1,4 +1,4 @@
-FROM ghcr.io/lesomnus/dev-golang:1.26.4
+FROM ghcr.io/lesomnus/dev-golang:1.26
 
 RUN VERSION="2.1.181" OUT=/usr/local/bin/claude \
 	&& curl -fsSL -o "${OUT}" \

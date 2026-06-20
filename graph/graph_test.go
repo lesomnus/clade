@@ -2,24 +2,27 @@ package graph_test
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/lesomnus/clade/compare"
 	"github.com/lesomnus/clade/graph"
 	cladev1 "github.com/lesomnus/clade/pb/clade/v1"
 	"github.com/lesomnus/clade/port"
 	"github.com/lesomnus/clade/registry"
 )
 
-func semverPort(dir, parentRepo, buildRepo string) *port.Port {
+func semverPort(dir, sourceRepo, buildRepo string) *port.Port {
 	return &port.Port{
 		Dir: dir,
-		Parent: port.Parent{
-			Repo:   parentRepo,
-			Target: port.Target{Kind: "semver", Params: []byte("kind: semver\n")},
+		Source: port.Source{
+			Kind:   "container",
+			Repo:   sourceRepo,
+			Params: []byte("kind: container\nrepo: " + sourceRepo + "\n"),
 		},
-		Build: port.Build{Repo: buildRepo, Tags: []string{"{{.Major}}.{{.Minor}}.{{.Patch}}"}},
+		Select: port.Select{Kind: "semver", Params: []byte("kind: semver\n")},
+		Build:  port.Build{Repo: buildRepo, Tags: []string{"{{.Major}}.{{.Minor}}.{{.Patch}}"}},
 	}
 }
 
@@ -54,11 +57,7 @@ func TestBuildGraph(t *testing.T) {
 		semverPort("ports/b", "me.io/a", "me.io/b"),
 	}
 
-	cmp, err := compare.New("created", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	b := &graph.Builder{Registry: reg, Comparator: cmp}
+	b := &graph.Builder{Registry: reg}
 	g, err := b.Build(context.Background(), ports)
 	if err != nil {
 		t.Fatalf("build: %v", err)
@@ -126,10 +125,12 @@ func TestBuildMultiTag(t *testing.T) {
 
 	p := &port.Port{
 		Dir: "ports/x",
-		Parent: port.Parent{
+		Source: port.Source{
+			Kind:   "container",
 			Repo:   "up.io/base",
-			Target: port.Target{Kind: "semver", Params: []byte("kind: semver\n")},
+			Params: []byte("kind: container\nrepo: up.io/base\n"),
 		},
+		Select: port.Select{Kind: "semver", Params: []byte("kind: semver\n")},
 		Build: port.Build{Repo: "me.io/x", Tags: []string{
 			"{{.Major}}.{{.Minor}}.{{.Patch}}",
 			"{{.Major}}.{{.Minor}}",
@@ -137,8 +138,7 @@ func TestBuildMultiTag(t *testing.T) {
 		}},
 	}
 
-	cmp, _ := compare.New("created", nil)
-	b := &graph.Builder{Registry: reg, Comparator: cmp}
+	b := &graph.Builder{Registry: reg}
 	g, err := b.Build(context.Background(), []*port.Port{p})
 	if err != nil {
 		t.Fatalf("build: %v", err)
@@ -168,6 +168,55 @@ func TestBuildMultiTag(t *testing.T) {
 	}
 }
 
+func TestBuildHTTPSource(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("1.2.3\n"))
+	}))
+	defer srv.Close()
+
+	reg := registry.NewFake()
+	p := &port.Port{
+		Dir:    "ports/tool",
+		Source: port.Source{Kind: "http", Url: srv.URL, Params: []byte("kind: http\nurl: " + srv.URL + "\n")},
+		Select: port.Select{Kind: "semver", Params: []byte("kind: semver\n")},
+		Build: port.Build{Repo: "me.io/tool", Tags: []string{
+			"{{.Major}}.{{.Minor}}.{{.Patch}}",
+			"{{.Major}}.{{.Minor}}",
+		}},
+	}
+
+	b := &graph.Builder{Registry: reg}
+	g, err := b.Build(context.Background(), []*port.Port{p})
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+	if len(g.Nodes) != 1 {
+		t.Fatalf("nodes = %d, want 1", len(g.Nodes))
+	}
+
+	n := nodeByID(g, "me.io/tool:1.2.3")
+	if n == nil {
+		t.Fatal("missing node me.io/tool:1.2.3")
+	}
+	if n.Base != "" {
+		t.Errorf("http node base = %q, want empty", n.Base)
+	}
+	if !n.Outdated {
+		t.Error("expected outdated when the full-version primary tag is absent")
+	}
+
+	// Publishing the primary tag makes it up to date (existence-only, no base
+	// comparison even though the floating tag and a creation time exist).
+	reg.Set("me.io/tool:1.2.3", &registry.ImageInfo{Created: at(100)})
+	g2, err := b.Build(context.Background(), []*port.Port{p})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nodeByID(g2, "me.io/tool:1.2.3").Outdated {
+		t.Error("expected up to date once the primary tag exists")
+	}
+}
+
 func equalRefs(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
@@ -186,8 +235,7 @@ func TestBuildCycle(t *testing.T) {
 		semverPort("ports/a", "me.io/b", "me.io/a"),
 		semverPort("ports/b", "me.io/a", "me.io/b"),
 	}
-	cmp, _ := compare.New("created", nil)
-	b := &graph.Builder{Registry: reg, Comparator: cmp}
+	b := &graph.Builder{Registry: reg}
 	if _, err := b.Build(context.Background(), ports); err == nil {
 		t.Fatal("expected a cycle error")
 	}

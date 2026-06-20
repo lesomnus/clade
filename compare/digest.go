@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/goccy/go-yaml"
-	"github.com/lesomnus/clade/registry"
 )
 
 // DefaultBaseDigestLabel is the label that records the digest of the base image
@@ -44,6 +43,15 @@ func newDigest(params []byte) (Comparator, error) {
 	return digest{label: cfg.Label}, nil
 }
 
-func (d digest) IsOutdated(_ context.Context, base, target *registry.ImageInfo) (bool, error) {
-	return target.Labels[d.label] != base.Digest, nil
+func (d digest) IsOutdated(_ context.Context, base, target Comparable) (bool, error) {
+	b, ok := base.(Digested)
+	if !ok {
+		return false, fmt.Errorf("digest: base: %w", ErrIncomparable)
+	}
+	t, ok := target.(Labeled)
+	if !ok {
+		return false, fmt.Errorf("digest: target: %w", ErrIncomparable)
+	}
+	recorded, _ := t.Label(d.label) // absent label -> "" -> differs -> outdated
+	return recorded != b.Digest(), nil
 }

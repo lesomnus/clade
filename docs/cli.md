@@ -15,7 +15,6 @@ upstream.
 | Flag | Description |
 | --- | --- |
 | `--ports <dir>` | Ports directory (default from config, `ports`). |
-| `--compare <kind>` | Outdated strategy: `created` or `digest`. |
 | `--format <fmt>` | `text` (default), `json`, or `binary`. |
 | `--all` | Include up-to-date targets, not just stale ones. |
 
@@ -28,7 +27,7 @@ Output:
 
 ```sh
 clade outdated
-# outdated  ghcr.io/me/golang-dev:1.24.0-alpine  (base: docker.io/library/golang:1.24-alpine)
+# outdated  ghcr.io/me/dev-golang:1.24.0-alpine  (base: docker.io/library/golang:1.24-alpine)
 
 clade outdated --format json > graph.json
 clade outdated --format binary > graph.pb
@@ -49,7 +48,6 @@ arguments, all **outdated** nodes are built.
 | Flag | Description |
 | --- | --- |
 | `--ports <dir>` | Ports directory (when recomputing the graph). |
-| `--compare <kind>` | Outdated strategy (when recomputing the graph). |
 | `--graph <file>` | Read a serialized graph (`.json` or binary) instead of recomputing. |
 | `--all` | Build every node in the graph, not only outdated ones. |
 | `--no-push` | Do not push the built images. |
@@ -57,14 +55,15 @@ arguments, all **outdated** nodes are built.
 | `--dry-run` | Print the build commands instead of running them. |
 | `--docker <bin>` | Binary to invoke (default `docker`). |
 
-Each build receives the resolved upstream as the `BASE` build argument and is
-labelled with `org.opencontainers.image.base.name` and
-`org.opencontainers.image.base.digest` (used by the `digest` comparator).
+A `container`-source build receives the resolved upstream as the `BASE` build
+argument and is labelled with `org.opencontainers.image.base.name` and
+`org.opencontainers.image.base.digest` (used by the `digest` comparator). An
+`http`-source build has no base, so it receives neither.
 
 ```sh
 clade build                                   # build & push all stale targets
 clade build --dry-run                         # preview the buildx commands
-clade build ghcr.io/me/golang-dev:1.24.0-alpine   # build one target
+clade build ghcr.io/me/dev-golang:1.24.0-alpine   # build one target
 clade build --graph graph.pb                  # build from a saved graph
 ```
 
@@ -126,27 +125,16 @@ cache:
   dir: ""    # default: <user cache dir>/clade
   ttl: 24h   # how long tag listings and image metadata are reused
 
-# How "is this target outdated?" is decided.
-compare:
-  kind: created   # created | digest
-  # for kind: digest, the label compared against the base digest:
-  # label: org.opencontainers.image.base.digest
-
 # Build settings. The build strategy itself is per port (build.kind in port.yaml).
 build:
   docker: docker   # docker binary to invoke
 ```
 
-`compare`:
-
-- **created** (default) — a target is outdated when it was created before its
-  base image.
-- **digest** — a target is outdated when the base digest recorded on it (the
-  `label`, default `org.opencontainers.image.base.digest`) differs from the
-  current digest of its base. `clade build` records that label automatically.
-
-A missing target image is always outdated, and a target whose internal base is
-outdated is rebuilt as well.
+Outdated comparison is configured **per port** by the `compare` list in
+`port.yaml` (an ordered fallback chain), with a default chosen from `source.kind`
+when omitted — see [`port.yaml` › `compare`](port.md#compare). A missing primary
+tag is always outdated, and a target whose internal base is outdated is rebuilt
+as well.
 
 OpenTelemetry can be configured under an `otel:` key; logs go to stderr so
 `stdout` stays clean for `--format json|binary`.

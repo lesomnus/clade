@@ -1,18 +1,16 @@
-parent:
+source:
+  kind: container
   repo: docker.io/library/golang
-  target:
-    kind: semver
-    last-major: 2
-    last-minor: 3
+select:
+  kind: semver
+  last-major: 2
+  last-minor: 3
 build:
   repo: ghcr.io/lesomnus/dev-golang
   tags:
     - "{{.Major}}.{{.Minor}}.{{.Patch}}"
     - "{{.Major}}.{{.Minor}}"
     - "{{.Major}}"
-  kind: build
-  dockerfile: Dockerfile
-  context: .
   platforms:
     - linux/amd64
-    # - linux/arm64
+    - linux/arm64

@@ -24,8 +24,6 @@ type Config struct {
 
 	Cache CacheConfig `yaml:"cache"`
 
-	Compare CompareConfig `yaml:"compare"`
-
 	Build BuildConfig `yaml:"build"`
 }
 
@@ -52,7 +50,6 @@ func (c *Config) Evaluate() error {
 	z.FallbackP(&c.Greet.Format, "Hello, %s!")
 	z.FallbackP(&c.Ports, "ports")
 	z.FallbackP(&c.Cache.TTL, "24h")
-	z.FallbackP(&c.Compare.Kind, "created")
 	z.FallbackP(&c.Build.Docker, "docker")
 	return nil
 }

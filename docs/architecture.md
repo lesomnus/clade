@@ -9,8 +9,8 @@ order.
 ```
 ports/*/port.yaml ──load──▶ []port.Port
         │
-        ├─ for each port: list parent tags ──select──▶ render build tag
-        │     (external: registry │ internal: parent port's produced tags)
+        ├─ for each port: list source versions ──select──▶ render build tag
+        │     (container: registry / internal parent │ http: a version endpoint)
         ▼
    graph.Builder ──▶ pb.Graph        (topologically ordered nodes)
         │   └─ fetch target/base metadata, mark outdated (+ propagate to children)
@@ -25,10 +25,11 @@ clade outdated                 clade build
 
 | Package | Responsibility |
 | --- | --- |
-| `port` | Parse `port.yaml`. `Build.Params` keeps the raw build config so this package stays free of any builder. |
+| `port` | Parse `port.yaml` (`source`, `select`, `compare`, `build`). Strategy-specific fields are kept as raw `Params` so this package stays free of any source/selector/comparator/builder. |
 | `registry` | `Registry` interface (`Tags`, `Stat`) + `Remote` (go-containerregistry), a TTL cache decorator (`WithCache`, mem/file), and an in-memory `Fake`. |
-| `tag` | `Selector` interface to choose upstream tags, with a kind registry. `semver` is the built-in strategy. |
-| `compare` | `Comparator` interface deciding if a target is outdated, with a kind registry. `created` and `digest` are built in. |
+| `source` | `Source` interface (`Versions`) to discover upstream versions, with a kind registry. `container` (lists registry tags via an injected lister) and `http` (fetches a version string) are built in. |
+| `tag` | `Selector` interface to select among versions, with a kind registry. `semver` is the built-in strategy (and the parser feeding the build-tag templates). |
+| `compare` | `Comparator` over a sealed, opaque `Comparable` inspected through capability interfaces (`Created`, `Digested`, `Labeled`); `created` and `digest` built in and composed into a fallback `Chain`. Configured per port. |
 | `graph` | `Builder` expands ports into concrete nodes, topologically sorts them, fetches metadata, and marks outdated nodes (propagating to descendants). |
 | `builder` | `Builder` interface (`Build(ctx)`) with a kind registry. `build` (`docker buildx build`) and `bake` (`docker buildx bake`) are built in. |
 | `pb/clade/v1` | Generated graph types (`Image`, `Node`, `Graph`). Source: `proto/clade/v1/graph.proto`. |
@@ -36,13 +37,16 @@ clade outdated                 clade build
 
 ## Pluggable abstractions
 
-Three concerns are factored behind interfaces with a `kind → factory` registry,
+Four concerns are factored behind interfaces with a `kind → factory` registry,
 so new strategies are added with a `Register` call and a small implementation:
 
-- **Tag selection** (`tag.Selector`) — which upstream tags to track. Selected by
-  `parent.target.kind` in `port.yaml`.
+- **Version discovery** (`source.Source`) — where upstream versions come from.
+  Selected by `source.kind` in `port.yaml` (`container`, `http`).
+- **Version selection** (`tag.Selector`) — which versions to track. Selected by
+  `select.kind` in `port.yaml`.
 - **Outdated check** (`compare.Comparator`) — how to decide a target is stale.
-  Selected by `compare.kind` in `clade.yaml`.
+  Configured per port by the `compare` list (an ordered fallback chain), or the
+  default for the port's `source.kind` when omitted.
 - **Build backend** (`builder.Builder`) — how to build an image. Selected by
   `build.kind` in `port.yaml`.
 
@@ -65,8 +69,10 @@ A `builder.Builder` is constructed from two inputs and then just runs:
   External upstreams (e.g. `docker.io/library/golang`) have no node.
 - Nodes are ordered topologically, so parents are always built before children.
 
-A node is outdated when its target image is missing, when the comparator reports
-it older than its base, or when any internal ancestor is outdated.
+A node is outdated when its primary tag is missing, when its comparator chain
+reports it stale relative to its base, or when any internal ancestor is
+outdated. A target with an empty chain (e.g. an `http` source, which has no base
+image) is judged by existence only: an existing primary tag is up to date.
 
 ## Caching
 

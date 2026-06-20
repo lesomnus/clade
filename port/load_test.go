@@ -9,15 +9,19 @@ import (
 	"github.com/lesomnus/clade/port"
 )
 
-const sample = `parent:
+const sample = `source:
+  kind: container
   repo: docker.io/library/golang
-  target:
-    kind: semver
-    last-major: 2
-    last-minor: 3
-    pre-release: alpine
+select:
+  kind: semver
+  last-major: 2
+  last-minor: 3
+  pre-release: alpine
+compare:
+  - kind: created
+  - kind: digest
 build:
-  repo: my-registry/golang-dev
+  repo: my-registry/dev-golang
   tags:
     - "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine"
     - "{{.Major}}.{{.Minor}}-alpine"
@@ -34,7 +38,7 @@ func writePort(t *testing.T, dir, manifest string) {
 }
 
 func TestLoad(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "golang-dev")
+	dir := filepath.Join(t.TempDir(), "dev-golang")
 	writePort(t, dir, sample)
 
 	p, err := port.Load(dir)
@@ -45,16 +49,22 @@ func TestLoad(t *testing.T) {
 	if p.Dir != dir {
 		t.Errorf("dir = %q, want %q", p.Dir, dir)
 	}
-	if p.Parent.Repo != "docker.io/library/golang" {
-		t.Errorf("parent.repo = %q", p.Parent.Repo)
+	if p.Source.Kind != "container" {
+		t.Errorf("source.kind = %q", p.Source.Kind)
 	}
-	if p.Parent.Target.Kind != "semver" {
-		t.Errorf("target.kind = %q", p.Parent.Target.Kind)
+	if p.Source.Repo != "docker.io/library/golang" {
+		t.Errorf("source.repo = %q", p.Source.Repo)
 	}
-	if !strings.Contains(string(p.Parent.Target.Params), "last-major") {
-		t.Errorf("target.params missing kind-specific fields: %q", p.Parent.Target.Params)
+	if p.Select.Kind != "semver" {
+		t.Errorf("select.kind = %q", p.Select.Kind)
 	}
-	if p.Build.Repo != "my-registry/golang-dev" {
+	if !strings.Contains(string(p.Select.Params), "last-major") {
+		t.Errorf("select.params missing kind-specific fields: %q", p.Select.Params)
+	}
+	if len(p.Compare) != 2 || p.Compare[0].Kind != "created" || p.Compare[1].Kind != "digest" {
+		t.Errorf("compare = %+v, want [created digest]", p.Compare)
+	}
+	if p.Build.Repo != "my-registry/dev-golang" {
 		t.Errorf("build.repo = %q", p.Build.Repo)
 	}
 	if len(p.Build.Tags) != 2 || p.Build.Tags[0] != "{{.Major}}.{{.Minor}}.{{.Patch}}-alpine" || p.Build.Tags[1] != "{{.Major}}.{{.Minor}}-alpine" {
@@ -62,11 +72,37 @@ func TestLoad(t *testing.T) {
 	}
 }
 
+func TestLoadHTTPSource(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "claude")
+	writePort(t, dir, `source:
+  kind: http
+  url: https://example.com/stable
+select:
+  kind: semver
+build:
+  repo: my-registry/claude
+  tags:
+    - "{{.Major}}.{{.Minor}}.{{.Patch}}"
+`)
+
+	p, err := port.Load(dir)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if p.Source.Kind != "http" || p.Source.Url != "https://example.com/stable" {
+		t.Errorf("source = %+v", p.Source)
+	}
+	// compare is optional and absent here.
+	if p.Compare != nil {
+		t.Errorf("compare = %v, want nil", p.Compare)
+	}
+}
+
 func TestLoadInvalid(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "broken")
-	writePort(t, dir, "build:\n  repo: x\n  tag: y\n") // no parent
+	writePort(t, dir, "build:\n  repo: x\n  tags: [y]\n") // no source
 	if _, err := port.Load(dir); err == nil {
-		t.Fatal("expected error for missing parent")
+		t.Fatal("expected error for missing source")
 	}
 }
 

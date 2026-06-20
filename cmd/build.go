@@ -35,7 +35,6 @@ func NewCmdBuild() *xli.Command {
 		},
 		Flags: flg.Flags{
 			&flg.String{Name: "ports", Brief: "path to the ports directory"},
-			&flg.String{Name: "compare", Brief: "outdated comparison strategy"},
 			&flg.String{Name: "graph", Brief: "read a serialized graph (.json or binary) instead of recomputing"},
 			&flg.Switch{Name: "all", Brief: "build every node in the graph, not only outdated ones"},
 			&flg.Switch{Name: "no-push", Brief: "do not push built images"},
@@ -47,7 +46,6 @@ func NewCmdBuild() *xli.Command {
 		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
 			c := use_config.Must(ctx)
 			flg.VisitP(cmd, "ports", &c.Ports)
-			flg.VisitP(cmd, "compare", &c.Compare.Kind)
 			flg.VisitP(cmd, "docker", &c.Build.Docker)
 
 			g, err := obtainGraph(ctx, c, cmd)
@@ -102,16 +100,12 @@ func obtainGraph(ctx context.Context, c *config.Config, cmd *xli.Command) (*clad
 	if err != nil {
 		return nil, z.Err(err, "build registry")
 	}
-	cmp, err := compare.New(c.Compare.Kind, c.Compare.Params)
-	if err != nil {
-		return nil, z.Err(err, "build comparator")
-	}
 	ports, err := port.LoadAll(c.Ports)
 	if err != nil {
 		return nil, z.Err(err, "load ports")
 	}
 
-	b := &graph.Builder{Registry: reg, Comparator: cmp}
+	b := &graph.Builder{Registry: reg}
 	return b.Build(ctx, ports)
 }
 
@@ -210,10 +204,14 @@ func (r *buildRunner) run(ctx context.Context, targets []*cladev1.Node) error {
 // spec builds the runtime build description for a node. The upstream name and
 // digest are recorded as labels so the digest comparator can detect future
 // upstream changes; the digest is resolved fresh so a just-pushed base counts.
+// A node without a base (e.g. an http source) records no base labels.
 func (r *buildRunner) spec(ctx context.Context, node *cladev1.Node) builder.Spec {
-	labels := map[string]string{baseNameLabel: node.Base}
-	if info, err := r.reg.Stat(ctx, node.Base); err == nil {
-		labels[compare.DefaultBaseDigestLabel] = info.Digest
+	labels := map[string]string{}
+	if node.Base != "" {
+		labels[baseNameLabel] = node.Base
+		if info, err := r.reg.Stat(ctx, node.Base); err == nil {
+			labels[compare.DefaultBaseDigestLabel] = info.Digest
+		}
 	}
 
 	return builder.Spec{
