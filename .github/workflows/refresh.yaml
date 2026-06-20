@@ -5,19 +5,21 @@ name: refresh
 # topological order (parents before children).
 on:
   workflow_dispatch:
+    inputs:
+      build:
+        description: "Dispatch builds for outdated targets (always on for scheduled runs)."
+        type: boolean
+        default: true
   schedule:
     - cron: "0 6 * * *" # daily at 06:00 UTC
 
 permissions:
   contents: read
+  actions: write # required to dispatch build.yaml
 
 jobs:
-  plan:
+  refresh:
     runs-on: ubuntu-latest
-    outputs:
-      # JSON array of node ids (target references) in topological order.
-      targets: ${{ steps.outdated.outputs.targets }}
-      count: ${{ steps.outdated.outputs.count }}
     steps:
       - uses: actions/checkout@v6
 
@@ -50,19 +52,16 @@ jobs:
           name: graph
           path: graph.json
 
-  dispatch:
-    needs: plan
-    if: needs.plan.outputs.count != '0'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      actions: write # required to dispatch build.yaml
-    steps:
       - name: Dispatch builds in topological order
+        # Scheduled runs always build; manual runs build only when requested, so a
+        # workflow_dispatch can be used to inspect the plan artifact without building.
+        if: >-
+          steps.outdated.outputs.count != '0' &&
+          (github.event_name == 'schedule' || inputs.build)
         env:
           GH_TOKEN: ${{ github.token }}
           REF: ${{ github.ref_name }}
-          TARGETS: ${{ needs.plan.outputs.targets }}
+          TARGETS: ${{ steps.outdated.outputs.targets }}
         run: |
           # Dispatch each build sequentially and wait for it to finish before
           # the next, so an internal base is pushed before its dependents build.

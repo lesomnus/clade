@@ -7,12 +7,11 @@ on:
       - main
     paths: &paths
       - .github/workflows/ci.yaml
-      - cmd/**
+      - "**/*.go"
       - docker-bake.hcl
       - Dockerfile
       - go.mod
       - go.sum
-      - main.go
   pull_request:
     branches:
       - main
