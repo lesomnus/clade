@@ -37,6 +37,9 @@ type Port struct {
 	// It is set on load and is not read from the YAML document.
 	Dir string `yaml:"-"`
 
+	// Name is a display name for the port. It defaults to the directory name
+	// (filled in by Load) when omitted.
+	Name    string        `yaml:"name"`
 	Source  Source        `yaml:"source"`
 	Select  Select        `yaml:"select"`
 	Compare []CompareSpec `yaml:"compare"`

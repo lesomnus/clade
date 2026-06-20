@@ -20,14 +20,19 @@ upstream.
 
 Output:
 
-- **text** — one line per target: `<status>  <id>  (base: <base>)`.
+- **text** — per target, a header line `<status>  <port-name> <port-dir> from <base>`
+  followed by its tags, indented. The port name links to its `port.yaml` in
+  terminals that support OSC 8 hyperlinks; `<port-dir>` is the port directory
+  relative to the working directory (plain text); `from <base>` is omitted for
+  sources with no base image (e.g. `http`).
 - **json** — the graph as protojson.
 - **binary** — the graph as protobuf wire bytes (pipe or cache it, then feed it
   to `clade build --graph`).
 
 ```sh
 clade outdated
-# outdated  ghcr.io/me/dev-golang:1.24.0-alpine  (base: docker.io/library/golang:1.24-alpine)
+# outdated  dev-golang ports/dev-golang from docker.io/library/golang:1.24-alpine
+# 	ghcr.io/me/dev-golang:1.24.0-alpine
 
 clade outdated --format json > graph.json
 clade outdated --format binary > graph.pb

@@ -26,6 +26,9 @@ func Load(dir string) (*Port, error) {
 	}
 
 	port.Dir = dir
+	if port.Name == "" {
+		port.Name = filepath.Base(dir)
+	}
 	if err := port.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid %s: %w", p, err)
 	}

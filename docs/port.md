@@ -15,6 +15,7 @@ By default `clade` scans the `ports/` directory; each immediate subdirectory
 that contains a `port.yaml` is a port (others are ignored).
 
 ```yaml
+name: dev-golang   # optional; defaults to the port's directory name
 source:
   kind: container
   repo: docker.io/library/golang
@@ -35,6 +36,11 @@ build:
 Required fields: `source.kind`, `select.kind`, `build.repo`, `build.tags`.
 A `container` source also requires `source.repo`; an `http` source requires
 `source.url`.
+
+## `name`
+
+An optional display name for the port, shown by `clade outdated`. When omitted it
+defaults to the port's directory name (e.g. `dev-golang` for `ports/dev-golang`).
 
 ## `source`
 

@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -57,7 +58,11 @@ func NewCmdOutdated() *xli.Command {
 			format := "text"
 			flg.VisitP(cmd, "format", &format)
 
-			return renderGraph(cmd, selectNodes(g, all), format)
+			by_dir := make(map[string]*port.Port, len(ports))
+			for _, p := range ports {
+				by_dir[p.Dir] = p
+			}
+			return renderGraph(cmd, selectNodes(g, all), format, by_dir)
 		}),
 	}
 }
@@ -113,25 +118,12 @@ func selectNodes(g *cladev1.Graph, all bool) []*cladev1.Node {
 	return out
 }
 
-func renderGraph(cmd *xli.Command, nodes []*cladev1.Node, format string) error {
+func renderGraph(cmd *xli.Command, nodes []*cladev1.Node, format string, ports map[string]*port.Port) error {
 	g := &cladev1.Graph{Nodes: nodes}
 
 	switch format {
 	case "", "text":
-		for _, n := range nodes {
-			status := "ok"
-			if n.Outdated {
-				status = "outdated"
-			}
-			tags := n.Tags
-			if len(tags) == 0 {
-				tags = []string{n.Id}
-			}
-			cmd.Printf("%s from %s\n", status, color.New(color.Underline).Sprint(n.Base))
-			for _, t := range tags {
-				cmd.Printf("\t%s\n", color.New(color.Bold).Sprint(t))
-			}
-		}
+		renderText(cmd, nodes, ports, !color.NoColor)
 		return nil
 
 	case "json":
@@ -153,4 +145,81 @@ func renderGraph(cmd *xli.Command, nodes []*cladev1.Node, format string) error {
 	default:
 		return fmt.Errorf("unknown format %q", format)
 	}
+}
+
+// renderText writes the human-readable listing. Each node gets a header line
+// "<status>  <port name> from <base>" (the "from <base>" part is omitted when
+// the node has no base image, e.g. an http source) followed by its tags,
+// indented. When link is set, the port name is wrapped in an OSC 8 hyperlink
+// that opens its port.yaml in terminals that support it.
+func renderText(w io.Writer, nodes []*cladev1.Node, ports map[string]*port.Port, link bool) {
+	dimmed := color.New(color.Faint).SprintFunc()
+	for _, n := range nodes {
+		status := "ok"
+		if n.Outdated {
+			status = "outdated"
+		}
+
+		label := portLabel(n.Port, ports, link)
+		loc := dimmed(relDir(n.Port) + "/" + port.Filename)
+		if n.Base != "" {
+			fmt.Fprintf(w, "%s  %s %s from %s\n", status, label, loc, color.New(color.Underline).Sprint(n.Base))
+		} else {
+			fmt.Fprintf(w, "%s  %s %s\n", status, label, loc)
+		}
+
+		tags := n.Tags
+		if len(tags) == 0 {
+			tags = []string{n.Id}
+		}
+		for _, t := range tags {
+			fmt.Fprintf(w, "\t%s\n", color.New(color.Bold).Sprint(t))
+		}
+	}
+}
+
+// portLabel is the styled (and, when link is set, OSC 8 hyperlinked) display
+// name of the port that produced a node, looked up by its directory. It falls
+// back to the directory's base name when the port is unknown.
+func portLabel(dir string, ports map[string]*port.Port, link bool) string {
+	name := filepath.Base(dir)
+	if p, ok := ports[dir]; ok && p.Name != "" {
+		name = p.Name
+	}
+
+	styled := color.New(color.FgCyan).Sprint(name)
+	if !link {
+		return styled
+	}
+
+	abs, err := filepath.Abs(filepath.Join(dir, port.Filename))
+	if err != nil {
+		return styled
+	}
+	return hyperlink("file://"+abs, styled)
+}
+
+// hyperlink wraps text in an OSC 8 terminal hyperlink. Terminals that do not
+// support OSC 8 ignore the escape and show text unchanged.
+func hyperlink(uri, text string) string {
+	return fmt.Sprintf("\x1b]8;;%s\x1b\\%s\x1b]8;;\x1b\\", uri, text)
+}
+
+// relDir returns dir relative to the current working directory, so the path
+// shown is meaningful from where the command was run. It falls back to dir
+// unchanged when the relative path cannot be computed.
+func relDir(dir string) string {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return dir
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return dir
+	}
+	rel, err := filepath.Rel(cwd, abs)
+	if err != nil {
+		return dir
+	}
+	return rel
 }

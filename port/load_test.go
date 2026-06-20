@@ -49,6 +49,9 @@ func TestLoad(t *testing.T) {
 	if p.Dir != dir {
 		t.Errorf("dir = %q, want %q", p.Dir, dir)
 	}
+	if p.Name != "dev-golang" {
+		t.Errorf("name = %q, want dev-golang (default from dir)", p.Name)
+	}
 	if p.Source.Kind != "container" {
 		t.Errorf("source.kind = %q", p.Source.Kind)
 	}
@@ -74,7 +77,8 @@ func TestLoad(t *testing.T) {
 
 func TestLoadHTTPSource(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "claude")
-	writePort(t, dir, `source:
+	writePort(t, dir, `name: my-claude
+source:
   kind: http
   url: https://example.com/stable
 select:
@@ -88,6 +92,9 @@ build:
 	p, err := port.Load(dir)
 	if err != nil {
 		t.Fatalf("load: %v", err)
+	}
+	if p.Name != "my-claude" {
+		t.Errorf("name = %q, want my-claude (explicit overrides dir)", p.Name)
 	}
 	if p.Source.Kind != "http" || p.Source.Url != "https://example.com/stable" {
 		t.Errorf("source = %+v", p.Source)
