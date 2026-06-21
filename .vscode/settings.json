@@ -1,0 +1,8 @@
+{
+  // Shared Dockerfile partials live in ports/_common/*.dockerfile and are raw
+  // Dockerfile content (plus a few Go-template directives), so highlight them
+  // as Dockerfiles even though VS Code does not associate the extension by default.
+  "files.associations": {
+    "*.dockerfile": "dockerfile"
+  }
+}

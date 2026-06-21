@@ -110,14 +110,14 @@ EOF
 
 # Node developer tooling, installed globally into a per-user npm prefix so it
 # lands under the dev user's home (no root-owned /usr/local writes) and stays on
-# PATH. corepack ships with node and provides the pnpm/yarn shims.
+# PATH. corepack is installed explicitly (recent node images no longer bundle it)
+# and provides the pnpm/yarn shims.
 ENV NPM_CONFIG_PREFIX=/home/${USERNAME}/.local
 ENV PATH=/home/${USERNAME}/.local/bin:${PATH}
 RUN npm install -g \
+		corepack \
 		typescript \
 		ts-node \
-		eslint \
-		prettier \
 		npm-check-updates \
 	&& corepack enable --install-directory /home/${USERNAME}/.local/bin
 

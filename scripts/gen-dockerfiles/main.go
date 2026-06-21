@@ -1,6 +1,10 @@
 // Command gen-dockerfiles renders each ports/<port>/Dockerfile.tmpl template
 // into a sibling Dockerfile, expanding the shared partials in
-// ports/_common/*.tmpl.
+// ports/_common/*.dockerfile.
+//
+// Each shared partial is a standalone *.dockerfile holding raw Dockerfile
+// content (so editors highlight it natively); text/template names the partial
+// after its filename, so a port references it as {{ template "apt.dockerfile" . }}.
 //
 // The generated Dockerfile files are committed; edit the Dockerfile.tmpl
 // templates (and the shared partials) instead. Run via `go generate`.
@@ -11,6 +15,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"text/template"
 )
 
@@ -22,9 +27,15 @@ const (
 	outName = "Dockerfile"
 )
 
+// blankRuns matches three or more consecutive newlines. Each partial file ends
+// with a trailing newline, which—combined with the blank line a port leaves
+// between {{ template }} calls—would yield a double blank line at every seam;
+// collapsing keeps the output to a single separating blank line.
+var blankRuns = regexp.MustCompile(`\n{3,}`)
+
 // funcs are template helpers. dict builds a map from alternating key/value
-// arguments so a Dockerfile$ can pass options to a shared partial, e.g.
-// {{ template "apt" dict "SystemPython" false }}.
+// arguments so a Dockerfile can pass options to a shared partial, e.g.
+// {{ template "apt.dockerfile" dict "SystemPython" false }}.
 var funcs = template.FuncMap{
 	"dict": func(pairs ...any) (map[string]any, error) {
 		if len(pairs)%2 != 0 {
@@ -50,7 +61,7 @@ func main() {
 }
 
 func run() error {
-	partials, err := template.New("partials").Funcs(funcs).ParseGlob(filepath.Join(portsDir, "_common", "*.tmpl"))
+	partials, err := template.New("partials").Funcs(funcs).ParseGlob(filepath.Join(portsDir, "_common", "*.dockerfile"))
 	if err != nil {
 		return fmt.Errorf("parse shared partials: %w", err)
 	}
@@ -92,5 +103,9 @@ func render(partials *template.Template, src string) error {
 	}
 
 	out := filepath.Join(filepath.Dir(src), outName)
-	return os.WriteFile(out, buf.Bytes(), 0o644)
+	// Collapse the double blank line left at each partial seam, then normalize
+	// to a single trailing newline (the last partial contributes one of its own).
+	rendered := blankRuns.ReplaceAll(buf.Bytes(), []byte("\n\n"))
+	rendered = append(bytes.TrimRight(rendered, "\n"), '\n')
+	return os.WriteFile(out, rendered, 0o644)
 }

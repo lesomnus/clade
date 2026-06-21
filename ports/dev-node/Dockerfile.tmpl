@@ -1,7 +1,7 @@
 ARG BASE=docker.io/library/node
 FROM ${BASE}
 
-{{ template "apt" dict "SystemPython" true }}
+{{ template "apt.dockerfile" dict "SystemPython" true }}
 
 # The official node image ships a `node` user at UID/GID 1000, which collides
 # with the dev user the shared "user" partial creates at 1000:1000. Remove it
@@ -9,19 +9,21 @@ FROM ${BASE}
 RUN userdel --remove node 2>/dev/null || true \
 	&& groupdel node 2>/dev/null || true
 
-{{ template "user" . }}
+{{ template "user.dockerfile" . }}
 
-{{ template "shell" . }}
+{{ template "shell.dockerfile" . }}
 
 # Node developer tooling, installed globally into a per-user npm prefix so it
 # lands under the dev user's home (no root-owned /usr/local writes) and stays on
-# PATH. corepack ships with node and provides the pnpm/yarn shims.
+# PATH. corepack is installed explicitly (recent node images no longer bundle it)
+# and provides the pnpm/yarn shims.
 ENV NPM_CONFIG_PREFIX=/home/${USERNAME}/.local
 ENV PATH=/home/${USERNAME}/.local/bin:${PATH}
 RUN npm install -g \
+		corepack \
 		typescript \
 		ts-node \
 		npm-check-updates \
 	&& corepack enable --install-directory /home/${USERNAME}/.local/bin
 
-{{ template "commandhistory" . }}
+{{ template "commandhistory.dockerfile" . }}
