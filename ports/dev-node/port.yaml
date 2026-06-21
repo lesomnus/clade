@@ -1,0 +1,16 @@
+source:
+  kind: container
+  repo: docker.io/library/node
+select:
+  kind: semver
+  last-major: 3
+  last-minor: 2
+build:
+  repo: ghcr.io/lesomnus/dev-node
+  tags:
+    - "{{.Major}}.{{.Minor}}.{{.Patch}}"
+    - "{{.Major}}.{{.Minor}}"
+    - "{{.Major}}"
+  platforms:
+    - linux/amd64
+    - linux/arm64
