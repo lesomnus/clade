@@ -17,6 +17,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 		ca-certificates \
 		curl \
 		dirmngr \
+		dnsutils \
 		eza \
 		fd-find \
 		git \
@@ -25,6 +26,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 		htop \
 		init-system-helpers \
 		iproute2 \
+		iputils-ping \
 		jq \
 		less \
 		libc6 \
@@ -40,19 +42,27 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 		man-db \
 		manpages \
 		manpages-dev \
+		mtr-tiny \
 		ncdu \
+		net-tools \
+		netcat-openbsd \
 		openssh-client \
 		procps \
 		psmisc \
 		ripgrep \
 		rsync \
+		socat \
 		strace \
 		sudo \
+		tcpdump \
+		telnet \
 		tmux \
+		traceroute \
 		tzdata \
 		unzip \
 		vim \
 		wget \
+		whois \
 		zip \
 		zlib1g \
 		zsh \
