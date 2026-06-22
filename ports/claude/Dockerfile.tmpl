@@ -1,13 +1,10 @@
 # syntax=docker/dockerfile:1
-# Code generated from Dockerfile.tmpl by scripts/gen-dockerfiles; DO NOT EDIT.
-
-# syntax=docker/dockerfile:1
 
 # Claude Code ships as a single binary, so this port has an `http` source rather
 # than a parent image: it has no base image (no FROM ${BASE}), so the base is
 # chosen here. clade injects the selected version as the BASE_TAG build-arg, and
 # a rebuild is triggered whenever the stable release advances (its primary
-# <no value>.<no value>.<no value> tag goes missing in the destination repo).
+# {{.Major}}.{{.Minor}}.{{.Patch}} tag goes missing in the destination repo).
 FROM docker.io/library/debian:bookworm-slim
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -54,13 +51,4 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 	&& echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
 	&& locale-gen
 
-ARG USERNAME=hypnos
-ARG USER_UID=1000
-ARG USER_GID=1000
-RUN groupadd "${USERNAME}" --gid ${USER_GID} \
-	&& useradd --create-home "${USERNAME}" --shell /usr/bin/zsh --uid "${USER_UID}" --gid "${USER_GID}" \
-	&& echo "${USERNAME}:${USERNAME}" | chpasswd \
-	&& echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/${USERNAME}"
-
-USER ${USERNAME}
-WORKDIR /home/${USERNAME}
+{{ template "user.dockerfile" . }}
