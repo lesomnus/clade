@@ -2,6 +2,8 @@ module github.com/lesomnus/clade
 
 go 1.26.2
 
+tool google.golang.org/protobuf/cmd/protoc-gen-go
+
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/fatih/color v1.19.0

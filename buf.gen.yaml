@@ -1,6 +1,6 @@
 version: v2
 clean: true
 plugins:
-  - local: protoc-gen-go
+  - local: [go, tool, google.golang.org/protobuf/cmd/protoc-gen-go]
     out: pb
     opt: paths=source_relative
