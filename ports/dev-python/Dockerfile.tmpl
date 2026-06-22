@@ -1,7 +1,10 @@
 ARG BASE=docker.io/library/python
 FROM ${BASE}
 
-{{ template "apt.dockerfile" dict "SystemPython" false }}
+{{ template "apt.dockerfile" dict "Exclude" (list
+	"python3"
+	"python3-pip"
+) }}
 
 {{ template "node.dockerfile" . }}
 

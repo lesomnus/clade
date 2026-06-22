@@ -1,7 +1,7 @@
 ARG BASE=docker.io/library/node
 FROM ${BASE}
 
-{{ template "apt.dockerfile" dict "SystemPython" true }}
+{{ template "apt.dockerfile" dict "Exclude" (list "eza") }}
 
 # The official node image ships a `node` user at UID/GID 1000, which collides
 # with the dev user the shared "user" partial creates at 1000:1000. Remove it

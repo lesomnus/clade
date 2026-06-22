@@ -1,7 +1,7 @@
 ARG BASE=docker.io/library/golang
 FROM ${BASE}
 
-{{ template "apt.dockerfile" dict "SystemPython" true }}
+{{ template "apt.dockerfile" . }}
 
 {{ template "node.dockerfile" . }}
 
