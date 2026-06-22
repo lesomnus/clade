@@ -16,10 +16,33 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 	&& export DEBIAN_FRONTEND=noninteractive \
 	&& apt-get update \
 	&& apt-get install -y --no-install-recommends \
+		build-essential \
 		ca-certificates \
 		curl \
+		fd-find \
+		file \
 		git \
-		jq
+		gnupg \
+		jq \
+		less \
+		locales \
+		make \
+		nano \
+		openssh-client \
+		procps \
+		python3 \
+		python3-pip \
+		ripgrep \
+		rsync \
+		tree \
+		unzip \
+		vim \
+		wget \
+		xz-utils \
+		zip \
+		zsh \
+	&& echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
+	&& locale-gen
 
 # Install Claude Code from the official release channel. clade injects the
 # resolved stable version as BASE_TAG; for that version we read the manifest to
@@ -42,17 +65,6 @@ RUN set -eu; \
 	printf '%s  %s\n' "${checksum}" "${out}" | sha256sum -c -; \
 	chmod +x "${out}"; \
 	claude --version
-
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-	--mount=type=cache,target=/var/lib/apt,sharing=locked \
-	rm -f /etc/apt/apt.conf.d/docker-clean \
-	&& export DEBIAN_FRONTEND=noninteractive \
-	&& apt-get update \
-	&& apt-get install -y --no-install-recommends \
-		python3 \
-		python3-pip \
-	&& echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
-	&& locale-gen
 
 ARG USERNAME=hypnos
 ARG USER_UID=1000
