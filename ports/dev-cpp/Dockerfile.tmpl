@@ -1,0 +1,53 @@
+ARG BASE=docker.io/library/gcc
+FROM ${BASE}
+
+{{ template "apt.dockerfile" dict
+	"Include" (list
+		"ccache"
+		"cmake"
+		"cppcheck"
+		"gdb"
+		"lcov"
+		"ninja-build"
+		"pkg-config"
+		"valgrind"
+	)
+	"Exclude" (list
+		"eza"
+	)
+}}
+
+# Clang/LLVM toolchain from apt.llvm.org — the LLVM project's official APT
+# repository. It ships a newer toolchain than Debian trixie's bundled clang-19;
+# LLVM_VERSION pins the release line (bump it to upgrade). update-alternatives
+# exposes the tools under their unversioned names (clang, clang++, clangd, ...).
+ARG LLVM_VERSION=22
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+	--mount=type=cache,target=/var/lib/apt,sharing=locked \
+	. /etc/os-release \
+	&& curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key -o /usr/share/keyrings/apt.llvm.org.asc \
+	&& echo "deb [signed-by=/usr/share/keyrings/apt.llvm.org.asc] http://apt.llvm.org/${VERSION_CODENAME}/ llvm-toolchain-${VERSION_CODENAME}-${LLVM_VERSION} main" \
+		> /etc/apt/sources.list.d/llvm.list \
+	&& apt-get update \
+	&& apt-get install -y --no-install-recommends \
+		clang-${LLVM_VERSION} \
+		clang-format-${LLVM_VERSION} \
+		clang-tidy-${LLVM_VERSION} \
+		clang-tools-${LLVM_VERSION} \
+		clangd-${LLVM_VERSION} \
+		lld-${LLVM_VERSION} \
+		lldb-${LLVM_VERSION} \
+	&& for tool in \
+		clang clang++ clangd clang-format clang-tidy \
+		clang-apply-replacements run-clang-tidy lld ld.lld lldb \
+	; do \
+		update-alternatives --install "/usr/bin/${tool}" "${tool}" "/usr/bin/${tool}-${LLVM_VERSION}" 100 || true; \
+	done
+
+{{ template "node.dockerfile" . }}
+
+{{ template "user.dockerfile" . }}
+
+{{ template "shell.dockerfile" . }}
+
+{{ template "commandhistory.dockerfile" . }}

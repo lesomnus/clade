@@ -1,0 +1,16 @@
+source:
+  kind: container
+  repo: docker.io/library/gcc
+select:
+  kind: semver
+  last-major: 6
+  last-minor: 3
+build:
+  repo: ghcr.io/lesomnus/dev-cpp
+  tags:
+    - "{{.Major}}.{{.Minor}}.{{.Patch}}"
+    - "{{.Major}}.{{.Minor}}"
+    - "{{.Major}}"
+  platforms:
+    - linux/amd64
+    - linux/arm64
