@@ -31,6 +31,6 @@ services:
           memory: 4G
 
 volumes:
+  command.history:
   go.cache.mod:
   go.cache.bin:
-  command.history:

@@ -79,30 +79,38 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 	&& locale-gen
 
 # Clang/LLVM toolchain from apt.llvm.org — the LLVM project's official APT
-# repository. It ships a newer toolchain than Debian trixie's bundled clang-19;
-# LLVM_VERSION pins the release line (bump it to upgrade). update-alternatives
-# exposes the tools under their unversioned names (clang, clang++, clangd, ...).
-ARG LLVM_VERSION=22
+# repository, which ships a newer toolchain than the base image's bundled clang.
+# We add the distribution's unversioned suite (it tracks the newest LLVM line for
+# that release) and detect whichever clang version it offers, rather than pinning
+# one: an older gcc base image runs on an older Debian whose apt.llvm.org repo may
+# not carry the latest line, so a pinned version would 404 there. The detected
+# version then selects the matching packages. update-alternatives exposes the
+# tools under their unversioned names (clang, clang++, clangd, ...).
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 	--mount=type=cache,target=/var/lib/apt,sharing=locked \
 	. /etc/os-release \
 	&& curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key -o /usr/share/keyrings/apt.llvm.org.asc \
-	&& echo "deb [signed-by=/usr/share/keyrings/apt.llvm.org.asc] http://apt.llvm.org/${VERSION_CODENAME}/ llvm-toolchain-${VERSION_CODENAME}-${LLVM_VERSION} main" \
+	&& echo "deb [signed-by=/usr/share/keyrings/apt.llvm.org.asc] http://apt.llvm.org/${VERSION_CODENAME}/ llvm-toolchain-${VERSION_CODENAME} main" \
 		> /etc/apt/sources.list.d/llvm.list \
 	&& apt-get update \
+	&& llvm_version="$(apt-cache search --names-only '^clang-[0-9]+$' | awk '{print $1}' | grep -oE '[0-9]+$' | sort -un | tail -1)" \
+	&& if [ -z "${llvm_version}" ]; then \
+		echo "no clang package found in apt.llvm.org repo for ${VERSION_CODENAME}" >&2; exit 1; \
+	fi \
+	&& echo "installing LLVM/clang ${llvm_version}" \
 	&& apt-get install -y --no-install-recommends \
-		clang-${LLVM_VERSION} \
-		clang-format-${LLVM_VERSION} \
-		clang-tidy-${LLVM_VERSION} \
-		clang-tools-${LLVM_VERSION} \
-		clangd-${LLVM_VERSION} \
-		lld-${LLVM_VERSION} \
-		lldb-${LLVM_VERSION} \
+		clang-${llvm_version} \
+		clang-format-${llvm_version} \
+		clang-tidy-${llvm_version} \
+		clang-tools-${llvm_version} \
+		clangd-${llvm_version} \
+		lld-${llvm_version} \
+		lldb-${llvm_version} \
 	&& for tool in \
 		clang clang++ clangd clang-format clang-tidy \
 		clang-apply-replacements run-clang-tidy lld ld.lld lldb \
 	; do \
-		update-alternatives --install "/usr/bin/${tool}" "${tool}" "/usr/bin/${tool}-${LLVM_VERSION}" 100 || true; \
+		update-alternatives --install "/usr/bin/${tool}" "${tool}" "/usr/bin/${tool}-${llvm_version}" 100 || true; \
 	done
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
