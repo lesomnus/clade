@@ -1,0 +1,13 @@
+source:
+  kind: container
+  repo: docker.io/library/ubuntu
+select:
+  kind: semver
+  last-major: 3
+build:
+  repo: ghcr.io/lesomnus/ubuntu
+  tags:
+    - "{{.Major}}"
+  platforms:
+    - linux/amd64
+    - linux/arm64
