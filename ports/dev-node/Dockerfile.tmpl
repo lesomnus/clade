@@ -19,11 +19,16 @@ RUN userdel --remove node 2>/dev/null || true \
 # and provides the pnpm/yarn shims.
 ENV NPM_CONFIG_PREFIX=/home/${USERNAME}/.local
 ENV PATH=/home/${USERNAME}/.local/bin:${PATH}
+# Corepack fetches a package manager on first use and, by default, prompts for
+# confirmation before downloading; disable the prompt so pnpm runs
+# non-interactively inside the container.
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN npm install -g \
 		corepack \
 		typescript \
 		ts-node \
 		npm-check-updates \
-	&& corepack enable --install-directory /home/${USERNAME}/.local/bin
+	&& corepack enable --install-directory /home/${USERNAME}/.local/bin \
+	&& corepack prepare pnpm@latest --activate
 
 {{ template "commandhistory.dockerfile" . }}

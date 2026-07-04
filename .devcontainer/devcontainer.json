@@ -1,9 +1,6 @@
 {
 	"name": "lesomnus/clade",
-	"dockerComposeFile": [
-		"docker-compose.yaml",
-		// "docker-compose.claude.yaml"
-	],
+	"dockerComposeFile": "docker-compose.yaml",
 	"service": "dev",
 	"workspaceFolder": "/workspace",
 	"customizations": {
