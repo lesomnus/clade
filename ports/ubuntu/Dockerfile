@@ -45,6 +45,12 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 	&& echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
 	&& locale-gen
 
+# Recent Ubuntu images ship an `ubuntu` user at UID/GID 1000, which collides
+# with the dev user the shared "user" partial creates at 1000:1000. Remove it
+# (and its home) so that partial can claim those IDs.
+RUN userdel --remove ubuntu 2>/dev/null || true \
+	&& groupdel ubuntu 2>/dev/null || true
+
 ARG USERNAME=hypnos
 ARG USER_UID=1000
 ARG USER_GID=1000
