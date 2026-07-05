@@ -110,6 +110,59 @@ keeps the two newest minor lines of the newest major, `-alpine` variants only.
 
 The selected version is exposed to the `build.tags` templates (see below).
 
+### `kind: calver`
+
+`calver` selects [calendar-versioned](https://calver.org/) tags such as Ubuntu's
+`24.04`. Unlike `semver` it keeps each component as **text**, so a zero-padded
+`04` is rendered as `04` rather than collapsing to `4`.
+
+| Field | Description |
+| --- | --- |
+| `layout` | Required. How each version is parsed, as tokens separated by literals (see below). A tag is matched only when its literals line up exactly. |
+| `where` | Optional per-component filters keyed by `year`, `month`, `day`, `micro`. Each takes `in: [ints]` (value must be in the set) and/or `mod: [divisor, remainder]` (value % divisor == remainder). Both must hold when both are given. |
+| `last` | Keep this many of the newest versions. `0` (default) keeps all. |
+
+`layout` tokens (each captures a numeric component):
+
+| Token | Meaning | `2024.04` |
+| --- | --- | --- |
+| `YYYY` | four-digit year | `2024` |
+| `YY` / `0Y` | short year (unpadded / zero-padded) | `24` |
+| `MM` / `0M` | month (unpadded / zero-padded) | `04` |
+| `DD` / `0D` | day (unpadded / zero-padded) | — |
+| `MICRO` | trailing number | — |
+
+Padded tokens (`YYYY`, `0Y`, `0M`, `0D`) match an exact width, so `0M` matches
+`04` but not `4`. Selection parses each tag with `layout` (non-matching tags are
+ignored), drops those failing `where`, then keeps the newest `last` versions.
+
+The parsed version exposes these text fields to the `build.tags` templates:
+
+| Expression | Example for `24.04` |
+| --- | --- |
+| `{{.Version}}` | `24.04` (the whole tag) |
+| `{{.Year}}` | `24` |
+| `{{.Month}}` | `04` |
+| `{{.Day}}` `{{.Micro}}` | (empty unless in the layout) |
+
+For example, Ubuntu LTS is released every even year in April, so this keeps the
+two newest LTS releases and tags each image `24.04` and a floating `24`:
+
+```yaml
+select:
+  kind: calver
+  layout: "YY.0M"
+  where:
+    year: { mod: [2, 0] } # even year
+    month: { in: [4] }    # April
+  last: 2
+build:
+  repo: ghcr.io/me/ubuntu
+  tags:
+    - "{{.Version}}" # 24.04
+    - "{{.Year}}"    # 24
+```
+
 ## `build`
 
 How the produced image is named and built.

@@ -2,12 +2,17 @@ source:
   kind: container
   repo: docker.io/library/ubuntu
 select:
-  kind: semver
-  last-major: 3
+  kind: calver
+  layout: "YY.0M"
+  where:
+    year: { mod: [2, 0] } # LTS is released every even year ...
+    month: { in: [4] }    # ... in April
+  last: 2
 build:
   repo: ghcr.io/lesomnus/ubuntu
   tags:
-    - "{{.Major}}"
+    - "{{.Version}}"      # 24.04
+    - "{{.Year}}"         # 24
   platforms:
     - linux/amd64
     - linux/arm64
