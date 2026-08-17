@@ -13,30 +13,21 @@ FROM ${BASE}
 # compatibility checks (`buf breaking` against two baselines) all run through it,
 # and a checkout without buf cannot regenerate what it ships.
 #
-# Taken from the GitHub release because bufbuild publishes no apt repository, and
-# verified against the `sha256.txt` of the same release rather than a hash
-# hardcoded here, so bumping BUF_VERSION is a one-line change.
+# Fetched through pkg.opt.td, which is arrakis (github.com/lesomnus/arrakis): a
+# redirector to the release the project itself published. It is what saves this
+# from carrying an arch table -- bufbuild names its assets `Linux-x86_64` and
+# `Linux-aarch64`, arrakis maps `$(uname -m)` onto that and 301s to the GitHub
+# release, so this layer is one curl on either platform.
 #
-# The pin is manual on purpose. This port's version follows the Go toolchain it
-# sits on (see port.yaml), so nothing moves buf automatically; payday's CI runs
-# whatever `bufbuild/buf-action` ships, which is the newest release, so the newest
-# is what this tracks.
-ARG BUF_VERSION=1.72.0
-RUN set -eu; \
-	case "$(uname -m)" in \
-		x86_64 | amd64) arch="x86_64" ;; \
-		arm64 | aarch64) arch="aarch64" ;; \
-		*) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;; \
-	esac; \
-	asset="buf-Linux-${arch}"; \
-	base_url="https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}"; \
-	checksum="$(curl -fsSL "${base_url}/sha256.txt" | awk -v a="${asset}" '$2 == a {print $1}')"; \
-	[ -n "${checksum}" ] || { echo "No checksum for ${asset} in v${BUF_VERSION}" >&2; exit 1; }; \
-	out=/usr/local/bin/buf; \
-	curl -fsSL -o "${out}" "${base_url}/${asset}"; \
-	printf '%s  %s\n' "${checksum}" "${out}" | sha256sum -c -; \
-	chmod +x "${out}"; \
-	buf --version
+# The pin is the series, so a rebuild picks up the patch releases of 1.72 but
+# never a minor. It is manual either way: this port's version follows the Go
+# toolchain it sits on (see port.yaml), so nothing moves buf on its own, and
+# payday's CI runs whatever `bufbuild/buf-action` ships, which is the newest.
+ARG BUF_VERSION=1.72
+RUN curl -fsSL -o /usr/local/bin/buf \
+		"https://pkg.opt.td/bufbuild/buf/buf@${BUF_VERSION}/linux/$(uname -m)" \
+	&& chmod +x /usr/local/bin/buf \
+	&& buf --version
 
 # A browser, so a page can be looked at rather than reasoned about.
 #
