@@ -54,6 +54,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 
 {{ template "node.dockerfile" . }}
 
+{{ template "docker.dockerfile" . }}
+
 {{ template "user.dockerfile" . }}
 
 {{ template "shell.dockerfile" . }}

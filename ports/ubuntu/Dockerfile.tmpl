@@ -16,21 +16,26 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 		build-essential \
 		ca-certificates \
 		curl \
+		expect \
 		fd-find \
 		file \
+		gettext-base \
 		git \
 		gnupg \
 		jq \
 		less \
 		locales \
 		make \
+		moreutils \
 		nano \
 		openssh-client \
+		patch \
 		procps \
 		python3 \
 		python3-pip \
 		ripgrep \
 		rsync \
+		sshpass \
 		sudo \
 		tree \
 		unzip \
@@ -47,5 +52,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # (and its home) so that partial can claim those IDs.
 RUN userdel --remove ubuntu 2>/dev/null || true \
 	&& groupdel ubuntu 2>/dev/null || true
+
+{{ template "docker.dockerfile" . }}
 
 {{ template "user.dockerfile" . }}

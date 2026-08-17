@@ -1,0 +1,60 @@
+ARG BASE=ghcr.io/lesomnus/dev-golang
+FROM ${BASE}
+
+# payday builds on dev-golang rather than on a stock golang image, so everything
+# the other dev ports share -- the apt set, node, the docker client, the user and
+# the shell -- is already here. What is added below is only what payday itself
+# needs and no other port does.
+
+# buf, because payday's sources are `.proto`: its schema, its generators and its
+# compatibility checks (`buf breaking` against two baselines) all run through it,
+# and a checkout without buf cannot regenerate what it ships.
+#
+# Taken from the GitHub release because bufbuild publishes no apt repository, and
+# verified against the `sha256.txt` of the same release rather than a hash
+# hardcoded here, so bumping BUF_VERSION is a one-line change.
+#
+# The pin is manual on purpose. This port's version follows the Go toolchain it
+# sits on (see port.yaml), so nothing moves buf automatically; payday's CI runs
+# whatever `bufbuild/buf-action` ships, which is the newest release, so the newest
+# is what this tracks.
+ARG BUF_VERSION=1.72.0
+RUN set -eu; \
+	case "$(uname -m)" in \
+		x86_64 | amd64) arch="x86_64" ;; \
+		arm64 | aarch64) arch="aarch64" ;; \
+		*) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;; \
+	esac; \
+	asset="buf-Linux-${arch}"; \
+	base_url="https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}"; \
+	checksum="$(curl -fsSL "${base_url}/sha256.txt" | awk -v a="${asset}" '$2 == a {print $1}')"; \
+	[ -n "${checksum}" ] || { echo "No checksum for ${asset} in v${BUF_VERSION}" >&2; exit 1; }; \
+	out=/usr/local/bin/buf; \
+	curl -fsSL -o "${out}" "${base_url}/${asset}"; \
+	printf '%s  %s\n' "${checksum}" "${out}" | sha256sum -c -; \
+	chmod +x "${out}"; \
+	buf --version
+
+# A browser, so a page can be looked at rather than reasoned about.
+#
+# Two things want it. payday's sandbox test (`PDTEST_SANDBOX=1`) serves the wasm
+# build through vite and drives it with `chromium.launch()`, which asserts the
+# one thing neither half's unit tests can: that the Go program and the TypeScript
+# program are the same program. And an agent working in this container has no
+# other way to answer whether a word fits a button, whether a colour reads on a
+# dark background, or which element is giving a phone a sideways scrollbar.
+#
+# `--with-deps` is why this is a root layer: chromium wants a couple of dozen
+# shared libraries a Go image has no reason to carry. The browsers land outside
+# any home directory and are made world-readable, so the container's user runs
+# them without owning them.
+#
+# The version is pinned to what payday's `package.json` resolves for playwright.
+# The library and the browser talk over a protocol that changes, and a browser
+# newer than the library driving it fails in ways that read as the page being
+# broken -- so this moves when payday's lockfile does, not on its own.
+ARG PLAYWRIGHT_VERSION=1.62.1
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
+RUN npx --yes "playwright@${PLAYWRIGHT_VERSION}" install --with-deps chromium \
+	&& chmod -R a+rX "${PLAYWRIGHT_BROWSERS_PATH}" \
+	&& rm -rf /root/.npm

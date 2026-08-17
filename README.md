@@ -86,8 +86,10 @@ clade build                    # build & push the stale targets, in order
 clade build --dry-run          # print the buildx commands instead
 ```
 
-Runnable examples live in [ports/dev-golang](ports/dev-golang) (a `container`
-source) and [ports/claude](ports/claude) (an `http` source for a binary release).
+Runnable examples live in [ports/dev-golang](ports/dev-golang) and
+[ports/ubuntu](ports/ubuntu), both `container` sources; the `http` source, for
+projects that publish a version endpoint rather than an image, is documented in
+[docs/port.md](docs/port.md).
 
 ## Automation
 

@@ -8,6 +8,8 @@ FROM ${BASE}
 
 {{ template "node.dockerfile" . }}
 
+{{ template "docker.dockerfile" . }}
+
 {{ template "user.dockerfile" . }}
 
 {{ template "shell.dockerfile" . }}

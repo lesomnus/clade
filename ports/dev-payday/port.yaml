@@ -1,0 +1,23 @@
+# Built on top of ports/dev-golang: `source.repo` is that port's `build.repo`,
+# which makes an internal edge, so a rebuilt dev-golang cascades here.
+source:
+  kind: container
+  repo: ghcr.io/lesomnus/dev-golang
+select:
+  kind: semver
+  # Only the newest Go line. payday's go.mod requires the current toolchain, so
+  # an image on an older line would not build it.
+  last-major: 1
+  last-minor: 1
+build:
+  repo: ghcr.io/lesomnus/dev-payday
+  # The version is the Go toolchain underneath, the same one dev-golang is tagged
+  # by: it is the only thing here that moves on its own. buf and the browser are
+  # pinned in the Dockerfile.
+  tags:
+    - "{{.Major}}.{{.Minor}}.{{.Patch}}"
+    - "{{.Major}}.{{.Minor}}"
+    - "{{.Major}}"
+  platforms:
+    - linux/amd64
+    - linux/arm64

@@ -5,6 +5,8 @@ FROM ${BASE}
 
 {{ template "node.dockerfile" . }}
 
+{{ template "docker.dockerfile" . }}
+
 {{ template "user.dockerfile" . }}
 
 RUN mkdir -p ~/.cache/go-build
@@ -13,17 +15,14 @@ RUN mkdir -p ~/.cache/go-build
 
 {{ template "commandhistory.dockerfile" . }}
 
+# /go, owned by the user, so `go install` and the module cache work without sudo
+# and a named volume mounted over either path inherits the ownership.
+#
+# The tools that would live in /go/bin -- gopls, dlv, golangci-lint -- are
+# deliberately not baked in. Each is a full compile, and for the platform that is
+# not the builder's own that compile runs under emulation, where it dominated the
+# image build. What it buys is a set of binaries that are stale by their next
+# release, on an image whose whole point is to be rebuilt when its base moves. A
+# `go install` in the container is native and takes the version the user wants.
 RUN mkdir -p /go/pkg/mod /go/bin \
 	&& chown -R "${USERNAME}:${USERNAME}" /go
-
-RUN --mount=type=cache,target=/root/.cache/go-build \
-	--mount=type=cache,target=/go/pkg/mod \
-	--mount=type=cache,target=/go/pkg/sumdb \
-	for pkg in \
-		golang.org/x/tools/gopls@latest \
-		github.com/go-delve/delve/cmd/dlv@latest \
-		github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
-	; do \
-		go install "$pkg"; \
-	done \
-		&& chown -R "${USERNAME}:${USERNAME}" /go/bin

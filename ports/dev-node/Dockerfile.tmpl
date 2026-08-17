@@ -9,6 +9,8 @@ FROM ${BASE}
 RUN userdel --remove node 2>/dev/null || true \
 	&& groupdel node 2>/dev/null || true
 
+{{ template "docker.dockerfile" . }}
+
 {{ template "user.dockerfile" . }}
 
 {{ template "shell.dockerfile" . }}
