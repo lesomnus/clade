@@ -12,7 +12,7 @@ require (
 	github.com/lesomnus/mkot v0.0.0-20260611164331-66886cdbecf0
 	github.com/lesomnus/mkot/pretty v0.0.0-20260611164331-66886cdbecf0
 	github.com/lesomnus/otx v0.0.0-20260531101103-be4e3034ac45
-	github.com/lesomnus/xli v0.0.0-20260415201908-e5f4624a24b7
+	github.com/lesomnus/xli v0.0.0-20261007103221-181d76ac7923
 	github.com/lesomnus/z v0.0.0-20260531102454-3f1853bb4278
 	go.opentelemetry.io/otel v1.44.0
 	google.golang.org/protobuf v1.36.11

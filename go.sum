@@ -31,8 +31,8 @@ github.com/lesomnus/mkot/pretty v0.0.0-20260611164331-66886cdbecf0 h1:7iRTbcJ1fR
 github.com/lesomnus/mkot/pretty v0.0.0-20260611164331-66886cdbecf0/go.mod h1:q0Cutry0+W4Ru5ziccaE1rS/QcGFD+1GvbL3EMPZVyk=
 github.com/lesomnus/otx v0.0.0-20260531101103-be4e3034ac45 h1:xg3UVYEp+YhC06xLeQ2ZSw/l2tK8FMBsw48vp+XYnHw=
 github.com/lesomnus/otx v0.0.0-20260531101103-be4e3034ac45/go.mod h1:Atr7LTFSnIfghys24rsaDi19sd9rsAA0rnpwRBMaRdo=
-github.com/lesomnus/xli v0.0.0-20260415201908-e5f4624a24b7 h1:tQwbwldgmI803eqjgaBCYptj8M8rRQ+No2hgUXaj+P4=
-github.com/lesomnus/xli v0.0.0-20260415201908-e5f4624a24b7/go.mod h1:9dZNkM86FqzAsiBYaeT026Nt8PPxAyuq6RtWE4vNxSA=
+github.com/lesomnus/xli v0.0.0-20261007103221-181d76ac7923 h1:k4smiDRYFVPg6g6V73eTHTxWuiASQGf1kwiwCBURaPw=
+github.com/lesomnus/xli v0.0.0-20261007103221-181d76ac7923/go.mod h1:9dZNkM86FqzAsiBYaeT026Nt8PPxAyuq6RtWE4vNxSA=
 github.com/lesomnus/z v0.0.0-20260531102454-3f1853bb4278 h1:dBLfXrOR8qLwZculDy8uJfNN+Q5xlyvM9CF4yylPB/0=
 github.com/lesomnus/z v0.0.0-20260531102454-3f1853bb4278/go.mod h1:v3+tOhGZhT6JQ/ZYncEQryo23ApoN03Ez4G2BHp2SWM=
 github.com/mattn/go-colorable v0.1.14 h1:9A9LHSqF/7dyVVX6g0U9cwm9pG3kP9gSzcuIPHPsaIE=
